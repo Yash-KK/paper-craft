@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
-from app.api.v1 import query, upload
+from app.api.v1 import upload
 from app.core.config import PROJECT_ROOT
 
 
@@ -16,7 +16,6 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Paper Craft", lifespan=lifespan)
 
 app.include_router(upload.router, prefix="/api/v1")
-app.include_router(query.router, prefix="/api/v1")
 
 
 @app.get("/health")

@@ -1,16 +1,15 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
 from app.core.config import settings
-from app.core.security import verify_api_key
 from app.schemas.document import IngestRequest, IngestResponse
 from app.services.ingestion.pipeline import ingest_directory
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 
 
-@router.post("/ingest", response_model=IngestResponse, dependencies=[Depends(verify_api_key)])
+@router.post("/ingest", response_model=IngestResponse)
 async def ingest_documents(request: IngestRequest) -> IngestResponse:
     source = Path(request.source_path)
     if not source.is_absolute():

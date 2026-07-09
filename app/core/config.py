@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(alias="OPENAI_API_KEY")
     dense_model: str = Field(alias="DENSE_MODEL")
     qdrant_url: str = Field(alias="QDRANT_URL")
-    qdrant_api_key: str = Field(alias="QDRANT_API_KEY")
     collection_name: str = Field(alias="COLLECTION_NAME")
     sparse_model: str = Field(alias="SPARSE_MODEL")
     extracted_data_dir: Path = Field(alias="EXTRACTED_DATA_DIR")

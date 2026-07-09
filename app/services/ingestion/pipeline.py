@@ -34,7 +34,6 @@ def ingest_directory(root_dir: Path) -> dict:
         collection_name=settings.collection_name,
         retrieval_mode=RetrievalMode.HYBRID,
         url=settings.qdrant_url,
-        api_key=settings.qdrant_api_key or None,
     )
 
     breakdown = {
