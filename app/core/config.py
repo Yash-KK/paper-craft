@@ -1,7 +1,8 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -14,24 +15,27 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # LLM / embeddings
-    openai_api_key: str = Field(default="sk-dummy", alias="OPENAI_API_KEY")
-    dense_model: str = "text-embedding-3-small"
+    openai_api_key: str = Field(alias="OPENAI_API_KEY")
+    dense_model: str = Field(alias="DENSE_MODEL")
+    qdrant_url: str = Field(alias="QDRANT_URL")
+    qdrant_api_key: str = Field(alias="QDRANT_API_KEY")
+    collection_name: str = Field(alias="COLLECTION_NAME")
+    sparse_model: str = Field(alias="SPARSE_MODEL")
+    extracted_data_dir: Path = Field(alias="EXTRACTED_DATA_DIR")
+    ncert_book_config: dict[str, dict[str, str | int]] = Field(alias="NCERT_BOOK_CONFIG")
 
-    qdrant_url: str = Field(default="http://localhost:6333", alias="QDRANT_URL")
-    qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
-    collection_name: str = "ncert_content"
-    sparse_model: str = "Qdrant/bm25"
+    @field_validator("extracted_data_dir", mode="before")
+    @classmethod
+    def resolve_extracted_data_dir(cls, value: str | Path) -> Path:
+        path = Path(value)
+        return path if path.is_absolute() else PROJECT_ROOT / path
 
-    # App
-    api_key: str | None = Field(default=None, alias="API_KEY")
-    extracted_data_dir: Path = PROJECT_ROOT / "extracted_data"
-
-    # NCERT book_code -> subject/grade
-    ncert_book_config: dict[str, dict[str, str | int]] = {
-        "jemh1": {"subject": "Mathematics", "grade": 10},
-        "jesc1": {"subject": "Science", "grade": 10},
-    }
+    @field_validator("ncert_book_config", mode="before")
+    @classmethod
+    def parse_ncert_book_config(cls, value: str | dict) -> dict:
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
 
 
 @lru_cache

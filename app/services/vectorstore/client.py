@@ -9,7 +9,10 @@ from app.core.config import settings
 
 @lru_cache
 def get_qdrant_client() -> QdrantClient:
-    return QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
+    return QdrantClient(
+        url=settings.qdrant_url,
+        api_key=settings.qdrant_api_key or None,
+    )
 
 
 def get_vector_store() -> QdrantVectorStore:
