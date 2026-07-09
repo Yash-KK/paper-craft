@@ -17,15 +17,10 @@ class Settings(BaseSettings):
     # LLM / embeddings
     openai_api_key: str = Field(default="sk-dummy", alias="OPENAI_API_KEY")
     dense_model: str = "text-embedding-3-small"
-    dense_vector_size: int = 1536
-    embed_batch_size: int = 100
 
-    # Qdrant
     qdrant_url: str = Field(default="http://localhost:6333", alias="QDRANT_URL")
     qdrant_api_key: str | None = Field(default=None, alias="QDRANT_API_KEY")
     collection_name: str = "ncert_content"
-
-    # Sparse retrieval
     sparse_model: str = "Qdrant/bm25"
 
     # App
