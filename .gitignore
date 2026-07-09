@@ -9,3 +9,8 @@ wheels/
 # Virtual environments
 .venv
 .env
+
+
+## misc
+misc.ipynb
+misc.py
