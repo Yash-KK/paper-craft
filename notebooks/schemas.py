@@ -109,3 +109,40 @@ class GenerationState(TypedDict):
     final_paper: dict | None
     final_answer_key: dict | None
     review_decision: dict | None
+
+
+
+class BloomsLevel(str, Enum):
+    REMEMBERING = "REMEMBERING"
+    UNDERSTANDING = "UNDERSTANDING"
+    APPLYING = "APPLYING"
+    ANALYSING = "ANALYSING"
+    EVALUATING = "EVALUATING"
+    CREATING = "CREATING"
+    NOT_SPECIFIED = "NOT_SPECIFIED"
+ 
+ 
+class GenerationMode(str, Enum):
+    REUSE = "REUSE"      # pull a real exercise question near-verbatim (add MCQ options if needed)
+    VARIANT = "VARIANT"  # adapt a worked example (same method, new numbers)
+    NOVEL = "NOVEL"      # fresh question grounded in theory + examples
+
+
+class SlotSubPart(BaseModel):
+    label: str
+    marks: float
+    has_internal_choice: bool = False
+
+
+class Slot(BaseModel):
+    slot_id: str
+    section_name: str
+    question_number: int
+    question_type: QuestionType
+    marks: float
+    blooms_level: BloomsLevel
+    chapter_number: int
+    chapter_name: str
+    generation_mode: GenerationMode
+    has_internal_choice: bool = False
+    sub_parts: list[SlotSubPart] = Field(default_factory=list)
