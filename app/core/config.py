@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     extracted_data_dir: Path = Field(alias="EXTRACTED_DATA_DIR")
     ncert_book_config: dict[str, dict[str, str | int]] = Field(alias="NCERT_BOOK_CONFIG")
 
+    google_client_id: str = Field(alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(alias="GOOGLE_CLIENT_SECRET")
+    google_redirect_uri: str = Field(alias="GOOGLE_REDIRECT_URI")
+    allow_insecure_http: bool = Field(alias="ALLOW_INSECURE_HTTP")
+
     @field_validator("extracted_data_dir", mode="before")
     @classmethod
     def resolve_extracted_data_dir(cls, value: str | Path) -> Path:
