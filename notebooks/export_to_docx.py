@@ -76,8 +76,22 @@ def escape_markdown_outside_math(text: str) -> str:
     return "".join(out)
 
 
+LEADING_LIST_MARKER_RE = re.compile(
+    r"^( {0,3})(\(?)(\d+|[A-Za-z]|[ivxlcdmIVXLCDM]+)([.)])(\s)"
+)
+
+
+def escape_leading_list_marker(line: str) -> str:
+    m = LEADING_LIST_MARKER_RE.match(line)
+    if not m:
+        return line
+    start = m.start(4)
+    return line[:start] + "\\" + line[start:]
+
+
 def prepare_markdown(text: str) -> str:
-    return escape_markdown_outside_math(normalize_latex_delimiters(text))
+    text = escape_markdown_outside_math(normalize_latex_delimiters(text))
+    return "\n".join(escape_leading_list_marker(line) for line in text.split("\n"))
 
 
 def _pandoc_markdown_to_document_xml(md_text: str) -> bytes:
@@ -161,6 +175,7 @@ def add_rich_block(doc, text, **kwargs):
     labeled parts) and renders each as its own add_rich_paragraph call."""
     if not text:
         return
+    text = re.sub(r"\\n(?![A-Za-z])", "\n", text)
     for line in re.split(r"\n+", text):
         line = line.strip()
         if line:
@@ -319,11 +334,18 @@ def add_header_block(doc, header: dict, reference_docx: str | Path, title_suffix
 # 4. QUESTION PAPER (student-facing)
 # ===========================================================================
 
-def add_section_header(doc, section_name: str, section_questions: list[dict]):
+def add_section_header(doc, section_name: str, section_questions: list[dict],
+                        section_instructions: str | None = None):
     add_blank_line(doc)
     m = re.match(r"^Section\s+([A-Za-z0-9]+)$", section_name.strip(), flags=re.IGNORECASE)
     display_name = f"SECTION \u2013 {m.group(1).upper()}" if m else section_name.upper()
     add_rich_paragraph(doc, display_name, bold=True, size_pt=SIZE_BODY, alignment=WD_ALIGN_PARAGRAPH.CENTER)
+    add_blank_line(doc)
+
+    if section_instructions and section_instructions.strip():
+        add_rich_paragraph(doc, section_instructions.strip(), bold=True, size_pt=SIZE_BODY,
+                            alignment=WD_ALIGN_PARAGRAPH.CENTER)
+        return
 
     total = sum(q["marks"] for q in section_questions)
     marks_values = {q["marks"] for q in section_questions}
@@ -335,20 +357,41 @@ def add_section_header(doc, section_name: str, section_questions: list[dict]):
     add_rich_paragraph(doc, scheme, bold=True, size_pt=SIZE_BODY, alignment=WD_ALIGN_PARAGRAPH.CENTER)
 
 
-def add_question(doc, q: dict):
-    add_rich_paragraph(doc, f"{q['question_number']}. {q['question_text']}", size_pt=SIZE_BODY)
+def add_question(doc, q: dict, case_study_number: int | None = None):
+    if case_study_number is not None:
+        add_rich_paragraph(doc, f"Case Study - {case_study_number}", bold=True, size_pt=SIZE_BODY,
+                            alignment=WD_ALIGN_PARAGRAPH.CENTER)
+
+    add_rich_block(doc, f"{q['question_number']}. {q['question_text']}", size_pt=SIZE_BODY)
 
     if q.get("options"):
         formatted = [format_option_label(opt, i) for i, opt in enumerate(q["options"])]
-        options_line = "    " + "      ".join(formatted)
-        add_rich_paragraph(doc, options_line, size_pt=SIZE_BODY)
+        options_line = "      ".join(formatted)
+        add_rich_paragraph(doc, options_line, size_pt=SIZE_BODY, indent_cm=0.5)
 
     if q.get("alternate_question_text"):
-        add_rich_paragraph(doc, "OR", bold=True, size_pt=SIZE_BODY,
+        add_rich_paragraph(doc, "(OR)", bold=True, size_pt=SIZE_BODY,
                             alignment=WD_ALIGN_PARAGRAPH.CENTER)
         add_rich_block(doc, q["alternate_question_text"], size_pt=SIZE_BODY)
 
     add_blank_line(doc)
+
+
+def section_instructions_map(question_paper) -> dict[str, str | None]:
+    """Maps section_name -> section_instructions from the blueprint (instance or dict),
+    so the printed section header reuses the paper's own wording (incl. the marks scheme)."""
+    sections = getattr(question_paper, "sections", None)
+    if sections is None and isinstance(question_paper, dict):
+        sections = question_paper.get("sections", [])
+    result: dict[str, str | None] = {}
+    for s in sections or []:
+        if isinstance(s, dict):
+            name, instr = s.get("section_name"), s.get("section_instructions")
+        else:
+            name, instr = getattr(s, "section_name", None), getattr(s, "section_instructions", None)
+        if name:
+            result[name] = instr
+    return result
 
 
 def build_question_paper_docx(question_paper, final_paper: dict, reference_docx: str | Path,
@@ -356,10 +399,17 @@ def build_question_paper_docx(question_paper, final_paper: dict, reference_docx:
     doc = load_template(reference_docx)
     add_header_block(doc, header_from_question_paper(question_paper), reference_docx)
 
+    instructions_by_section = section_instructions_map(question_paper)
+
     for section_name, questions in final_paper["sections"].items():
-        add_section_header(doc, section_name, questions)
+        add_section_header(doc, section_name, questions, instructions_by_section.get(section_name))
+        case_study_counter = 0
         for q in questions:
-            add_question(doc, q)
+            case_study_number = None
+            if q.get("question_type") == "CASE_STUDY":
+                case_study_counter += 1
+                case_study_number = case_study_counter
+            add_question(doc, q, case_study_number=case_study_number)
 
     doc.save(str(out_path))
     return out_path
