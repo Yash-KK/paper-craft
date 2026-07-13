@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import auth, upload, users
+from app.core.config import settings
 from app.db.session import async_engine
 
 
@@ -13,6 +15,14 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Paper Craft", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_url],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router)
 app.include_router(users.router, prefix="/api/v1")
