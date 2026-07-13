@@ -1,3 +1,6 @@
+import { useState } from "react"
+import { Loader2 } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -36,6 +39,13 @@ type LoginCardProps = {
 }
 
 export function LoginCard({ authError = false }: LoginCardProps) {
+  const [isLoading, setIsLoading] = useState(false)
+
+  function handleLogin() {
+    setIsLoading(true)
+    loginWithGoogle()
+  }
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
@@ -52,10 +62,20 @@ export function LoginCard({ authError = false }: LoginCardProps) {
           variant="outline"
           size="lg"
           className="w-full"
-          onClick={loginWithGoogle}
+          onClick={handleLogin}
+          disabled={isLoading}
         >
-          <GoogleIcon />
-          Continue with Google
+          {isLoading ? (
+            <>
+              <Loader2 className="animate-spin" />
+              Signing in…
+            </>
+          ) : (
+            <>
+              <GoogleIcon />
+              Continue with Google
+            </>
+          )}
         </Button>
       </CardContent>
     </Card>
