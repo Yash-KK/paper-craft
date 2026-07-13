@@ -3,11 +3,7 @@ import { useEffect, useState } from "react"
 import { LoginCard } from "@/components/login-card"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Button } from "@/components/ui/button"
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   clearToken,
   fetchCurrentUser,
@@ -31,7 +27,8 @@ export function App() {
   const [status, setStatus] = useState<Status>("loading")
   const [user, setUser] = useState<UserProfile | null>(null)
   const [authError] = useState(
-    () => new URLSearchParams(window.location.search).get("auth_error") === "true"
+    () =>
+      new URLSearchParams(window.location.search).get("auth_error") === "true"
   )
 
   useEffect(() => {
