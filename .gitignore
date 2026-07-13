@@ -8,7 +8,17 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Environment files (keep .env.example tracked)
 .env
+.env.*
+!.env.example
+
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
 
 
 ## misc
