@@ -51,3 +51,45 @@ export async function fetchCurrentUser(): Promise<UserProfile | null> {
 
   return (await response.json()) as UserProfile
 }
+
+export type ProfileUpdatePayload = {
+  school_name: string | null
+  phone_number: string | null
+  avatar_url: string | null
+}
+
+export class UnauthorizedError extends Error {
+  constructor(message = "Your session has expired. Please sign in again.") {
+    super(message)
+    this.name = "UnauthorizedError"
+  }
+}
+
+export async function updateCurrentUser(
+  updates: ProfileUpdatePayload
+): Promise<UserProfile> {
+  const token = getToken()
+  if (!token) {
+    throw new UnauthorizedError()
+  }
+
+  const response = await fetch(`${API_URL}/api/v1/users/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(updates),
+  })
+
+  if (response.status === 401) {
+    clearToken()
+    throw new UnauthorizedError()
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to update profile (${response.status})`)
+  }
+
+  return (await response.json()) as UserProfile
+}
