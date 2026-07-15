@@ -29,6 +29,7 @@ dev = [
     "ipykernel>=7.3.0",
     "mistralai>=2.6.0",
     "mypy>=2.3.0",
+    "pytest>=9.1.1",
     "types-python-jose>=3.5.0.20260408",
 ]
 
@@ -38,3 +39,7 @@ entry-point = "app.main:app"
 [tool.mypy]
 plugins = ["pydantic.mypy"]
 exclude = ["^notebooks/"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
