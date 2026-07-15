@@ -13,7 +13,7 @@ from app.core.config import settings
 
 # Async engine + session for FastAPI (asyncpg).
 async_engine = create_async_engine(
-    settings.database_url,
+    settings.async_database_url,
     echo=False,
     pool_pre_ping=True,
 )
@@ -27,7 +27,7 @@ AsyncSessionLocal = async_sessionmaker(
 
 # Sync engine + session for Celery workers / scripts (psycopg2).
 sync_engine = create_engine(
-    settings.database_sync_url,
+    settings.sync_database_url,
     echo=False,
     pool_pre_ping=True,
 )
