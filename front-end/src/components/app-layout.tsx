@@ -38,42 +38,52 @@ export function AppLayout() {
         </Link>
         <div className="flex items-center gap-2">
           {status === AuthStatus.Authenticated && user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    aria-label="Account menu"
-                  />
-                }
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Edit profile"
+                render={<Link to="/profile-update" />}
               >
-                <Avatar>
-                  {user.avatar_url && (
-                    <AvatarImage src={user.avatar_url} alt={user.full_name} />
-                  )}
-                  <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
-                </Avatar>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-48">
-                <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="truncate text-sm font-medium text-foreground">
-                    {user.full_name}
-                  </span>
-                  <span className="truncate font-normal">{user.email}</span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem render={<Link to="/profile-update" />}>
-                  <UserPen />
-                  Edit profile
-                </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onClick={logout}>
-                  <LogOut />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <UserPen />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                      aria-label="Account menu"
+                    />
+                  }
+                >
+                  <Avatar>
+                    {user.avatar_url && (
+                      <AvatarImage src={user.avatar_url} alt={user.full_name} />
+                    )}
+                    <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  <DropdownMenuLabel className="flex flex-col gap-0.5">
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {user.full_name}
+                    </span>
+                    <span className="truncate font-normal">{user.email}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem render={<Link to="/profile-update" />}>
+                    <UserPen />
+                    Edit profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onClick={logout}>
+                    <LogOut />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           )}
           <ModeToggle />
         </div>
