@@ -2,16 +2,10 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-
-def _swap_driver(url: str, target: str) -> str:
-    """Rewrite any postgres URL scheme to the given `postgresql+driver://` target."""
-    scheme, sep, rest = url.partition("://")
-    return target + rest if sep else url
 
 
 class Settings(BaseSettings):
@@ -21,7 +15,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    openai_api_key: str = Field(alias="OPENAI_API_KEY")
+    openai_api_key: SecretStr = Field(alias="OPENAI_API_KEY")
     dense_model: str = Field(alias="DENSE_MODEL")
     qdrant_url: str = Field(alias="QDRANT_URL")
     collection_name: str = Field(alias="COLLECTION_NAME")
@@ -35,8 +29,8 @@ class Settings(BaseSettings):
     allow_insecure_http: bool = Field(default=False, alias="ALLOW_INSECURE_HTTP")
 
     # Async engine for FastAPI (asyncpg); sync engine for Celery workers (psycopg2).
-    database_url: str = Field(alias="DATABASE_URL")
-    database_sync_url: str | None = Field(default=None, alias="DATABASE_SYNC_URL")
+    async_database_url: str = Field(alias="ASYNC_DATABASE_URL")
+    sync_database_url: str = Field(alias="SYNC_DATABASE_URL")
 
     secret_key: str = Field(alias="SECRET_KEY")
     algorithm: str = Field(default="HS256", alias="ALGORITHM")
@@ -44,19 +38,6 @@ class Settings(BaseSettings):
         default=60 * 24 * 7, alias="ACCESS_TOKEN_EXPIRE_MINUTES"
     )
     frontend_url: str = Field(default="http://localhost:5173", alias="FRONTEND_URL")
-
-    @field_validator("database_url", mode="before")
-    @classmethod
-    def use_async_driver(cls, value: str) -> str:
-        """Normalize the connection string to the asyncpg driver."""
-        return _swap_driver(value, "postgresql+asyncpg://")
-
-    @model_validator(mode="after")
-    def default_sync_url(self) -> "Settings":
-        """Derive the sync (psycopg2) URL from the async URL when not set explicitly."""
-        source = self.database_sync_url or self.database_url
-        self.database_sync_url = _swap_driver(source, "postgresql+psycopg2://")
-        return self
 
     @field_validator("extracted_data_dir", mode="before")
     @classmethod

@@ -28,7 +28,13 @@ dependencies = [
 dev = [
     "ipykernel>=7.3.0",
     "mistralai>=2.6.0",
+    "mypy>=2.3.0",
+    "types-python-jose>=3.5.0.20260408",
 ]
 
 [tool.fastapi]
 entry-point = "app.main:app"
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+exclude = ["^notebooks/"]
