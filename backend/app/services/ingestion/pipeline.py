@@ -28,7 +28,7 @@ def ingest_directory(root_dir: Path) -> dict:
         documents,
         embedding=OpenAIEmbeddings(
             model=settings.dense_model,
-            api_key=settings.openai_api_key,
+            openai_api_key=settings.openai_api_key,
         ),
         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_model),
         collection_name=settings.collection_name,
