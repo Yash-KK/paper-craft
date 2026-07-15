@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -39,14 +40,6 @@ export function AppLayout() {
         <div className="flex items-center gap-2">
           {status === AuthStatus.Authenticated && user && (
             <>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Edit profile"
-                render={<Link to="/profile-update" />}
-              >
-                <UserPen />
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -66,12 +59,14 @@ export function AppLayout() {
                   </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-48">
-                  <DropdownMenuLabel className="flex flex-col gap-0.5">
-                    <span className="truncate text-sm font-medium text-foreground">
-                      {user.full_name}
-                    </span>
-                    <span className="truncate font-normal">{user.email}</span>
-                  </DropdownMenuLabel>
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="flex flex-col gap-0.5">
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {user.full_name}
+                      </span>
+                      <span className="truncate font-normal">{user.email}</span>
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem render={<Link to="/profile-update" />}>
                     <UserPen />
