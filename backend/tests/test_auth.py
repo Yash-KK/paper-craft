@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import parse_qs, urlparse
 
@@ -24,7 +25,7 @@ def mock_google_sso() -> MagicMock:
 
 
 @pytest.fixture
-def auth_client(mock_db: AsyncMock, mock_google_sso: MagicMock) -> TestClient:
+def auth_client(mock_db: AsyncMock, mock_google_sso: MagicMock) -> Generator[TestClient, None, None]:
     async def override_get_db():
         yield mock_db
 
