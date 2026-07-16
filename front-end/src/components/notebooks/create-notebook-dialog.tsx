@@ -114,29 +114,22 @@ export function CreateNotebookDialog({
 }: CreateNotebookDialogProps) {
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
   const [grades, setGrades] = React.useState<ClassGrade[]>([])
+  const [gradesError, setGradesError] = React.useState(false)
   const [subjects, setSubjects] = React.useState<Subject[]>([])
   const [catalog, setCatalog] = React.useState<
     { chapter_number: number; chapter_name: string }[]
   >([])
-  const [loadingGrades, setLoadingGrades] = React.useState(false)
   const [loadingSubjects, setLoadingSubjects] = React.useState(false)
   const [loadingChapters, setLoadingChapters] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
 
-  async function loadGrades() {
-    setLoadingGrades(true)
-    try {
-      setGrades(await fetchGrades())
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load classes")
-    } finally {
-      setLoadingGrades(false)
-    }
-  }
+  const loadingGrades = open && grades.length === 0 && !gradesError
 
   function handleOpenChange(next: boolean) {
     if (!next) {
       setForm(EMPTY_FORM)
+      setGrades([])
+      setGradesError(false)
       setSubjects([])
       setCatalog([])
     }
@@ -144,8 +137,28 @@ export function CreateNotebookDialog({
   }
 
   React.useEffect(() => {
-    if (open) {
-      void loadGrades()
+    if (!open) return
+
+    let cancelled = false
+
+    fetchGrades()
+      .then((data) => {
+        if (!cancelled) {
+          setGrades(data)
+          setGradesError(false)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setGradesError(true)
+          toast.error(
+            err instanceof Error ? err.message : "Failed to load classes"
+          )
+        }
+      })
+
+    return () => {
+      cancelled = true
     }
   }, [open])
 
