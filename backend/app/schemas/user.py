@@ -2,6 +2,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.db.models.user import UserRole
+
 
 class UserProfileUpdate(BaseModel):
     school_name: str | None = None
@@ -16,7 +18,7 @@ class UserProfileResponse(BaseModel):
     user_id: UUID
     email: str
     full_name: str
-    role: str
+    role: UserRole
     school_name: str | None = None
     phone_number: str | None = None
     avatar_url: str | None = None

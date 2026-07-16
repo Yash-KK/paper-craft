@@ -3,6 +3,7 @@ from pathlib import Path
 from langchain_core.documents import Document
 
 from app.core.config import settings
+from app.schemas.document import ChunkType
 from app.services.ingestion.parser import (
     EXAMPLE_RE,
     EXERCISE_RE,
@@ -42,7 +43,7 @@ def build_documents(path: Path) -> list[Document]:
                     metadata=meta(
                         page_num,
                         chunk_id=f"{book_code}_ch{chapter_number}_pg{page_num}_text",
-                        chunk_type="text",
+                        chunk_type=ChunkType.TEXT,
                         content_types=["theory"]
                         + (["example"] if EXAMPLE_RE.search(content) else [])
                         + (["exercise"] if EXERCISE_RE.search(content) else []),
@@ -61,7 +62,7 @@ def build_documents(path: Path) -> list[Document]:
                         metadata=meta(
                             page_num,
                             chunk_id=f"{book_code}_ch{chapter_number}_pg{page_num}_img{idx}",
-                            chunk_type="image",
+                            chunk_type=ChunkType.IMAGE,
                             content_types=["figure"],
                             asset_file=str(image_path.relative_to(book_dir)),
                         ),
@@ -79,7 +80,7 @@ def build_documents(path: Path) -> list[Document]:
                         metadata=meta(
                             page_num,
                             chunk_id=f"{book_code}_ch{chapter_number}_pg{page_num}_tbl{idx}",
-                            chunk_type="table",
+                            chunk_type=ChunkType.TABLE,
                             content_types=["table"],
                             asset_file=str(table_path.relative_to(book_dir)),
                         ),

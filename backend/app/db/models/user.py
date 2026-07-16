@@ -1,8 +1,9 @@
+import enum
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,6 +11,14 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.notebook import Notebook
+
+
+class AuthProvider(str, enum.Enum):
+    GOOGLE = "google"
+
+
+class UserRole(str, enum.Enum):
+    TEACHER = "teacher"
 
 
 class User(Base):
@@ -21,13 +30,21 @@ class User(Base):
     email: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
     )
-    auth_provider: Mapped[str] = mapped_column(String(50), default="google", nullable=False)
+    auth_provider: Mapped[AuthProvider] = mapped_column(
+        Enum(AuthProvider, name="auth_provider", native_enum=False, length=50),
+        default=AuthProvider.GOOGLE,
+        nullable=False,
+    )
     auth_provider_id: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
     )
     email_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(String(50), default="teacher", nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        Enum(UserRole, name="user_role", native_enum=False, length=50),
+        default=UserRole.TEACHER,
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
