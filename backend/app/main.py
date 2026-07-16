@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import auth, upload, users
+from app.api.v1 import auth, notebooks, upload, users
 from app.core.config import settings
 from app.db.session import async_engine
 
@@ -26,6 +26,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(notebooks.router, prefix="/api/v1")
 app.include_router(upload.router, prefix="/api/v1")
 
 
