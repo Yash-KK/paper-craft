@@ -1,7 +1,8 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.db.models.chapter_catalog import ChapterCatalog
 from app.db.models.notebook import Notebook
 from app.schemas.notebook import NotebookCreate, NotebookListItem
 
@@ -27,12 +28,37 @@ async def create_notebook(
     current_user: CurrentUser,
     db: SessionDep,
 ) -> Notebook:
+    result = await db.execute(
+        select(ChapterCatalog).where(
+            ChapterCatalog.grade == body.class_grade,
+            ChapterCatalog.subject == body.subject,
+            ChapterCatalog.chapter_number.in_(body.selected_chapter_numbers),
+        )
+    )
+    fetched_chapters = list(result.scalars().all())
+
+    if len(fetched_chapters) != len(set(body.selected_chapter_numbers)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid chapter selection",
+        )
+
+    selected_chapters = [
+        {
+            "book_code": ch.book_code,
+            "chapter_number": ch.chapter_number,
+            "chapter_name": ch.chapter_name,
+        }
+        for ch in sorted(fetched_chapters, key=lambda c: c.chapter_number)
+    ]
+
     notebook = Notebook(
         user_id=current_user.id,
         name=body.name,
         class_grade=body.class_grade,
         subject=body.subject,
         color_hex=body.color_hex,
+        selected_chapters=selected_chapters,
     )
     db.add(notebook)
     await db.commit()

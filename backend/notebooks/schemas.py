@@ -96,9 +96,15 @@ class QuestionPaperBlueprint(BaseModel):
 
 
 
+class SelectedChapter(BaseModel):
+    book_code: str
+    chapter_number: int
+    chapter_name: str
+
+
 class GenerationState(TypedDict):
     question_paper: dict
-    selected_chapters: list[int]
+    selected_chapters: list[SelectedChapter]
     chapter_weights: dict[int, float] | None
     chapter_names: dict[int, str] | None
     subject: str
