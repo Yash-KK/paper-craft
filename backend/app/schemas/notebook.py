@@ -6,43 +6,28 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.db.models.notebook import ClassGrade, Subject
 
 
-class NotebookChapterCreate(BaseModel):
-    book_code: str = Field(max_length=50)
-    chapter_number: int
-    chapter_name: str = Field(max_length=255)
-    subject: Subject | None = None
-    grade: ClassGrade | None = None
-    enabled: bool = True
-
-
-class NotebookChapterUpdate(BaseModel):
-    book_code: str | None = Field(default=None, max_length=50)
-    chapter_number: int | None = None
-    chapter_name: str | None = Field(default=None, max_length=255)
-    subject: Subject | None = None
-    grade: ClassGrade | None = None
-    enabled: bool | None = None
-
-
-class NotebookChapterResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    notebook_id: UUID
+class SelectedChapter(BaseModel):
     book_code: str
     chapter_number: int
     chapter_name: str
-    subject: Subject | None = None
-    grade: ClassGrade | None = None
-    enabled: bool
-    created_at: datetime
+
+
+class ChapterCatalogItem(BaseModel):
+    """Dropdown item returned by GET /chapters."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    chapter_number: int
+    chapter_name: str
+    book_code: str
 
 
 class NotebookCreate(BaseModel):
     name: str = Field(max_length=255)
-    class_grade: ClassGrade | None = None
-    subject: Subject | None = None
+    class_grade: ClassGrade
+    subject: Subject
     color_hex: str | None = Field(default=None, max_length=10)
+    selected_chapter_numbers: list[int] = Field(min_length=1)
 
 
 class NotebookUpdate(BaseModel):
@@ -50,6 +35,7 @@ class NotebookUpdate(BaseModel):
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = Field(default=None, max_length=10)
+    selected_chapter_numbers: list[int] | None = Field(default=None, min_length=1)
 
 
 class NotebookListItem(BaseModel):
@@ -62,6 +48,7 @@ class NotebookListItem(BaseModel):
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = None
+    selected_chapters: list[SelectedChapter] = Field(default_factory=list)
 
 
 class NotebookResponse(BaseModel):
@@ -73,6 +60,6 @@ class NotebookResponse(BaseModel):
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = None
+    selected_chapters: list[SelectedChapter] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
-    chapters: list[NotebookChapterResponse] = Field(default_factory=list)

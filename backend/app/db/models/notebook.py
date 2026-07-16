@@ -1,10 +1,10 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, Enum, ForeignKey, String, func
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 
 class ClassGrade(str, enum.Enum):
+    CLASS_9 = "Class 9"
     CLASS_10 = "Class 10"
 
 
@@ -43,6 +44,9 @@ class Notebook(Base):
         nullable=True,
     )
     color_hex: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    selected_chapters: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -54,39 +58,3 @@ class Notebook(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="notebooks")
-    chapters: Mapped[list["NotebookChapter"]] = relationship(
-        back_populates="notebook",
-        lazy="selectin",
-        cascade="all, delete-orphan",
-    )
-
-
-class NotebookChapter(Base):
-    __tablename__ = "notebook_chapters"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    notebook_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("notebooks.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    book_code: Mapped[str] = mapped_column(String(50), nullable=False)
-    chapter_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    chapter_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    subject: Mapped[Subject | None] = mapped_column(
-        Enum(Subject, name="notebook_chapter_subject", native_enum=False, length=100),
-        nullable=True,
-    )
-    grade: Mapped[ClassGrade | None] = mapped_column(
-        Enum(ClassGrade, name="notebook_chapter_grade", native_enum=False, length=50),
-        nullable=True,
-    )
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-    notebook: Mapped["Notebook"] = relationship(back_populates="chapters")

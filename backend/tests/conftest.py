@@ -1,27 +1,78 @@
-"""Test bootstrap.
+"""Test bootstrap and shared fixtures."""
 
-Populate the required settings via environment variables *before* the
-application imports `app.core.config`, so the suite is hermetic and does not
-depend on a real `.env` file being present (e.g. in CI).
-"""
+from collections.abc import AsyncGenerator, Generator
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
+from uuid import UUID, uuid4
 
-import os
+import pytest
+from fastapi.testclient import TestClient
 
-_TEST_ENV = {
-    "OPENAI_API_KEY": "test-openai-key",
-    "DENSE_MODEL": "text-embedding-3-small",
-    "QDRANT_URL": "http://localhost:6333",
-    "COLLECTION_NAME": "test-collection",
-    "SPARSE_MODEL": "Qdrant/bm25",
-    "EXTRACTED_DATA_DIR": "extracted_data",
-    "NCERT_BOOK_CONFIG": "{}",
-    "GOOGLE_CLIENT_ID": "test-client-id",
-    "GOOGLE_CLIENT_SECRET": "test-client-secret",
-    "GOOGLE_REDIRECT_URI": "http://localhost:8000/auth/callback",
-    "ASYNC_DATABASE_URL": "postgresql+asyncpg://postgres:password@localhost:5432/test",
-    "SYNC_DATABASE_URL": "postgresql+psycopg2://postgres:password@localhost:5432/test",
-    "SECRET_KEY": "test-secret-key",
-}
+import tests.bootstrap_env  # noqa: F401  # must load before app imports
+from app.api.deps import get_current_user, get_db
+from app.db.models.user import AuthProvider, User, UserRole
+from app.main import app
 
-for _key, _value in _TEST_ENV.items():
-    os.environ.setdefault(_key, _value)
+
+@pytest.fixture
+def user_id() -> UUID:
+    return uuid4()
+
+
+@pytest.fixture
+def mock_user(user_id: UUID) -> User:
+    return User(
+        id=user_id,
+        email="teacher@example.com",
+        auth_provider=AuthProvider.GOOGLE,
+        auth_provider_id="google-123",
+        email_verified=True,
+        full_name="Test Teacher",
+        role=UserRole.TEACHER,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+
+
+@pytest.fixture
+def mock_db() -> AsyncMock:
+    db = AsyncMock()
+    db.commit = AsyncMock()
+    db.refresh = AsyncMock()
+    db.add = MagicMock()
+    db.get = AsyncMock(return_value=None)
+    db.delete = AsyncMock()
+    db.execute = AsyncMock()
+    return db
+
+
+@pytest.fixture
+def client(mock_user: User, mock_db: AsyncMock) -> Generator[TestClient, None, None]:
+    async def override_get_db() -> AsyncGenerator[AsyncMock, None]:
+        yield mock_db
+
+    async def override_get_current_user() -> User:
+        return mock_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+
+
+def make_catalog_chapter(chapter_number: int, chapter_name: str) -> MagicMock:
+    chapter = MagicMock()
+    chapter.book_code = "jemh1"
+    chapter.chapter_number = chapter_number
+    chapter.chapter_name = chapter_name
+    return chapter
+
+
+def mock_execute_result(rows: list[MagicMock]) -> MagicMock:
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = rows
+    result.scalar_one_or_none.return_value = rows[0] if len(rows) == 1 else None
+    return result
