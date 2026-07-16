@@ -3,13 +3,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.db.models.notebook import ClassGrade, Subject
+
 
 class NotebookChapterCreate(BaseModel):
     book_code: str = Field(max_length=50)
     chapter_number: int
     chapter_name: str = Field(max_length=255)
-    subject: str | None = Field(default=None, max_length=100)
-    grade: str | None = Field(default=None, max_length=50)
+    subject: Subject | None = None
+    grade: ClassGrade | None = None
     enabled: bool = True
 
 
@@ -17,8 +19,8 @@ class NotebookChapterUpdate(BaseModel):
     book_code: str | None = Field(default=None, max_length=50)
     chapter_number: int | None = None
     chapter_name: str | None = Field(default=None, max_length=255)
-    subject: str | None = Field(default=None, max_length=100)
-    grade: str | None = Field(default=None, max_length=50)
+    subject: Subject | None = None
+    grade: ClassGrade | None = None
     enabled: bool | None = None
 
 
@@ -30,24 +32,24 @@ class NotebookChapterResponse(BaseModel):
     book_code: str
     chapter_number: int
     chapter_name: str
-    subject: str | None = None
-    grade: str | None = None
+    subject: Subject | None = None
+    grade: ClassGrade | None = None
     enabled: bool
     created_at: datetime
 
 
 class NotebookCreate(BaseModel):
     name: str = Field(max_length=255)
-    class_grade: str | None = Field(default=None, max_length=50)
-    subject: str | None = Field(default=None, max_length=100)
+    class_grade: ClassGrade | None = None
+    subject: Subject | None = None
     color_hex: str | None = Field(default=None, max_length=10)
     chapters: list[NotebookChapterCreate] = Field(default_factory=list)
 
 
 class NotebookUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
-    class_grade: str | None = Field(default=None, max_length=50)
-    subject: str | None = Field(default=None, max_length=100)
+    class_grade: ClassGrade | None = None
+    subject: Subject | None = None
     color_hex: str | None = Field(default=None, max_length=10)
 
 
@@ -57,8 +59,8 @@ class NotebookResponse(BaseModel):
     id: UUID
     user_id: UUID
     name: str
-    class_grade: str | None = None
-    subject: str | None = None
+    class_grade: ClassGrade | None = None
+    subject: Subject | None = None
     color_hex: str | None = None
     created_at: datetime
     updated_at: datetime
