@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
@@ -64,3 +66,19 @@ async def create_notebook(
     await db.commit()
     await db.refresh(notebook)
     return notebook
+
+
+@router.delete("/{notebook_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_notebook(
+    notebook_id: UUID,
+    current_user: CurrentUser,
+    db: SessionDep,
+) -> None:
+    notebook = await db.get(Notebook, notebook_id)
+    if notebook is None or notebook.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notebook not found",
+        )
+    await db.delete(notebook)
+    await db.commit()
