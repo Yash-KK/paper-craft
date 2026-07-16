@@ -35,7 +35,7 @@ export function AppLayout() {
     <div className="flex min-h-svh flex-col">
       <header className="flex items-center justify-between gap-2 border-b px-4 py-3 sm:px-6">
         <Link
-          to="/"
+          to={status === AuthStatus.Authenticated ? "/dashboard" : "/"}
           className="font-heading text-base font-semibold sm:text-lg"
         >
           PaperCraft
