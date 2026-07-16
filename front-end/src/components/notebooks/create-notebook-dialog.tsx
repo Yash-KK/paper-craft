@@ -1,17 +1,26 @@
 import * as React from "react"
-import { Check, Loader2 } from "lucide-react"
+import { Check, ChevronDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import {
   createNotebook,
   fetchChapters,
@@ -28,15 +37,74 @@ type CreateNotebookDialogProps = {
   onCreated: () => void
 }
 
-const selectClassName =
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+type FormState = {
+  name: string
+  classGrade: ClassGrade | ""
+  subject: Subject | ""
+  chapters: number[]
+  colorHex: string
+}
 
-const EMPTY_FORM = {
+const EMPTY_FORM: FormState = {
   name: "",
-  classGrade: "" as ClassGrade | "",
-  subject: "" as Subject | "",
-  chapters: [] as number[],
+  classGrade: "",
+  subject: "",
+  chapters: [],
   colorHex: NOTEBOOK_COLORS[0],
+}
+
+type SelectFieldProps<T extends string> = {
+  label: string
+  value: T | ""
+  placeholder: string
+  disabled?: boolean
+  loading?: boolean
+  options: T[]
+  onChange: (value: T) => void
+}
+
+function SelectField<T extends string>({
+  label,
+  value,
+  placeholder,
+  disabled,
+  loading,
+  options,
+  onChange,
+}: SelectFieldProps<T>) {
+  return (
+    <div className="grid gap-2">
+      <Label>{label}</Label>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          disabled={disabled || loading}
+          render={
+            <Button
+              variant="outline"
+              className="h-10 w-full justify-between font-normal"
+            />
+          }
+        >
+          <span className="truncate">
+            {loading ? "Loading…" : value || placeholder}
+          </span>
+          <ChevronDown className="size-4 shrink-0 opacity-50" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="z-100 max-h-60 w-(--anchor-width)">
+          {options.length === 0 ? (
+            <DropdownMenuItem disabled>No options available</DropdownMenuItem>
+          ) : (
+            options.map((option) => (
+              <DropdownMenuItem key={option} onClick={() => onChange(option)}>
+                {option}
+                {value === option ? <Check className="ml-auto size-4" /> : null}
+              </DropdownMenuItem>
+            ))
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
 }
 
 export function CreateNotebookDialog({
@@ -44,7 +112,7 @@ export function CreateNotebookDialog({
   onOpenChange,
   onCreated,
 }: CreateNotebookDialogProps) {
-  const [form, setForm] = React.useState(EMPTY_FORM)
+  const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
   const [grades, setGrades] = React.useState<ClassGrade[]>([])
   const [subjects, setSubjects] = React.useState<Subject[]>([])
   const [catalog, setCatalog] = React.useState<
@@ -54,6 +122,17 @@ export function CreateNotebookDialog({
   const [loadingSubjects, setLoadingSubjects] = React.useState(false)
   const [loadingChapters, setLoadingChapters] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
+
+  async function loadGrades() {
+    setLoadingGrades(true)
+    try {
+      setGrades(await fetchGrades())
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load classes")
+    } finally {
+      setLoadingGrades(false)
+    }
+  }
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -65,45 +144,42 @@ export function CreateNotebookDialog({
   }
 
   React.useEffect(() => {
-    if (!open) return
-
-    setLoadingGrades(true)
-    fetchGrades()
-      .then(setGrades)
-      .catch((err) =>
-        toast.error(err instanceof Error ? err.message : "Failed to load classes")
-      )
-      .finally(() => setLoadingGrades(false))
+    if (open) {
+      void loadGrades()
+    }
   }, [open])
 
-  async function handleClassChange(grade: ClassGrade | "") {
+  async function handleClassChange(grade: ClassGrade) {
     setForm((f) => ({ ...f, classGrade: grade, subject: "", chapters: [] }))
     setSubjects([])
     setCatalog([])
-
-    if (!grade) return
 
     setLoadingSubjects(true)
     try {
       setSubjects(await fetchSubjects(grade))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load subjects")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load subjects"
+      )
     } finally {
       setLoadingSubjects(false)
     }
   }
 
-  async function handleSubjectChange(subject: Subject | "") {
+  async function handleSubjectChange(subject: Subject) {
+    const grade = form.classGrade
+    if (!grade) return
+
     setForm((f) => ({ ...f, subject, chapters: [] }))
     setCatalog([])
 
-    if (!form.classGrade || !subject) return
-
     setLoadingChapters(true)
     try {
-      setCatalog(await fetchChapters(form.classGrade, subject))
+      setCatalog(await fetchChapters(grade, subject))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to load chapters")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load chapters"
+      )
     } finally {
       setLoadingChapters(false)
     }
@@ -148,144 +224,160 @@ export function CreateNotebookDialog({
       onCreated()
       handleOpenChange(false)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create notebook")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create notebook"
+      )
     } finally {
       setSubmitting(false)
     }
   }
 
+  const chaptersReady = Boolean(form.classGrade && form.subject)
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Create a New Notebook</DialogTitle>
+      <DialogContent className="flex max-h-[min(92vh,52rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogHeader className="gap-1 border-b px-6 py-5">
+            <DialogTitle className="text-xl">Create a New Notebook</DialogTitle>
+            <DialogDescription>
+              Set up a notebook with the class, subject, and chapters you want
+              to work with.
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="notebook-name">Notebook Name</Label>
-              <Input
-                id="notebook-name"
-                placeholder="e.g. Mid-Term Prep — Math"
-                value={form.name}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="grid gap-6 px-6 py-6">
               <div className="grid gap-2">
-                <Label htmlFor="class-grade">Select Class</Label>
-                <select
-                  id="class-grade"
-                  className={selectClassName}
+                <Label htmlFor="notebook-name">Notebook Name</Label>
+                <Input
+                  id="notebook-name"
+                  className="h-10"
+                  placeholder="e.g. Mid-Term Prep — Math"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField
+                  label="Select Class"
                   value={form.classGrade}
+                  placeholder="Select class"
+                  loading={loadingGrades}
                   disabled={loadingGrades}
-                  onChange={(e) =>
-                    void handleClassChange(e.target.value as ClassGrade | "")
-                  }
-                >
-                  <option value="">
-                    {loadingGrades ? "Loading…" : "Select class"}
-                  </option>
-                  {grades.map((grade) => (
-                    <option key={grade} value={grade}>
-                      {grade}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="subject">Subject</Label>
-                <select
-                  id="subject"
-                  className={selectClassName}
+                  options={grades}
+                  onChange={handleClassChange}
+                />
+                <SelectField
+                  label="Subject"
                   value={form.subject}
+                  placeholder="Select subject"
+                  loading={loadingSubjects}
                   disabled={!form.classGrade || loadingSubjects}
-                  onChange={(e) =>
-                    void handleSubjectChange(e.target.value as Subject | "")
-                  }
-                >
-                  <option value="">
-                    {loadingSubjects ? "Loading…" : "Select subject"}
-                  </option>
-                  {subjects.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
+                  options={subjects}
+                  onChange={handleSubjectChange}
+                />
+              </div>
+
+              <div className="grid gap-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <Label>
+                    Chapters to include
+                    <span className="ml-1 font-normal text-muted-foreground">
+                      (You can add more later)
+                    </span>
+                  </Label>
+                  {form.chapters.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {form.chapters.length} selected
+                    </span>
+                  )}
+                </div>
+
+                <div className="rounded-xl border bg-muted/30 ring-1 ring-border/60">
+                  <ScrollArea className="h-56 sm:h-64 lg:h-72">
+                    <div className="grid gap-2 p-4 sm:grid-cols-2">
+                      {!chaptersReady ? (
+                        <p className="text-sm text-muted-foreground sm:col-span-2">
+                          Select class and subject first
+                        </p>
+                      ) : loadingChapters ? (
+                        <p className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
+                          <Loader2 className="size-4 animate-spin" />
+                          Loading chapters…
+                        </p>
+                      ) : catalog.length === 0 ? (
+                        <p className="text-sm text-muted-foreground sm:col-span-2">
+                          No chapters available
+                        </p>
+                      ) : (
+                        catalog.map((chapter) => {
+                          const selected = form.chapters.includes(
+                            chapter.chapter_number
+                          )
+                          return (
+                            <button
+                              key={chapter.chapter_number}
+                              type="button"
+                              onClick={() =>
+                                toggleChapter(chapter.chapter_number)
+                              }
+                              className={cn(
+                                "rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                                selected
+                                  ? "border-primary bg-primary/10 text-primary dark:bg-primary/15"
+                                  : "border-border bg-background hover:bg-muted dark:bg-card"
+                              )}
+                            >
+                              <span className="font-medium">
+                                Chapter {chapter.chapter_number}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-muted-foreground">
+                                {chapter.chapter_name}
+                              </span>
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid gap-3">
+                <Label>Notebook Color</Label>
+                <div className="flex flex-wrap gap-3">
+                  {NOTEBOOK_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-label={`Color ${color}`}
+                      aria-pressed={form.colorHex === color}
+                      onClick={() =>
+                        setForm((f) => ({ ...f, colorHex: color }))
+                      }
+                      className={cn(
+                        "flex size-10 items-center justify-center rounded-full ring-offset-background transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
+                        form.colorHex === color && "ring-2 ring-foreground/80"
+                      )}
+                      style={{ backgroundColor: color }}
+                    >
+                      {form.colorHex === color && (
+                        <Check className="size-4 text-white drop-shadow-sm" />
+                      )}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
             </div>
+          </ScrollArea>
 
-            <div className="grid gap-2">
-              <Label>
-                Chapters to include
-                <span className="ml-1 font-normal text-muted-foreground">
-                  (You can add more later)
-                </span>
-              </Label>
-              <div className="grid max-h-48 gap-2 overflow-y-auto sm:grid-cols-2">
-                {!form.classGrade || !form.subject ? (
-                  <p className="text-sm text-muted-foreground sm:col-span-2">
-                    Select class and subject first
-                  </p>
-                ) : loadingChapters ? (
-                  <p className="text-sm text-muted-foreground sm:col-span-2">
-                    Loading chapters…
-                  </p>
-                ) : catalog.length === 0 ? (
-                  <p className="text-sm text-muted-foreground sm:col-span-2">
-                    No chapters available
-                  </p>
-                ) : (
-                  catalog.map((chapter) => {
-                    const selected = form.chapters.includes(chapter.chapter_number)
-                    return (
-                      <button
-                        key={chapter.chapter_number}
-                        type="button"
-                        onClick={() => toggleChapter(chapter.chapter_number)}
-                        className={cn(
-                          "rounded-full border px-3 py-1.5 text-left text-xs transition-colors",
-                          selected
-                            ? "border-violet-500 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-                            : "border-border hover:bg-muted"
-                        )}
-                      >
-                        Chapter {chapter.chapter_number}: {chapter.chapter_name}
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Notebook Color</Label>
-              <div className="flex flex-wrap gap-2">
-                {NOTEBOOK_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    aria-label={`Color ${color}`}
-                    onClick={() => setForm((f) => ({ ...f, colorHex: color }))}
-                    className="flex size-8 items-center justify-center rounded-full"
-                    style={{ backgroundColor: color }}
-                  >
-                    {form.colorHex === color && (
-                      <Check className="size-4 text-white" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="border-t bg-muted/30 px-6 py-4">
             <Button
               type="button"
               variant="outline"
@@ -294,7 +386,7 @@ export function CreateNotebookDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="min-w-36">
               {submitting && <Loader2 className="animate-spin" />}
               Create Notebook
             </Button>
