@@ -4,6 +4,7 @@ from app.schemas.notebook import (
     NotebookChapterResponse,
     NotebookChapterUpdate,
     NotebookCreate,
+    NotebookListItem,
     NotebookResponse,
     NotebookUpdate,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "NotebookChapterResponse",
     "NotebookChapterUpdate",
     "NotebookCreate",
+    "NotebookListItem",
     "NotebookResponse",
     "NotebookUpdate",
     "QueryRequest",

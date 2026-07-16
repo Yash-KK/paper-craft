@@ -43,7 +43,6 @@ class NotebookCreate(BaseModel):
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = Field(default=None, max_length=10)
-    chapters: list[NotebookChapterCreate] = Field(default_factory=list)
 
 
 class NotebookUpdate(BaseModel):
@@ -51,6 +50,18 @@ class NotebookUpdate(BaseModel):
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = Field(default=None, max_length=10)
+
+
+class NotebookListItem(BaseModel):
+    """Basic notebook fields for list endpoints."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    class_grade: ClassGrade | None = None
+    subject: Subject | None = None
+    color_hex: str | None = None
 
 
 class NotebookResponse(BaseModel):
