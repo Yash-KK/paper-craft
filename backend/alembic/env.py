@@ -5,8 +5,9 @@ from sqlalchemy import pool
 
 from alembic import context
 # Import your FastAPI app configuration or use os.getenv
-from app.core.config import settings  
-from app.db.base import Base 
+from app.core.config import settings
+from app.db.base import Base
+import app.db.models  # noqa: F401 — register models on Base.metadata
 # This is the Alembic Config object
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.sync_database_url)

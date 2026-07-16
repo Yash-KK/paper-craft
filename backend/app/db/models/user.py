@@ -1,11 +1,15 @@
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.db.models.notebook import Notebook
 
 
 class User(Base):
@@ -37,6 +41,11 @@ class User(Base):
     profile: Mapped["UserProfile"] = relationship(
         back_populates="user",
         uselist=False,
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    notebooks: Mapped[list["Notebook"]] = relationship(
+        back_populates="user",
         lazy="selectin",
         cascade="all, delete-orphan",
     )
