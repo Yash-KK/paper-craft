@@ -1,48 +1,15 @@
 export type NotebookTheme = "violet" | "teal" | "amber" | "rose" | "sky"
 
-export type MockNotebook = {
-  id: string
-  title: string
-  description: string
-  classGrade: string
-  chapters: string[]
-  documentCount: number
-  lastUpdated: string
-  theme: NotebookTheme
+const COLOR_THEME: Record<string, NotebookTheme> = {
+  "#7c3aed": "violet",
+  "#14b8a6": "teal",
+  "#f59e0b": "amber",
+  "#ec4899": "rose",
+  "#22c55e": "teal",
+  "#d946ef": "violet",
 }
 
-export const MOCK_NOTEBOOKS: MockNotebook[] = [
-  {
-    id: "nb-1",
-    title: "Mid-Term Prep",
-    description: "Focused revision for the upcoming mid-term across key chapters.",
-    classGrade: "Class 9",
-    chapters: ["Ch 1", "Ch 3", "Ch 5", "Ch 7"],
-    documentCount: 3,
-    lastUpdated: "2026-07-10",
-    theme: "violet",
-  },
-  {
-    id: "nb-2",
-    title: "Final Exam — Math",
-    description: "Comprehensive question papers and practice sets for board prep.",
-    classGrade: "Class 10",
-    chapters: ["Ch 2", "Ch 4", "Ch 6", "Ch 8", "Ch 12"],
-    documentCount: 5,
-    lastUpdated: "2026-07-14",
-    theme: "teal",
-  },
-  {
-    id: "nb-3",
-    title: "Practice Sets",
-    description: "Quick drills and mixed-topic worksheets for daily practice.",
-    classGrade: "Class 9",
-    chapters: ["Ch 2", "Ch 9", "Ch 11"],
-    documentCount: 2,
-    lastUpdated: "2026-07-15",
-    theme: "amber",
-  },
-]
+const FALLBACK_THEMES: NotebookTheme[] = ["violet", "teal", "amber", "rose", "sky"]
 
 export const NOTEBOOK_THEME_STYLES: Record<
   NotebookTheme,
@@ -95,6 +62,16 @@ export const NOTEBOOK_THEME_STYLES: Record<
     glow: "group-hover:shadow-sky-500/20",
     dot: "bg-sky-500",
   },
+}
+
+export function notebookTheme(
+  colorHex: string | null | undefined,
+  index: number
+): NotebookTheme {
+  if (colorHex && COLOR_THEME[colorHex.toLowerCase()]) {
+    return COLOR_THEME[colorHex.toLowerCase()]
+  }
+  return FALLBACK_THEMES[index % FALLBACK_THEMES.length]
 }
 
 export function formatNotebookDate(isoDate: string): string {
