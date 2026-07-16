@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.api.deps import SessionDep, get_google_sso
 from app.core.config import settings
 from app.core.security import create_access_token
-from app.db.models.user import User, UserProfile
+from app.db.models.user import AuthProvider, User, UserProfile
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,7 +44,7 @@ async def callback(
     if user is None:
         user = User(
             email=google_user.email,
-            auth_provider="google",
+            auth_provider=AuthProvider.GOOGLE,
             auth_provider_id=google_user.id,
             full_name=google_user.display_name or google_user.email,
             email_verified=True,

@@ -1,4 +1,12 @@
+import enum
+
 from pydantic import BaseModel, Field
+
+
+class ChunkType(str, enum.Enum):
+    TEXT = "text"
+    IMAGE = "image"
+    TABLE = "table"
 
 
 class DocumentMetadata(BaseModel):
@@ -8,7 +16,7 @@ class DocumentMetadata(BaseModel):
     chapter_number: int
     chapter_name: str | None = None
     page_number: int
-    chunk_type: str
+    chunk_type: ChunkType
     content_types: list[str] = Field(default_factory=list)
     source_file: str
 

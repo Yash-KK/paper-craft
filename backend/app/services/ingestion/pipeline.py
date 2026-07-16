@@ -4,6 +4,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 
 from app.core.config import settings
+from app.schemas.document import ChunkType
 from app.services.ingestion.splitter import build_documents
 
 
@@ -37,9 +38,15 @@ def ingest_directory(root_dir: Path) -> dict:
     )
 
     breakdown = {
-        "text": sum(1 for d in documents if d.metadata.get("chunk_type") == "text"),
-        "image": sum(1 for d in documents if d.metadata.get("chunk_type") == "image"),
-        "table": sum(1 for d in documents if d.metadata.get("chunk_type") == "table"),
+        ChunkType.TEXT.value: sum(
+            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TEXT
+        ),
+        ChunkType.IMAGE.value: sum(
+            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.IMAGE
+        ),
+        ChunkType.TABLE.value: sum(
+            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TABLE
+        ),
     }
     return {
         "chapters_processed": len(md_files),
