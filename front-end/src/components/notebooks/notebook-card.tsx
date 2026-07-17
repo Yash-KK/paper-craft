@@ -26,11 +26,7 @@ type NotebookCardProps = {
   onDelete: () => void | Promise<void>
 }
 
-export function NotebookCard({
-  notebook,
-  index,
-  onDelete,
-}: NotebookCardProps) {
+export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
   const theme = NOTEBOOK_THEME_STYLES[notebookTheme(notebook.color_hex, index)]
   const chapters = notebook.selected_chapters.map(
     (ch) => `Ch ${ch.chapter_number}`
@@ -114,15 +110,15 @@ export function NotebookCard({
 
 export function CreateNotebookCard({ onClick }: { onClick?: () => void }) {
   return (
-    <Card
-      className="group min-h-[280px] justify-center rounded-2xl border-2 border-dashed bg-muted/20 py-0 ring-border/80 transition-all hover:border-violet-500/40 hover:bg-violet-500/5"
-    >
-      <CardContent className="flex flex-col items-center justify-center gap-4 py-10 text-center">
+    <Card className="group min-h-[280px] justify-center rounded-2xl border-2 border-dashed bg-muted/20 py-0 ring-border/80 transition-all hover:border-violet-500/40 hover:bg-violet-500/5">
+      <CardContent
+        onClick={onClick}
+        className="flex cursor-pointer flex-col items-center justify-center gap-4 py-10 text-center"
+      >
         <Button
           type="button"
           variant="ghost"
           size="icon-lg"
-          onClick={onClick}
           className="size-14 rounded-2xl bg-violet-500/10 group-hover:scale-110"
           aria-label="Create new notebook"
         >

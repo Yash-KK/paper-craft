@@ -70,8 +70,8 @@ export function DashboardPage() {
           className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_at_top,oklch(0.72_0.14_285/0.12),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,oklch(0.55_0.16_285/0.18),transparent_60%)]"
         />
 
-        <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
-          <Card className="border-none bg-transparent py-0 shadow-none ring-0">
+        <div className="relative mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
+          <Card className="overflow-visible border-none bg-transparent py-0 shadow-none ring-0">
             <CardHeader className="flex flex-col gap-6 px-0 sm:flex-row sm:items-end sm:justify-between">
               <div className="space-y-2">
                 <CardDescription className="font-medium text-violet-600 dark:text-violet-400">
