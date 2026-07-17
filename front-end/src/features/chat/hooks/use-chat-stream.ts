@@ -1,33 +1,13 @@
 import { useCallback, useRef, useState } from "react"
 
-import type {
-  ChatMessage,
-  PersistedMessage,
-  SSEEvent,
-  ToolCall,
-} from "@/features/chat/types/chat"
+import {
+  applyStreamEvent,
+  fromPersisted,
+  makeId,
+  parseSseChunk,
+} from "@/features/chat/lib/chat-stream-utils"
+import type { ChatMessage, PersistedMessage } from "@/features/chat/types/chat"
 import { API_URL, getToken } from "@/lib/api"
-
-function makeId() {
-  return Math.random().toString(36).slice(2)
-}
-
-function fromPersisted(message: PersistedMessage): ChatMessage | null {
-  if (message.role !== "user" && message.role !== "assistant") return null
-  return {
-    id: message.id,
-    role: message.role,
-    content: message.content,
-    toolCalls: (message.metadata.tool_calls ?? []).map((toolCall) => ({
-      id: toolCall.id ?? makeId(),
-      tool: toolCall.tool,
-      input: toolCall.input,
-      output: toolCall.output,
-      status: "done" as const,
-    })),
-    isStreaming: false,
-  }
-}
 
 export function useChatStream(
   notebookId: string,
@@ -50,56 +30,6 @@ export function useChatStream(
       return next
     })
   }, [])
-
-  const applyEvent = useCallback(
-    (event: SSEEvent) => {
-      switch (event.type) {
-        case "thinking":
-          break
-
-        case "token":
-          patchLast((m) => ({ ...m, content: m.content + event.content }))
-          break
-
-        case "tool_start": {
-          const tc: ToolCall = {
-            id: makeId(),
-            tool: event.tool,
-            input: event.input,
-            status: "running",
-          }
-          patchLast((m) => ({ ...m, toolCalls: [...m.toolCalls, tc] }))
-          break
-        }
-
-        case "tool_end":
-          patchLast((m) => ({
-            ...m,
-            toolCalls: m.toolCalls.map((tc) =>
-              tc.status === "running"
-                ? { ...tc, output: event.output, status: "done" }
-                : tc
-            ),
-          }))
-          break
-
-        case "done":
-          patchLast((m) => ({ ...m, isStreaming: false }))
-          setIsStreaming(false)
-          break
-
-        case "error":
-          patchLast((m) => ({
-            ...m,
-            content: m.content || `⚠ ${event.message}`,
-            isStreaming: false,
-          }))
-          setIsStreaming(false)
-          break
-      }
-    },
-    [patchLast]
-  )
 
   const sendMessage = useCallback(
     async (question: string) => {
@@ -152,20 +82,10 @@ export function useChatStream(
           const { done, value } = await reader.read()
           if (done) break
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split("\n")
-          buffer = lines.pop() ?? ""
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue
-            const raw = line.slice(6).trim()
-            if (!raw) continue
-            try {
-              applyEvent(JSON.parse(raw) as SSEEvent)
-            } catch {
-              // skip malformed JSON
-            }
-          }
+          buffer = parseSseChunk(
+            buffer + decoder.decode(value, { stream: true }),
+            (event) => applyStreamEvent(event, patchLast, setIsStreaming)
+          )
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
@@ -178,7 +98,7 @@ export function useChatStream(
         }
       }
     },
-    [applyEvent, isStreaming, notebookId, patchLast]
+    [isStreaming, notebookId, patchLast]
   )
 
   const stopStream = useCallback(() => {
