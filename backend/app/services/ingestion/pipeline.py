@@ -39,13 +39,13 @@ def ingest_directory(root_dir: Path) -> dict:
 
     breakdown = {
         ChunkType.TEXT.value: sum(
-            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TEXT
+            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TEXT.value
         ),
         ChunkType.IMAGE.value: sum(
-            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.IMAGE
+            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.IMAGE.value
         ),
         ChunkType.TABLE.value: sum(
-            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TABLE
+            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TABLE.value
         ),
     }
     return {
