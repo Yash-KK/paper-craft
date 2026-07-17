@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 
 function ThreadWelcome({ notebookName }: { notebookName: string }) {
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 px-4 py-16 text-center">
+    <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-6 px-4 py-16 text-center">
       <div className="space-y-2">
         <h2 className="font-heading text-2xl font-semibold tracking-tight">
           Chat with {notebookName}
@@ -51,8 +51,8 @@ function ThreadWelcome({ notebookName }: { notebookName: string }) {
 
 function UserMessage() {
   return (
-    <MessagePrimitive.Root className="mx-auto w-full max-w-2xl px-4 py-3">
-      <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-violet-600 px-4 py-2.5 text-sm whitespace-pre-wrap text-white dark:bg-violet-500">
+    <MessagePrimitive.Root className="mx-auto w-full max-w-5xl px-4 py-3">
+      <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-violet-600 px-4 py-2.5 text-sm whitespace-pre-wrap text-white dark:bg-violet-900">
         <MessagePrimitive.Parts />
       </div>
     </MessagePrimitive.Root>
@@ -61,7 +61,7 @@ function UserMessage() {
 
 function AssistantMessage() {
   return (
-    <MessagePrimitive.Root className="mx-auto w-full max-w-2xl px-4 py-3">
+    <MessagePrimitive.Root className="mx-auto w-full max-w-5xl px-4 py-3">
       <div className="mr-auto flex max-w-[92%] flex-col gap-2">
         <div className="rounded-2xl rounded-bl-md border bg-card px-4 py-3 text-sm shadow-sm ring-1 ring-foreground/5">
           <MessagePrimitive.Parts
@@ -110,7 +110,7 @@ function AssistantMessage() {
 
 function Composer() {
   return (
-    <ComposerPrimitive.Root className="mx-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl border bg-card p-2 shadow-sm ring-1 ring-foreground/5">
+    <ComposerPrimitive.Root className="mx-auto flex w-full max-w-4xl flex-col gap-2 rounded-xl border bg-card p-2 shadow-sm ring-1 ring-foreground/5">
       <ComposerPrimitive.Input
         rows={1}
         autoFocus
@@ -171,7 +171,7 @@ export function Thread({ notebookName }: { notebookName: string }) {
         />
 
         <ThreadPrimitive.ViewportFooter className="sticky bottom-0 z-10 mt-auto shrink-0 border-t bg-background/90 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/75">
-          <div className="relative mx-auto w-full max-w-2xl">
+          <div className="relative mx-auto w-full max-w-5xl">
             <ThreadPrimitive.ScrollToBottom asChild>
               <Button
                 type="button"
