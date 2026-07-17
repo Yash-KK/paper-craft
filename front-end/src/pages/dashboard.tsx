@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useNotebooks } from "@/hooks/use-notebooks"
-import { deleteNotebook } from "@/lib/api"
+import { useDeleteNotebook, useNotebooks } from "@/hooks/use-notebooks"
 
 function DashboardSkeleton() {
   return (
@@ -43,7 +42,8 @@ function DashboardSkeleton() {
 export function DashboardPage() {
   const navigate = useNavigate()
   const { status, user } = useAuth()
-  const { notebooks, loading, error, reload } = useNotebooks()
+  const { notebooks, loading, error } = useNotebooks()
+  const deleteNotebook = useDeleteNotebook()
   const [dialogOpen, setDialogOpen] = React.useState(false)
 
   React.useEffect(() => {
@@ -61,18 +61,6 @@ export function DashboardPage() {
   }
 
   const firstName = user?.full_name?.split(" ")[0] ?? "there"
-
-  async function handleDeleteNotebook(notebookId: string) {
-    try {
-      await deleteNotebook(notebookId)
-      await reload()
-      toast.success("Notebook deleted.")
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to delete notebook"
-      )
-    }
-  }
 
   return (
     <>
@@ -126,7 +114,7 @@ export function DashboardPage() {
                   key={notebook.id}
                   notebook={notebook}
                   index={index}
-                  onDelete={() => handleDeleteNotebook(notebook.id)}
+                  onDelete={() => deleteNotebook.mutateAsync(notebook.id)}
                 />
               ))}
               <CreateNotebookCard onClick={() => setDialogOpen(true)} />
@@ -135,11 +123,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <CreateNotebookDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onCreated={reload}
-      />
+      <CreateNotebookDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </>
   )
 }

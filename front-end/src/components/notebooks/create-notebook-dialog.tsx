@@ -21,18 +21,28 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
-  createNotebook,
-  fetchChapters,
-  fetchGrades,
-  fetchSubjects,
-} from "@/lib/api"
+  useChapters,
+  useGrades,
+  useSubjects,
+} from "@/hooks/use-chapter-catalog"
+import { useCreateNotebook } from "@/hooks/use-notebooks"
 import type { ClassGrade, Subject } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
+
+function useQueryErrorToast(
+  isError: boolean,
+  error: Error | null,
+  fallback: string
+) {
+  React.useEffect(() => {
+    if (!isError) return
+    toast.error(error instanceof Error ? error.message : fallback)
+  }, [isError, error, fallback])
+}
 
 type CreateNotebookDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreated: () => void
 }
 
 type FormState = {
@@ -106,92 +116,41 @@ function SelectField<T extends string>({
 export function CreateNotebookDialog({
   open,
   onOpenChange,
-  onCreated,
 }: CreateNotebookDialogProps) {
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
-  const [grades, setGrades] = React.useState<ClassGrade[]>([])
-  const [gradesError, setGradesError] = React.useState(false)
-  const [subjects, setSubjects] = React.useState<Subject[]>([])
-  const [catalog, setCatalog] = React.useState<
-    { chapter_number: number; chapter_name: string }[]
-  >([])
-  const [loadingSubjects, setLoadingSubjects] = React.useState(false)
-  const [loadingChapters, setLoadingChapters] = React.useState(false)
-  const [submitting, setSubmitting] = React.useState(false)
+  const createNotebook = useCreateNotebook()
 
-  const loadingGrades = open && grades.length === 0 && !gradesError
+  const gradesQuery = useGrades(open)
+  const subjectsQuery = useSubjects(form.classGrade, open)
+  const chaptersQuery = useChapters(form.classGrade, form.subject, open)
+
+  useQueryErrorToast(
+    gradesQuery.isError,
+    gradesQuery.error,
+    "Failed to load classes"
+  )
+  useQueryErrorToast(
+    subjectsQuery.isError,
+    subjectsQuery.error,
+    "Failed to load subjects"
+  )
+  useQueryErrorToast(
+    chaptersQuery.isError,
+    chaptersQuery.error,
+    "Failed to load chapters"
+  )
 
   function handleOpenChange(next: boolean) {
-    if (!next) {
-      setForm(EMPTY_FORM)
-      setGrades([])
-      setGradesError(false)
-      setSubjects([])
-      setCatalog([])
-    }
+    if (!next) setForm(EMPTY_FORM)
     onOpenChange(next)
   }
 
-  React.useEffect(() => {
-    if (!open) return
-
-    let cancelled = false
-
-    fetchGrades()
-      .then((data) => {
-        if (!cancelled) {
-          setGrades(data)
-          setGradesError(false)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setGradesError(true)
-          toast.error(
-            err instanceof Error ? err.message : "Failed to load classes"
-          )
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [open])
-
-  async function handleClassChange(grade: ClassGrade) {
+  function handleClassChange(grade: ClassGrade) {
     setForm((f) => ({ ...f, classGrade: grade, subject: "", chapters: [] }))
-    setSubjects([])
-    setCatalog([])
-
-    setLoadingSubjects(true)
-    try {
-      setSubjects(await fetchSubjects(grade))
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to load subjects"
-      )
-    } finally {
-      setLoadingSubjects(false)
-    }
   }
 
-  async function handleSubjectChange(subject: Subject) {
-    const grade = form.classGrade
-    if (!grade) return
-
+  function handleSubjectChange(subject: Subject) {
     setForm((f) => ({ ...f, subject, chapters: [] }))
-    setCatalog([])
-
-    setLoadingChapters(true)
-    try {
-      setCatalog(await fetchChapters(grade, subject))
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to load chapters"
-      )
-    } finally {
-      setLoadingChapters(false)
-    }
   }
 
   function toggleChapter(chapterNumber: number) {
@@ -220,27 +179,24 @@ export function CreateNotebookDialog({
       return
     }
 
-    setSubmitting(true)
     try {
-      await createNotebook({
+      await createNotebook.mutateAsync({
         name: trimmed,
         class_grade: form.classGrade,
         subject: form.subject,
         selected_chapter_numbers: form.chapters,
       })
-      toast.success("Notebook created successfully.")
-      onCreated()
       handleOpenChange(false)
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to create notebook"
-      )
-    } finally {
-      setSubmitting(false)
+    } catch {
+      // Toast handled by mutation onError
     }
   }
 
+  const grades = gradesQuery.data ?? []
+  const subjects = subjectsQuery.data ?? []
+  const catalog = chaptersQuery.data ?? []
   const chaptersReady = Boolean(form.classGrade && form.subject)
+  const submitting = createNotebook.isPending
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -274,8 +230,8 @@ export function CreateNotebookDialog({
                   label="Select Class"
                   value={form.classGrade}
                   placeholder="Select class"
-                  loading={loadingGrades}
-                  disabled={loadingGrades}
+                  loading={gradesQuery.isPending}
+                  disabled={gradesQuery.isPending}
                   options={grades}
                   onChange={handleClassChange}
                 />
@@ -283,8 +239,8 @@ export function CreateNotebookDialog({
                   label="Subject"
                   value={form.subject}
                   placeholder="Select subject"
-                  loading={loadingSubjects}
-                  disabled={!form.classGrade || loadingSubjects}
+                  loading={subjectsQuery.isFetching}
+                  disabled={!form.classGrade || subjectsQuery.isFetching}
                   options={subjects}
                   onChange={handleSubjectChange}
                 />
@@ -312,7 +268,7 @@ export function CreateNotebookDialog({
                         <p className="text-sm text-muted-foreground sm:col-span-2">
                           Select class and subject first
                         </p>
-                      ) : loadingChapters ? (
+                      ) : chaptersQuery.isFetching ? (
                         <p className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
                           <Loader2 className="size-4 animate-spin" />
                           Loading chapters…
