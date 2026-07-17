@@ -1,3 +1,3 @@
-from app.services.chat.rag import stream_notebook_chat
+from app.services.chat.service import ChatService
 
-__all__ = ["stream_notebook_chat"]
+__all__ = ["ChatService"]

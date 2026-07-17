@@ -79,3 +79,13 @@ class ChatStreamDoneEvent(BaseModel):
 class ChatStreamErrorEvent(BaseModel):
     type: Literal["error"] = "error"
     message: str
+
+
+ChatStreamEvent = (
+    ChatStreamThinkingEvent
+    | ChatStreamTokenEvent
+    | ChatStreamToolStartEvent
+    | ChatStreamToolEndEvent
+    | ChatStreamDoneEvent
+    | ChatStreamErrorEvent
+)

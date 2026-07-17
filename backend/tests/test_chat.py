@@ -188,7 +188,7 @@ def test_stream_chat_emits_events_and_persists_assistant(
     mock_db.refresh = AsyncMock(side_effect=refresh_side_effect)
 
     with patch(
-        "app.api.v1.chat.stream_notebook_chat",
+        "app.services.chat.service.stream_notebook_chat",
         new=_fake_stream,
     ):
         with client.stream(
@@ -239,7 +239,7 @@ def test_stream_chat_emits_safe_error(
     mock_db.refresh = AsyncMock(side_effect=refresh_side_effect)
 
     with patch(
-        "app.api.v1.chat.stream_notebook_chat",
+        "app.services.chat.service.stream_notebook_chat",
         new=_fake_stream_error,
     ):
         with client.stream(
