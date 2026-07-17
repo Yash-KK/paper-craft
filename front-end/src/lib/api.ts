@@ -1,5 +1,21 @@
 export const API_URL = import.meta.env.VITE_API_URL
 
+import type {
+  ChapterCatalogItem,
+  ClassGrade,
+  NotebookCreatePayload,
+  NotebookListItem,
+  Subject,
+} from "@/lib/types/notebook"
+
+export type {
+  ChapterCatalogItem,
+  ClassGrade,
+  NotebookCreatePayload,
+  NotebookListItem,
+  Subject,
+} from "@/lib/types/notebook"
+
 const TOKEN_KEY = "papercraft_token"
 
 export function getToken(): string | null {
@@ -65,6 +81,42 @@ export class UnauthorizedError extends Error {
   }
 }
 
+async function parseApiError(response: Response): Promise<string> {
+  try {
+    const data = (await response.json()) as { detail?: string | { msg: string }[] }
+    if (typeof data.detail === "string") return data.detail
+    if (Array.isArray(data.detail) && data.detail[0]?.msg) {
+      return data.detail[0].msg
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return `Request failed (${response.status})`
+}
+
+export async function authFetch(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const token = getToken()
+  if (!token) throw new UnauthorizedError()
+
+  const headers = new Headers(init.headers)
+  headers.set("Authorization", `Bearer ${token}`)
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json")
+  }
+
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers })
+
+  if (response.status === 401) {
+    clearToken()
+    throw new UnauthorizedError()
+  }
+
+  return response
+}
+
 export async function updateCurrentUser(
   updates: ProfileUpdatePayload
 ): Promise<UserProfile> {
@@ -92,4 +144,52 @@ export async function updateCurrentUser(
   }
 
   return (await response.json()) as UserProfile
+}
+
+export async function fetchNotebooks(): Promise<NotebookListItem[]> {
+  const response = await authFetch("/api/v1/notebooks")
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as NotebookListItem[]
+}
+
+export async function createNotebook(
+  payload: NotebookCreatePayload
+): Promise<NotebookListItem> {
+  const response = await authFetch("/api/v1/notebooks", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as NotebookListItem
+}
+
+export async function deleteNotebook(notebookId: string): Promise<void> {
+  const response = await authFetch(`/api/v1/notebooks/${notebookId}`, {
+    method: "DELETE",
+  })
+  if (!response.ok) throw new Error(await parseApiError(response))
+}
+
+export async function fetchGrades(): Promise<ClassGrade[]> {
+  const response = await authFetch("/api/v1/chapters/grades")
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as ClassGrade[]
+}
+
+export async function fetchSubjects(grade: ClassGrade): Promise<Subject[]> {
+  const response = await authFetch(
+    `/api/v1/chapters/subjects?grade=${encodeURIComponent(grade)}`
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as Subject[]
+}
+
+export async function fetchChapters(
+  grade: ClassGrade,
+  subject: Subject
+): Promise<ChapterCatalogItem[]> {
+  const params = new URLSearchParams({ grade, subject })
+  const response = await authFetch(`/api/v1/chapters?${params}`)
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as ChapterCatalogItem[]
 }

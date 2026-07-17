@@ -1,7 +1,9 @@
+import random
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.chapter_catalog import ChapterCatalog
@@ -9,6 +11,15 @@ from app.db.models.notebook import Notebook
 from app.schemas.notebook import NotebookCreate, NotebookListItem
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
+
+NOTEBOOK_COLORS = (
+    "#7c3aed",
+    "#14b8a6",
+    "#f59e0b",
+    "#ec4899",
+    "#22c55e",
+    "#d946ef",
+)
 
 
 @router.get("", response_model=list[NotebookListItem])
@@ -30,6 +41,18 @@ async def create_notebook(
     current_user: CurrentUser,
     db: SessionDep,
 ) -> Notebook:
+    existing_id = await db.scalar(
+        select(Notebook.id).where(
+            Notebook.user_id == current_user.id,
+            func.lower(func.btrim(Notebook.name)) == body.name.lower(),
+        )
+    )
+    if existing_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A notebook with this name already exists",
+        )
+
     result = await db.execute(
         select(ChapterCatalog).where(
             ChapterCatalog.grade == body.class_grade,
@@ -59,11 +82,19 @@ async def create_notebook(
         name=body.name,
         class_grade=body.class_grade,
         subject=body.subject,
-        color_hex=body.color_hex,
+        color_hex=random.choice(NOTEBOOK_COLORS),
         selected_chapters=selected_chapters,
     )
     db.add(notebook)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A notebook with this name already exists",
+        ) from exc
+
     await db.refresh(notebook)
     return notebook
 

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -58,3 +58,12 @@ class Notebook(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="notebooks")
+
+    __table_args__ = (
+        Index(
+            "uq_notebooks_user_name_ci",
+            user_id,
+            func.lower(func.btrim(name)),
+            unique=True,
+        ),
+    )

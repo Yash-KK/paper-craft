@@ -43,6 +43,8 @@ def mock_db() -> AsyncMock:
     db.get = AsyncMock(return_value=None)
     db.delete = AsyncMock()
     db.execute = AsyncMock()
+    db.scalar = AsyncMock(return_value=None)
+    db.rollback = AsyncMock()
     return db
 
 
