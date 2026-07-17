@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models.notebook import ClassGrade, Subject
 
@@ -23,10 +23,18 @@ class ChapterCatalogItem(BaseModel):
 
 
 class NotebookCreate(BaseModel):
-    name: str = Field(max_length=255)
+    name: str = Field(min_length=1, max_length=255)
     class_grade: ClassGrade
     subject: Subject
     selected_chapter_numbers: list[int] = Field(min_length=1)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        name = value.strip()
+        if not name:
+            raise ValueError("Notebook name cannot be blank")
+        return name
 
 
 class NotebookUpdate(BaseModel):

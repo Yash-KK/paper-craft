@@ -2,7 +2,8 @@ import random
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.chapter_catalog import ChapterCatalog
@@ -40,6 +41,18 @@ async def create_notebook(
     current_user: CurrentUser,
     db: SessionDep,
 ) -> Notebook:
+    existing_id = await db.scalar(
+        select(Notebook.id).where(
+            Notebook.user_id == current_user.id,
+            func.lower(func.btrim(Notebook.name)) == body.name.lower(),
+        )
+    )
+    if existing_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A notebook with this name already exists",
+        )
+
     result = await db.execute(
         select(ChapterCatalog).where(
             ChapterCatalog.grade == body.class_grade,
@@ -73,7 +86,15 @@ async def create_notebook(
         selected_chapters=selected_chapters,
     )
     db.add(notebook)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A notebook with this name already exists",
+        ) from exc
+
     await db.refresh(notebook)
     return notebook
 

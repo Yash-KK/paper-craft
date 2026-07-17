@@ -56,6 +56,28 @@ def test_create_notebook_success(
     mock_db.commit.assert_awaited_once()
 
 
+def test_create_notebook_rejects_duplicate_name(
+    client: TestClient,
+    mock_db: AsyncMock,
+) -> None:
+    mock_db.scalar = AsyncMock(return_value=uuid4())
+
+    response = client.post(
+        "/api/v1/notebooks",
+        json={
+            "name": "  mid-term prep  ",
+            "class_grade": "Class 10",
+            "subject": "Mathematics",
+            "selected_chapter_numbers": [2],
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "A notebook with this name already exists"
+    mock_db.execute.assert_not_awaited()
+    mock_db.add.assert_not_called()
+
+
 def test_create_notebook_rejects_invalid_chapters(
     client: TestClient,
     mock_db: AsyncMock,
