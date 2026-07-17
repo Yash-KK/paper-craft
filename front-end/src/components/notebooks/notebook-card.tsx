@@ -1,4 +1,5 @@
 import { FileText, Plus, Trash2, TrendingUp } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -27,23 +28,35 @@ type NotebookCardProps = {
 }
 
 export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
+  const navigate = useNavigate()
   const theme = NOTEBOOK_THEME_STYLES[notebookTheme(notebook.color_hex, index)]
   const chapters = notebook.selected_chapters.map(
     (ch) => `Ch ${ch.chapter_number}`
   )
   const preview = chapters.slice(0, 4).join(", ")
   const extra = chapters.length > 4 ? ` +${chapters.length - 4} more` : ""
+  const href = `/notebooks/${notebook.id}`
 
   return (
     <Card
+      role="link"
+      tabIndex={0}
+      aria-label={`Open ${notebook.name}`}
+      onClick={() => navigate(href)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          navigate(href)
+        }
+      }}
       className={cn(
-        "group gap-0 rounded-2xl py-0 ring-border/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
+        "group relative cursor-pointer gap-0 rounded-2xl py-0 ring-border/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         theme.glow
       )}
     >
-      <div className={cn("h-1.5 w-full shrink-0", theme.stripe)} />
+      <div className={cn("relative z-10 h-1.5 w-full shrink-0", theme.stripe)} />
 
-      <CardHeader className="gap-3 pt-5">
+      <CardHeader className="relative z-10 gap-3 pt-5">
         <div className="flex items-start justify-between gap-3">
           <div
             className={cn(
@@ -59,24 +72,30 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
                 {notebook.class_grade}
               </Badge>
             )}
-            <ConfirmDialog
-              title="Delete notebook?"
-              description={`This will permanently delete “${notebook.name}”.`}
-              confirmLabel="Delete"
-              confirmVariant="destructive"
-              onConfirm={onDelete}
-              trigger={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label={`Delete ${notebook.name}`}
-                >
-                  <Trash2 />
-                </Button>
-              }
-            />
+            <div
+              className="relative z-20"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <ConfirmDialog
+                title="Delete notebook?"
+                description={`This will permanently delete “${notebook.name}”.`}
+                confirmLabel="Delete"
+                confirmVariant="destructive"
+                onConfirm={onDelete}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Delete ${notebook.name}`}
+                  >
+                    <Trash2 />
+                  </Button>
+                }
+              />
+            </div>
           </div>
         </div>
         <CardTitle className="text-lg font-semibold">{notebook.name}</CardTitle>
@@ -86,7 +105,7 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
       </CardHeader>
 
       {chapters.length > 0 && (
-        <CardContent className="space-y-2 pb-4">
+        <CardContent className="relative z-10 space-y-2 pb-4">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <TrendingUp className="size-3.5" />
             Chapters
@@ -98,9 +117,9 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
         </CardContent>
       )}
 
-      <Separator />
+      <Separator className="relative z-10" />
 
-      <CardFooter className="justify-between border-t-0 bg-transparent text-xs text-muted-foreground">
+      <CardFooter className="relative z-10 justify-between border-t-0 bg-transparent text-xs text-muted-foreground">
         <span>{chapters.length} chapters</span>
         <span>Updated {formatNotebookDate(notebook.updated_at)}</span>
       </CardFooter>

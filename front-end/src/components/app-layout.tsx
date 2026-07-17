@@ -32,8 +32,8 @@ export function AppLayout() {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-3 sm:px-6">
+    <div className="flex h-svh flex-col overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3 sm:px-6">
         <Link
           to={status === AuthStatus.Authenticated ? "/dashboard" : "/"}
           className="font-heading text-base font-semibold sm:text-lg"
@@ -78,8 +78,6 @@ export function AppLayout() {
                   <DropdownMenuItem
                     variant="destructive"
                     onClick={() => {
-                      // Open the dialog on the next frame so the menu can
-                      // finish closing without fighting the dialog for focus.
                       requestAnimationFrame(() => setLogoutConfirmOpen(true))
                     }}
                   >
@@ -94,7 +92,7 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col">
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <Outlet />
       </main>
 
