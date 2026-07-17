@@ -20,14 +20,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import {
   createNotebook,
   fetchChapters,
   fetchGrades,
   fetchSubjects,
 } from "@/lib/api"
-import { NOTEBOOK_COLORS } from "@/lib/types/notebook"
 import type { ClassGrade, Subject } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
@@ -42,7 +40,6 @@ type FormState = {
   classGrade: ClassGrade | ""
   subject: Subject | ""
   chapters: number[]
-  colorHex: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -50,7 +47,6 @@ const EMPTY_FORM: FormState = {
   classGrade: "",
   subject: "",
   chapters: [],
-  colorHex: NOTEBOOK_COLORS[0],
 }
 
 type SelectFieldProps<T extends string> = {
@@ -230,7 +226,6 @@ export function CreateNotebookDialog({
         name: trimmed,
         class_grade: form.classGrade,
         subject: form.subject,
-        color_hex: form.colorHex,
         selected_chapter_numbers: form.chapters,
       })
       toast.success("Notebook created successfully.")
@@ -254,8 +249,8 @@ export function CreateNotebookDialog({
           <DialogHeader className="gap-1 border-b px-6 py-5">
             <DialogTitle className="text-xl">Create a New Notebook</DialogTitle>
             <DialogDescription>
-              Set up a notebook with the class, subject, and chapters you want
-              to work with.
+              Set up a notebook with the class, subject and chapters you want to
+              work with.
             </DialogDescription>
           </DialogHeader>
 
@@ -266,7 +261,7 @@ export function CreateNotebookDialog({
                 <Input
                   id="notebook-name"
                   className="h-10"
-                  placeholder="e.g. Mid-Term Prep — Math"
+                  placeholder="e.g. Mid-Term Prep"
                   value={form.name}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, name: e.target.value }))
@@ -359,38 +354,10 @@ export function CreateNotebookDialog({
                   </ScrollArea>
                 </div>
               </div>
-
-              <Separator />
-
-              <div className="grid gap-3">
-                <Label>Notebook Color</Label>
-                <div className="flex flex-wrap gap-3">
-                  {NOTEBOOK_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      aria-label={`Color ${color}`}
-                      aria-pressed={form.colorHex === color}
-                      onClick={() =>
-                        setForm((f) => ({ ...f, colorHex: color }))
-                      }
-                      className={cn(
-                        "flex size-10 items-center justify-center rounded-full ring-offset-background transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
-                        form.colorHex === color && "ring-2 ring-foreground/80"
-                      )}
-                      style={{ backgroundColor: color }}
-                    >
-                      {form.colorHex === color && (
-                        <Check className="size-4 text-white drop-shadow-sm" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </ScrollArea>
 
-          <DialogFooter className="border-t bg-muted/30 px-6 py-4">
+          <DialogFooter className="mb-0 border-t bg-muted/30 px-6 py-4">
             <Button
               type="button"
               variant="outline"

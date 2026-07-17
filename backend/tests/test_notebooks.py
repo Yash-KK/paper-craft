@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_db
+from app.api.v1.notebooks import NOTEBOOK_COLORS
 from app.db.models.notebook import ClassGrade, Notebook, Subject
 from app.db.models.user import User
 from app.main import app
@@ -32,7 +33,6 @@ def test_create_notebook_success(
             "name": "Mid-Term Prep",
             "class_grade": "Class 10",
             "subject": "Mathematics",
-            "color_hex": "#6A0DAD",
             "selected_chapter_numbers": [2],
         },
     )
@@ -42,6 +42,7 @@ def test_create_notebook_success(
     assert body["name"] == "Mid-Term Prep"
     assert body["class_grade"] == "Class 10"
     assert body["subject"] == "Mathematics"
+    assert body["color_hex"] in NOTEBOOK_COLORS
     assert body["selected_chapters"] == [
         {
             "book_code": "jemh1",

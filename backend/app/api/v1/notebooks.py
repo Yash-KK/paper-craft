@@ -1,3 +1,4 @@
+import random
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -9,6 +10,15 @@ from app.db.models.notebook import Notebook
 from app.schemas.notebook import NotebookCreate, NotebookListItem
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
+
+NOTEBOOK_COLORS = (
+    "#7c3aed",
+    "#14b8a6",
+    "#f59e0b",
+    "#ec4899",
+    "#22c55e",
+    "#d946ef",
+)
 
 
 @router.get("", response_model=list[NotebookListItem])
@@ -59,7 +69,7 @@ async def create_notebook(
         name=body.name,
         class_grade=body.class_grade,
         subject=body.subject,
-        color_hex=body.color_hex,
+        color_hex=random.choice(NOTEBOOK_COLORS),
         selected_chapters=selected_chapters,
     )
     db.add(notebook)

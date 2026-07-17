@@ -26,7 +26,6 @@ class NotebookCreate(BaseModel):
     name: str = Field(max_length=255)
     class_grade: ClassGrade
     subject: Subject
-    color_hex: str | None = Field(default=None, max_length=10)
     selected_chapter_numbers: list[int] = Field(min_length=1)
 
 

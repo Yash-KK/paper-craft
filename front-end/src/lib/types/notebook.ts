@@ -27,15 +27,5 @@ export type NotebookCreatePayload = {
   name: string
   class_grade: ClassGrade
   subject: Subject
-  color_hex?: string | null
   selected_chapter_numbers: number[]
 }
-
-export const NOTEBOOK_COLORS = [
-  "#7c3aed",
-  "#14b8a6",
-  "#f59e0b",
-  "#ec4899",
-  "#22c55e",
-  "#d946ef",
-] as const
