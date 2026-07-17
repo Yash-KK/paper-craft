@@ -1,38 +1,10 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.db.models.chat import ChatMessageRole
-
-
-class ChatSessionCreate(BaseModel):
-    title: str | None = Field(default=None, max_length=255)
-
-    @field_validator("title")
-    @classmethod
-    def normalize_title(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return value.strip() or None
-
-
-class ChatSessionUpdate(BaseModel):
-    title: str | None = Field(default=None, max_length=255)
-
-    @field_validator("title")
-    @classmethod
-    def normalize_title(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        return value.strip() or None
-
-
-class ChatMessageCreate(BaseModel):
-    role: ChatMessageRole
-    content: str = Field(min_length=1)
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ChatTurnRequest(BaseModel):
@@ -76,7 +48,44 @@ class ChatSessionDetail(ChatSessionResponse):
     messages: list[ChatMessageResponse] = Field(default_factory=list)
 
 
-class ChatTurnResponse(BaseModel):
+class ChatStreamThinkingEvent(BaseModel):
+    type: Literal["thinking"] = "thinking"
+
+
+class ChatStreamTokenEvent(BaseModel):
+    type: Literal["token"] = "token"
+    content: str
+
+
+class ChatStreamToolStartEvent(BaseModel):
+    type: Literal["tool_start"] = "tool_start"
+    tool: str
+    input: str
+
+
+class ChatStreamToolEndEvent(BaseModel):
+    type: Literal["tool_end"] = "tool_end"
+    tool: str
+    output: str
+
+
+class ChatStreamDoneEvent(BaseModel):
+    type: Literal["done"] = "done"
     session_id: UUID
     user_message: ChatMessageResponse
     assistant_message: ChatMessageResponse
+
+
+class ChatStreamErrorEvent(BaseModel):
+    type: Literal["error"] = "error"
+    message: str
+
+
+ChatStreamEvent = (
+    ChatStreamThinkingEvent
+    | ChatStreamTokenEvent
+    | ChatStreamToolStartEvent
+    | ChatStreamToolEndEvent
+    | ChatStreamDoneEvent
+    | ChatStreamErrorEvent
+)
