@@ -1,5 +1,6 @@
-import { FileText, Plus, TrendingUp } from "lucide-react"
+import { FileText, Plus, Trash2, TrendingUp } from "lucide-react"
 
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,9 +23,14 @@ import { cn } from "@/lib/utils"
 type NotebookCardProps = {
   notebook: NotebookListItem
   index: number
+  onDelete: () => void | Promise<void>
 }
 
-export function NotebookCard({ notebook, index }: NotebookCardProps) {
+export function NotebookCard({
+  notebook,
+  index,
+  onDelete,
+}: NotebookCardProps) {
   const theme = NOTEBOOK_THEME_STYLES[notebookTheme(notebook.color_hex, index)]
   const chapters = notebook.selected_chapters.map(
     (ch) => `Ch ${ch.chapter_number}`
@@ -51,11 +57,31 @@ export function NotebookCard({ notebook, index }: NotebookCardProps) {
           >
             <FileText className={cn("size-5", theme.iconText)} />
           </div>
-          {notebook.class_grade && (
-            <Badge variant="secondary" className={theme.badge}>
-              {notebook.class_grade}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {notebook.class_grade && (
+              <Badge variant="secondary" className={theme.badge}>
+                {notebook.class_grade}
+              </Badge>
+            )}
+            <ConfirmDialog
+              title="Delete notebook?"
+              description={`This will permanently delete “${notebook.name}”.`}
+              confirmLabel="Delete"
+              confirmVariant="destructive"
+              onConfirm={onDelete}
+              trigger={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  aria-label={`Delete ${notebook.name}`}
+                >
+                  <Trash2 />
+                </Button>
+              }
+            />
+          </div>
         </div>
         <CardTitle className="text-lg font-semibold">{notebook.name}</CardTitle>
         <CardDescription className="line-clamp-2">

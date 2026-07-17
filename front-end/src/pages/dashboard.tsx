@@ -21,6 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useNotebooks } from "@/hooks/use-notebooks"
+import { deleteNotebook } from "@/lib/api"
 
 function DashboardSkeleton() {
   return (
@@ -60,6 +61,18 @@ export function DashboardPage() {
   }
 
   const firstName = user?.full_name?.split(" ")[0] ?? "there"
+
+  async function handleDeleteNotebook(notebookId: string) {
+    try {
+      await deleteNotebook(notebookId)
+      await reload()
+      toast.success("Notebook deleted.")
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete notebook"
+      )
+    }
+  }
 
   return (
     <>
@@ -113,6 +126,7 @@ export function DashboardPage() {
                   key={notebook.id}
                   notebook={notebook}
                   index={index}
+                  onDelete={() => handleDeleteNotebook(notebook.id)}
                 />
               ))}
               <CreateNotebookCard onClick={() => setDialogOpen(true)} />

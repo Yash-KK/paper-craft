@@ -163,6 +163,13 @@ export async function createNotebook(
   return (await response.json()) as NotebookListItem
 }
 
+export async function deleteNotebook(notebookId: string): Promise<void> {
+  const response = await authFetch(`/api/v1/notebooks/${notebookId}`, {
+    method: "DELETE",
+  })
+  if (!response.ok) throw new Error(await parseApiError(response))
+}
+
 export async function fetchGrades(): Promise<ClassGrade[]> {
   const response = await authFetch("/api/v1/chapters/grades")
   if (!response.ok) throw new Error(await parseApiError(response))
