@@ -8,6 +8,7 @@ _TEST_ENV = {
     "OPENAI_OSS_MODEL": "openai/gpt-oss-120b",
     "TOGETHER_API_KEY": "test-together-key",
     "TOGETHER_BASE_URL": "https://api.together.ai/v1",
+    "TAVILY_API_KEY": "test-tavily-key",
     "QDRANT_URL": "http://localhost:6333",
     "COLLECTION_NAME": "test-collection",
     "SPARSE_MODEL": "Qdrant/bm25",

@@ -1,10 +1,12 @@
-import { BookOpen, ChevronDown, ChevronRight, Loader2 } from "lucide-react"
+import { BookOpen, ChevronDown, ChevronRight, Globe, Loader2 } from "lucide-react"
 import { useState } from "react"
 
 import type { ToolCall } from "@/features/chat/types/chat"
 
 const TOOL_LABELS: Record<string, string> = {
   retrieve_context: "Notebook Sources",
+  web_search: "Web Search",
+  tavily_search: "Web Search",
 }
 
 function label(tool: string) {
@@ -14,6 +16,8 @@ function label(tool: string) {
 export function ToolCallCard({ tc }: { tc: ToolCall }) {
   const [open, setOpen] = useState(false)
   const running = tc.status === "running"
+  const ToolIcon =
+    tc.tool === "web_search" || tc.tool === "tavily_search" ? Globe : BookOpen
 
   return (
     <div
@@ -32,7 +36,7 @@ export function ToolCallCard({ tc }: { tc: ToolCall }) {
         {running ? (
           <Loader2 size={12} className="shrink-0 animate-spin text-violet-500" />
         ) : (
-          <BookOpen size={12} className="shrink-0 text-emerald-500" />
+          <ToolIcon size={12} className="shrink-0 text-emerald-500" />
         )}
 
         <span

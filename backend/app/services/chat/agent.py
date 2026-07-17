@@ -10,10 +10,14 @@ from app.prompts.rag import RAG_CHAT_INSTRUCTIONS
 from app.services.chat.llm import get_chat_model
 from app.services.chat.rag import RETRIEVE_TOOL_NAME, build_retrieve_tool
 from app.services.chat.streaming import (
+    chunk_has_tool_calls,
     extract_stream_text,
     serialize_tool_input,
     serialize_tool_output,
 )
+from app.services.chat.tools import WEB_SEARCH_TOOL_NAME, build_web_search_tool
+
+STREAMED_TOOL_NAMES = {RETRIEVE_TOOL_NAME, WEB_SEARCH_TOOL_NAME}
 
 
 def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
@@ -39,7 +43,7 @@ def create_notebook_agent(
     )
     return create_agent(
         model=get_chat_model(),
-        tools=[retrieve_tool],
+        tools=[retrieve_tool, build_web_search_tool()],
         system_prompt=RAG_CHAT_INSTRUCTIONS,
     )
 
@@ -54,6 +58,7 @@ async def stream_notebook_chat(
     """Stream normalized chat events from the notebook agent."""
     tool_calls: list[dict[str, Any]] = []
     answer_parts: list[str] = []
+    model_turn_calls_tool = False
 
     yield {"type": "thinking"}
 
@@ -72,13 +77,23 @@ async def stream_notebook_chat(
         ):
             kind = event["event"]
 
-            if kind == "on_tool_start":
+            if kind == "on_chat_model_start":
+                model_turn_calls_tool = False
+
+            elif kind == "on_tool_start":
                 tool_name = event.get("name", "")
-                if tool_name != RETRIEVE_TOOL_NAME:
+                if tool_name not in STREAMED_TOOL_NAMES:
                     continue
-                tool_input = serialize_tool_input(
-                    event.get("data", {}).get("input", {})
-                )
+                raw_input = event.get("data", {}).get("input", {})
+                if (
+                    tool_name == WEB_SEARCH_TOOL_NAME
+                    and (
+                        not isinstance(raw_input, dict)
+                        or not raw_input.get("query")
+                    )
+                ):
+                    continue
+                tool_input = serialize_tool_input(raw_input)
                 tool_calls.append(
                     {
                         "tool": tool_name,
@@ -95,11 +110,15 @@ async def stream_notebook_chat(
 
             elif kind == "on_tool_end":
                 tool_name = event.get("name", "")
-                if tool_name != RETRIEVE_TOOL_NAME:
+                if tool_name not in STREAMED_TOOL_NAMES:
                     continue
-                tool_output = serialize_tool_output(
-                    event.get("data", {}).get("output", "")
-                )
+                raw_output = event.get("data", {}).get("output", "")
+                if (
+                    tool_name == WEB_SEARCH_TOOL_NAME
+                    and not hasattr(raw_output, "content")
+                ):
+                    continue
+                tool_output = serialize_tool_output(raw_output)
                 for tool_call in reversed(tool_calls):
                     if tool_call["tool"] == tool_name and tool_call["output"] is None:
                         tool_call["output"] = tool_output
@@ -109,12 +128,25 @@ async def stream_notebook_chat(
                     "tool": tool_name,
                     "output": tool_output,
                 }
+                if tool_name == WEB_SEARCH_TOOL_NAME and not answer_parts:
+                    answer_parts.append(tool_output)
+                    yield {"type": "token", "content": tool_output}
 
             elif kind == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
                 if not chunk:
                     continue
+                if chunk_has_tool_calls(chunk):
+                    model_turn_calls_tool = True
+                    continue
+                if model_turn_calls_tool:
+                    continue
                 for text in extract_stream_text(chunk):
+                    if tool_calls and not answer_parts and text.strip().lower() in {
+                        "final",
+                        "assistant",
+                    }:
+                        continue
                     answer_parts.append(text)
                     yield {"type": "token", "content": text}
 

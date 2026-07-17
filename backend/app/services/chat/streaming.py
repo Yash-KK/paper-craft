@@ -48,3 +48,11 @@ def extract_stream_text(chunk: Any) -> list[str]:
                     texts.append(text)
         return texts
     return []
+
+
+def chunk_has_tool_calls(chunk: Any) -> bool:
+    """Return whether a model chunk is building a tool call."""
+    return bool(
+        getattr(chunk, "tool_call_chunks", None)
+        or getattr(chunk, "tool_calls", None)
+    )
