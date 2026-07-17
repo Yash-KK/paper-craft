@@ -1,3 +1,11 @@
+from app.schemas.chat import (
+    ChatMessageCreate,
+    ChatMessageResponse,
+    ChatSessionCreate,
+    ChatSessionDetail,
+    ChatSessionResponse,
+    ChatSessionUpdate,
+)
 from app.schemas.document import ChunkType, IngestRequest, IngestResponse
 from app.schemas.notebook import (
     ChapterCatalogItem,
@@ -12,6 +20,12 @@ from app.schemas.user import UserProfileResponse, UserProfileUpdate
 
 __all__ = [
     "ChapterCatalogItem",
+    "ChatMessageCreate",
+    "ChatMessageResponse",
+    "ChatSessionCreate",
+    "ChatSessionDetail",
+    "ChatSessionResponse",
+    "ChatSessionUpdate",
     "ChunkType",
     "IngestRequest",
     "IngestResponse",
