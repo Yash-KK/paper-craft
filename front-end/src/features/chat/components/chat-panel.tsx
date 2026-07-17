@@ -1,6 +1,7 @@
 import { Loader2, Send, Square } from "lucide-react"
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
 
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { ToolCallCard } from "@/features/chat/components/tool-card"
 import { useChatStream } from "@/features/chat/hooks/use-chat-stream"
 import type { PersistedMessage } from "@/features/chat/types/chat"
@@ -104,9 +105,10 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 scroll-smooth">
-        {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center pb-8 text-center select-none">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="min-h-full space-y-4 px-4 py-4">
+          {messages.length === 0 && (
+            <div className="flex min-h-[60vh] flex-col items-center justify-center pb-8 text-center select-none">
             <h2 className="font-heading mb-2 text-xl font-semibold">
               Chat with {notebookName}
             </h2>
@@ -129,57 +131,58 @@ export function ChatPanel({
                 </button>
               ))}
             </div>
-          </div>
-        )}
-
-        {messages.map((msg) => {
-          const hasRunningTools = msg.toolCalls.some(
-            (tc) => tc.status === "running"
-          )
-          const showThinking =
-            msg.role === "assistant" &&
-            msg.isStreaming &&
-            msg.content === "" &&
-            !hasRunningTools
-
-          return (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {msg.role === "user" ? (
-                <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-violet-600 px-4 py-2.5 text-sm leading-relaxed text-white">
-                  {msg.content}
-                </div>
-              ) : (
-                <div className="max-w-[92%] space-y-1">
-                  {msg.toolCalls.map((tc) => (
-                    <ToolCallCard key={tc.id} tc={tc} />
-                  ))}
-
-                  {showThinking && (
-                    <div className="flex items-center gap-2 px-1 py-1.5 text-xs text-violet-500">
-                      <Loader2 size={13} className="animate-spin" />
-                      <span>Thinking…</span>
-                    </div>
-                  )}
-
-                  {msg.content !== "" && (
-                    <div className="rounded-2xl rounded-tl-sm border bg-card px-4 py-3">
-                      {renderContent(msg.content)}
-                      {msg.isStreaming && (
-                        <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-violet-500 align-text-bottom" />
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
-          )
-        })}
+          )}
 
-        <div ref={bottomRef} />
-      </div>
+          {messages.map((msg) => {
+            const hasRunningTools = msg.toolCalls.some(
+              (tc) => tc.status === "running"
+            )
+            const showThinking =
+              msg.role === "assistant" &&
+              msg.isStreaming &&
+              msg.content === "" &&
+              !hasRunningTools
+
+            return (
+              <div
+                key={msg.id}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {msg.role === "user" ? (
+                  <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-violet-600 px-4 py-2.5 text-sm leading-relaxed text-white">
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div className="max-w-[92%] space-y-1">
+                    {msg.toolCalls.map((tc) => (
+                      <ToolCallCard key={tc.id} tc={tc} />
+                    ))}
+
+                    {showThinking && (
+                      <div className="flex items-center gap-2 px-1 py-1.5 text-xs text-violet-500">
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>Thinking…</span>
+                      </div>
+                    )}
+
+                    {msg.content !== "" && (
+                      <div className="rounded-2xl rounded-tl-sm border bg-card px-4 py-3">
+                        {renderContent(msg.content)}
+                        {msg.isStreaming && (
+                          <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-violet-500 align-text-bottom" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          <div ref={bottomRef} />
+        </div>
+      </ScrollArea>
 
       <div className="shrink-0 border-t px-4 py-3">
         <div className="mx-auto flex max-w-4xl items-end gap-2 rounded-xl border bg-muted/40 px-3 py-2 focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-200">
