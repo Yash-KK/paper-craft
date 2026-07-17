@@ -35,6 +35,19 @@ class ChatMessageCreate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class ChatTurnRequest(BaseModel):
+    content: str = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=20)
+
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, value: str) -> str:
+        content = value.strip()
+        if not content:
+            raise ValueError("Message cannot be blank")
+        return content
+
+
 class ChatMessageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -61,3 +74,9 @@ class ChatSessionResponse(BaseModel):
 
 class ChatSessionDetail(ChatSessionResponse):
     messages: list[ChatMessageResponse] = Field(default_factory=list)
+
+
+class ChatTurnResponse(BaseModel):
+    session_id: UUID
+    user_message: ChatMessageResponse
+    assistant_message: ChatMessageResponse

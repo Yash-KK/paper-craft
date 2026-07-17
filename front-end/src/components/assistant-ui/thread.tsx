@@ -9,7 +9,6 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CopyIcon,
-  RefreshCwIcon,
   SquareIcon,
 } from "lucide-react"
 
@@ -26,7 +25,7 @@ function ThreadWelcome({ notebookName }: { notebookName: string }) {
         </h2>
         <p className="max-w-md text-sm text-muted-foreground">
           Ask for explanations, practice questions, or a full question paper.
-          Responses are mocked until the Agentic RAG backend is connected.
+          Answers are grounded in this notebook&apos;s selected chapters.
         </p>
       </div>
       <div className="flex w-full flex-wrap justify-center gap-2">
@@ -91,17 +90,6 @@ function AssistantMessage() {
               <CopyIcon className="size-3.5" />
             </Button>
           </ActionBarPrimitive.Copy>
-          <ActionBarPrimitive.Reload asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="size-7"
-              aria-label="Regenerate"
-            >
-              <RefreshCwIcon className="size-3.5" />
-            </Button>
-          </ActionBarPrimitive.Reload>
         </ActionBarPrimitive.Root>
       </div>
     </MessagePrimitive.Root>
@@ -119,7 +107,7 @@ function Composer() {
       />
       <div className="flex items-center justify-between gap-2 px-1 pb-0.5">
         <p className="text-[11px] text-muted-foreground">
-          Mock streaming · Enter to send
+          Notebook RAG · Enter to send
         </p>
         <AuiIf condition={(s) => !s.thread.isRunning}>
           <ComposerPrimitive.Send asChild>

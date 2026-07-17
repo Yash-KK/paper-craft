@@ -5,6 +5,8 @@ from app.schemas.chat import (
     ChatSessionDetail,
     ChatSessionResponse,
     ChatSessionUpdate,
+    ChatTurnRequest,
+    ChatTurnResponse,
 )
 from app.schemas.document import ChunkType, IngestRequest, IngestResponse
 from app.schemas.notebook import (
@@ -26,6 +28,8 @@ __all__ = [
     "ChatSessionDetail",
     "ChatSessionResponse",
     "ChatSessionUpdate",
+    "ChatTurnRequest",
+    "ChatTurnResponse",
     "ChunkType",
     "IngestRequest",
     "IngestResponse",

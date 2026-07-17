@@ -2,7 +2,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -17,6 +17,18 @@ class Settings(BaseSettings):
 
     openai_api_key: SecretStr = Field(alias="OPENAI_API_KEY")
     dense_model: str = Field(alias="DENSE_MODEL")
+    chat_model: str = Field(
+        default="gpt-4o-mini",
+        validation_alias=AliasChoices("CHAT_MODEL", "OPENAI_OSS_MODEL"),
+    )
+    chat_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("CHAT_API_KEY", "TOGETHER_API_KEY"),
+    )
+    chat_base_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("CHAT_BASE_URL", "TOGETHER_BASE_URL"),
+    )
     qdrant_url: str = Field(alias="QDRANT_URL")
     collection_name: str = Field(alias="COLLECTION_NAME")
     sparse_model: str = Field(alias="SPARSE_MODEL")

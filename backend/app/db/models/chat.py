@@ -3,7 +3,17 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,6 +62,10 @@ class ChatSession(Base):
 
     __table_args__ = (
         Index("ix_chat_sessions_notebook_updated", notebook_id, updated_at),
+        UniqueConstraint(
+            notebook_id,
+            name="uq_chat_sessions_notebook_id",
+        ),
     )
 
 

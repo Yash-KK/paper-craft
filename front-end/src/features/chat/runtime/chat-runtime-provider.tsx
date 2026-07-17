@@ -2,25 +2,33 @@ import {
   AssistantRuntimeProvider,
   useLocalRuntime,
   type ChatModelAdapter,
+  type ThreadMessageLike,
 } from "@assistant-ui/react"
+import { useQueryClient } from "@tanstack/react-query"
 import * as React from "react"
 
-import { createMockChatTransport } from "@/features/chat/adapters/mock-chat-transport"
-import type { ChatTransport } from "@/features/chat/types/chat"
+import type {
+  ChatMessage,
+  ChatSession,
+} from "@/features/chat/types/chat"
+import { sendNotebookChatMessage } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 
 type ChatRuntimeProviderProps = {
   notebookId: string
-  notebookName: string
+  messages: ChatMessage[]
   children: React.ReactNode
-  transport?: ChatTransport
 }
 
-function createAdapter(
-  transport: ChatTransport,
+function createAdapter({
+  notebookId,
+  onTurnCompleted,
+}: {
   notebookId: string
-): ChatModelAdapter {
+  onTurnCompleted: (session: ChatSession) => void
+}): ChatModelAdapter {
   return {
-    async *run({ messages, abortSignal }) {
+    async run({ messages, abortSignal }) {
       const lastUser = [...messages].reverse().find((m) => m.role === "user")
 
       const text =
@@ -29,46 +37,31 @@ function createAdapter(
           .map((c) => c.text)
           .join("\n") ?? ""
 
-      let accumulated = ""
-
-      for await (const event of transport.streamRun(
-        {
-          notebook_id: notebookId,
-          conversation_id: null,
-          client_message_id: crypto.randomUUID(),
-          message: { role: "user", content: text },
-          metadata: { retrieve: true, top_k: 4, tools_enabled: true },
-        },
-        { signal: abortSignal }
-      )) {
-        if (event.type === "message.delta") {
-          accumulated += event.delta
-          yield {
-            content: [{ type: "text" as const, text: accumulated }],
-          }
-        }
-
-        if (event.type === "message.completed") {
-          accumulated = event.content
-          yield {
-            content: [{ type: "text" as const, text: accumulated }],
-          }
-        }
-
-        if (event.type === "run.error") {
-          throw new Error(event.error)
-        }
+      if (!text.trim()) {
+        throw new Error("Message cannot be blank")
       }
 
-      if (!accumulated) {
-        yield {
-          content: [
-            {
-              type: "text" as const,
-              text: "No response generated.",
-            },
-          ],
-        }
+      const turn = await sendNotebookChatMessage(
+        notebookId,
+        text,
+        abortSignal
+      )
+      onTurnCompleted({
+        id: turn.session_id,
+        notebook_id: notebookId,
+        title: null,
+        created_at: turn.user_message.created_at,
+        updated_at: turn.assistant_message.created_at,
+        messages: [turn.user_message, turn.assistant_message],
+      })
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: turn.assistant_message.content,
+          },
+        ],
       }
     },
   }
@@ -76,23 +69,42 @@ function createAdapter(
 
 export function ChatRuntimeProvider({
   notebookId,
-  notebookName,
+  messages,
   children,
-  transport: transportOverride,
 }: ChatRuntimeProviderProps) {
-  const transport = React.useMemo(
-    () =>
-      transportOverride ??
-      createMockChatTransport({ notebookId, notebookName }),
-    [transportOverride, notebookId, notebookName]
+  const queryClient = useQueryClient()
+  const onTurnCompleted = React.useCallback(
+    (turnSession: ChatSession) => {
+      queryClient.setQueryData<ChatSession>(
+        queryKeys.notebookChat(notebookId),
+        (current) =>
+          current
+            ? {
+                ...current,
+                updated_at: turnSession.updated_at,
+                messages: [...current.messages, ...turnSession.messages],
+              }
+            : turnSession
+      )
+    },
+    [notebookId, queryClient]
   )
 
   const adapter = React.useMemo(
-    () => createAdapter(transport, notebookId),
-    [transport, notebookId]
+    () => createAdapter({ notebookId, onTurnCompleted }),
+    [notebookId, onTurnCompleted]
   )
 
-  const runtime = useLocalRuntime(adapter)
+  const initialMessages = React.useMemo<ThreadMessageLike[]>(
+    () =>
+      messages.flatMap((message) =>
+        message.role === "user" || message.role === "assistant"
+          ? [{ role: message.role, content: message.content }]
+          : []
+      ),
+    [messages]
+  )
+  const runtime = useLocalRuntime(adapter, { initialMessages })
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
