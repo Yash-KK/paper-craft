@@ -16,11 +16,6 @@ type NotebookStatsProps = {
 }
 
 export function NotebookStats({ notebooks, className }: NotebookStatsProps) {
-  const totalChapters = notebooks.reduce(
-    (sum, nb) => sum + nb.selected_chapters.length,
-    0
-  )
-
   const stats = [
     {
       label: "Total Notebooks",
@@ -30,8 +25,8 @@ export function NotebookStats({ notebooks, className }: NotebookStatsProps) {
       iconBg: "bg-violet-500/10",
     },
     {
-      label: "Chapters Selected",
-      value: String(totalChapters),
+      label: "Question Papers",
+      value: String(0),
       icon: FileText,
       accent: "text-teal-600 dark:text-teal-400",
       iconBg: "bg-teal-500/10",
@@ -53,7 +48,9 @@ export function NotebookStats({ notebooks, className }: NotebookStatsProps) {
             </div>
             <CardContent className="min-w-0 px-0">
               <CardDescription>{stat.label}</CardDescription>
-              <CardTitle className="text-xl font-semibold">{stat.value}</CardTitle>
+              <CardTitle className="text-xl font-semibold">
+                {stat.value}
+              </CardTitle>
             </CardContent>
           </CardHeader>
         </Card>
