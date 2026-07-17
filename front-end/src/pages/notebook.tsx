@@ -7,6 +7,7 @@ import { AuthStatus, useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChatRuntimeProvider } from "@/features/chat/runtime/chat-runtime-provider"
+import { useNotebookChat } from "@/hooks/use-notebook-chat"
 import { useNotebooks } from "@/hooks/use-notebooks"
 
 export function NotebookPage() {
@@ -14,6 +15,11 @@ export function NotebookPage() {
   const navigate = useNavigate()
   const { status } = useAuth()
   const { notebooks, loading, error } = useNotebooks()
+  const notebook = notebooks.find((item) => item.id === notebookId)
+  const chat = useNotebookChat(
+    notebookId,
+    status === AuthStatus.Authenticated && !loading && Boolean(notebook)
+  )
 
   React.useEffect(() => {
     if (status === AuthStatus.Unauthenticated) {
@@ -33,8 +39,6 @@ export function NotebookPage() {
     return <NotebookWorkspaceSkeleton />
   }
 
-  const notebook = notebooks.find((n) => n.id === notebookId)
-
   if (!notebook) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
@@ -50,12 +54,32 @@ export function NotebookPage() {
     )
   }
 
+  if (chat.isPending) {
+    return <NotebookWorkspaceSkeleton />
+  }
+
+  if (chat.error || !chat.data) {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+        <h1 className="font-heading text-xl font-semibold">
+          Unable to load chat
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {chat.error instanceof Error
+            ? chat.error.message
+            : "The notebook chat could not be loaded."}
+        </p>
+        <Button onClick={() => void chat.refetch()}>Try again</Button>
+      </div>
+    )
+  }
+
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <ChatRuntimeProvider
-        key={notebook.id}
+        key={chat.data.id}
         notebookId={notebook.id}
-        notebookName={notebook.name}
+        messages={chat.data.messages}
       >
         <Thread notebookName={notebook.name} />
       </ChatRuntimeProvider>

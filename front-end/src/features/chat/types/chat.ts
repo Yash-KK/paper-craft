@@ -7,110 +7,33 @@ export type Citation = {
   book_code?: string
   chapter_number?: number
   chapter_name?: string
+  page_number?: number
   score?: number
 }
 
-export type ToolEvent = {
-  tool_call_id: string
-  tool_name: string
-  status: "pending" | "running" | "completed" | "failed"
-  args?: Record<string, unknown>
-  result?: unknown
-  error?: string
-}
-
-export type ChatMessageContent =
-  | { type: "text"; text: string }
-  | { type: "reasoning"; text: string }
-  | {
-      type: "tool-call"
-      toolCallId: string
-      toolName: string
-      args: Record<string, unknown>
-      result?: unknown
-    }
-
 export type ChatMessage = {
   id: string
+  session_id: string
   role: ChatRole
-  content: ChatMessageContent[]
-  created_at?: string
-  citations?: Citation[]
+  content: string
+  metadata: {
+    citations?: Citation[]
+    [key: string]: unknown
+  }
+  created_at: string
 }
 
-export type ConversationSummary = {
+export type ChatSession = {
   id: string
   notebook_id: string
   title: string | null
+  created_at: string
   updated_at: string
+  messages: ChatMessage[]
 }
 
-export type ChatRunRequest = {
-  notebook_id: string
-  conversation_id: string | null
-  client_message_id: string
-  message: {
-    role: "user"
-    content: string
-  }
-  metadata?: {
-    retrieve?: boolean
-    top_k?: number
-    tools_enabled?: boolean
-  }
-}
-
-export type ChatStreamEvent =
-  | {
-      type: "run.started"
-      event_id: string
-      conversation_id: string
-      run_id: string
-    }
-  | {
-      type: "message.delta"
-      event_id: string
-      message_id: string
-      delta: string
-    }
-  | {
-      type: "message.completed"
-      event_id: string
-      message_id: string
-      content: string
-      citations?: Citation[]
-    }
-  | {
-      type: "citation"
-      event_id: string
-      citation: Citation
-    }
-  | {
-      type: "retrieved_sources"
-      event_id: string
-      sources: Citation[]
-    }
-  | {
-      type: "tool.started" | "tool.completed" | "tool.failed"
-      event_id: string
-      tool: ToolEvent
-    }
-  | {
-      type: "run.completed"
-      event_id: string
-      run_id: string
-      conversation_id: string
-    }
-  | {
-      type: "run.error"
-      event_id: string
-      run_id: string
-      error: string
-    }
-
-export type ChatTransport = {
-  streamRun: (
-    request: ChatRunRequest,
-    options?: { signal?: AbortSignal }
-  ) => AsyncIterable<ChatStreamEvent>
+export type ChatTurnResponse = {
+  session_id: string
+  user_message: ChatMessage
+  assistant_message: ChatMessage
 }

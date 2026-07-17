@@ -14,6 +14,7 @@ def get_qdrant_client() -> QdrantClient:
     )
 
 
+@lru_cache
 def get_vector_store() -> QdrantVectorStore:
     return QdrantVectorStore(
         client=get_qdrant_client(),
