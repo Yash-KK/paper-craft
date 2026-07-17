@@ -1,3 +1,3 @@
-from app.services.chat.rag import generate_rag_response
+from app.services.chat.rag import stream_notebook_chat
 
-__all__ = ["generate_rag_response"]
+__all__ = ["stream_notebook_chat"]

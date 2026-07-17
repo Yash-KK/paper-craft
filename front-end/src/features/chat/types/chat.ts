@@ -1,23 +1,45 @@
-export type ChatRole = "user" | "assistant" | "system" | "tool"
-
-export type Citation = {
+export type ToolCall = {
   id: string
-  title: string
-  snippet: string
-  book_code?: string
-  chapter_number?: number
-  chapter_name?: string
-  page_number?: number
-  score?: number
+  tool: string
+  input: string
+  output?: string
+  status: "running" | "done"
 }
 
 export type ChatMessage = {
   id: string
+  role: "user" | "assistant"
+  content: string
+  toolCalls: ToolCall[]
+  isStreaming: boolean
+}
+
+export type SSEEvent =
+  | { type: "thinking" }
+  | { type: "token"; content: string }
+  | { type: "tool_start"; tool: string; input: string }
+  | { type: "tool_end"; tool: string; output: string }
+  | {
+      type: "done"
+      session_id?: string
+      user_message?: PersistedMessage
+      assistant_message?: PersistedMessage
+    }
+  | { type: "error"; message: string }
+
+export type PersistedMessage = {
+  id: string
   session_id: string
-  role: ChatRole
+  role: "user" | "assistant" | "system" | "tool"
   content: string
   metadata: {
-    citations?: Citation[]
+    tool_calls?: Array<{
+      id?: string
+      tool: string
+      input: string
+      output?: string
+      status?: "running" | "done"
+    }>
     [key: string]: unknown
   }
   created_at: string
@@ -29,11 +51,5 @@ export type ChatSession = {
   title: string | null
   created_at: string
   updated_at: string
-  messages: ChatMessage[]
-}
-
-export type ChatTurnResponse = {
-  session_id: string
-  user_message: ChatMessage
-  assistant_message: ChatMessage
+  messages: PersistedMessage[]
 }

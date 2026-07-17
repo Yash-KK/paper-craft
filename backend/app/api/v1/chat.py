@@ -1,22 +1,31 @@
+import asyncio
+import json
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.chat import ChatMessage, ChatMessageRole, ChatSession
 from app.db.models.notebook import Notebook
-from app.schemas.chat import (
-    ChatMessageResponse,
-    ChatSessionDetail,
-    ChatTurnRequest,
-    ChatTurnResponse,
-)
-from app.services.chat import generate_rag_response
+from app.schemas.chat import ChatMessageResponse, ChatSessionDetail, ChatTurnRequest
+from app.services.chat import stream_notebook_chat
 
 router = APIRouter(prefix="/notebooks/{notebook_id}/chat", tags=["chat"])
+
+SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
+
+
+def _sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload, default=str)}\n\n"
 
 
 async def _get_owned_notebook(
@@ -97,17 +106,13 @@ async def get_notebook_chat(
     )
 
 
-@router.post(
-    "/messages",
-    response_model=ChatTurnResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/messages")
 async def create_chat_turn(
     notebook_id: UUID,
     body: ChatTurnRequest,
     current_user: CurrentUser,
     db: SessionDep,
-) -> ChatTurnResponse:
+) -> StreamingResponse:
     notebook = await _get_owned_notebook(notebook_id, current_user, db)
     session = await _get_or_create_session(notebook, db)
     history = await _get_messages(session.id, db)
@@ -121,32 +126,82 @@ async def create_chat_turn(
     await db.commit()
     await db.refresh(user_message)
 
-    try:
-        answer, citations = await generate_rag_response(
-            question=body.content,
-            history=history,
-            selected_chapters=notebook.selected_chapters,
-            top_k=body.top_k,
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="The chat service could not generate a response",
-        ) from exc
-
-    assistant_message = ChatMessage(
-        session_id=session.id,
-        role=ChatMessageRole.ASSISTANT,
-        content=answer,
-        message_metadata={"citations": citations},
+    user_payload = ChatMessageResponse.model_validate(user_message).model_dump(
+        mode="json"
     )
-    session.updated_at = datetime.now(timezone.utc)
-    db.add(assistant_message)
-    await db.commit()
-    await db.refresh(assistant_message)
+    selected_chapters = list(notebook.selected_chapters)
+    session_id = session.id
+    question = body.content
+    top_k = body.top_k
 
-    return ChatTurnResponse(
-        session_id=session.id,
-        user_message=ChatMessageResponse.model_validate(user_message),
-        assistant_message=ChatMessageResponse.model_validate(assistant_message),
+    async def generate() -> AsyncIterator[str]:
+        try:
+            async for event in stream_notebook_chat(
+                question=question,
+                history=history,
+                selected_chapters=selected_chapters,
+                top_k=top_k,
+            ):
+                event_type = event.get("type")
+
+                if event_type == "complete":
+                    answer = event.get("answer") or ""
+                    if not answer:
+                        yield _sse(
+                            {
+                                "type": "error",
+                                "message": (
+                                    "The chat service could not generate a response"
+                                ),
+                            }
+                        )
+                        return
+
+                    assistant_message = ChatMessage(
+                        session_id=session_id,
+                        role=ChatMessageRole.ASSISTANT,
+                        content=answer,
+                        message_metadata={
+                            "tool_calls": event.get("tool_calls") or [],
+                        },
+                    )
+                    chat_session = await db.get(ChatSession, session_id)
+                    if chat_session is not None:
+                        chat_session.updated_at = datetime.now(timezone.utc)
+                    db.add(assistant_message)
+                    await db.commit()
+                    await db.refresh(assistant_message)
+
+                    yield _sse(
+                        {
+                            "type": "done",
+                            "session_id": str(session_id),
+                            "user_message": user_payload,
+                            "assistant_message": ChatMessageResponse.model_validate(
+                                assistant_message
+                            ).model_dump(mode="json"),
+                        }
+                    )
+                    return
+
+                if event_type == "error":
+                    yield _sse(
+                        {
+                            "type": "error",
+                            "message": event.get("message")
+                            or "The chat service could not generate a response",
+                        }
+                    )
+                    return
+
+                yield _sse(event)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            yield _sse({"type": "error", "message": str(exc)})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
     )

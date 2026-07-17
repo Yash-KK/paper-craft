@@ -7,10 +7,7 @@ import type {
   NotebookListItem,
   Subject,
 } from "@/lib/types/notebook"
-import type {
-  ChatSession,
-  ChatTurnResponse,
-} from "@/features/chat/types/chat"
+import type { ChatSession } from "@/features/chat/types/chat"
 
 export type {
   ChapterCatalogItem,
@@ -180,23 +177,6 @@ export async function fetchNotebookChat(
   const response = await authFetch(`/api/v1/notebooks/${notebookId}/chat`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChatSession
-}
-
-export async function sendNotebookChatMessage(
-  notebookId: string,
-  content: string,
-  signal?: AbortSignal
-): Promise<ChatTurnResponse> {
-  const response = await authFetch(
-    `/api/v1/notebooks/${notebookId}/chat/messages`,
-    {
-      method: "POST",
-      body: JSON.stringify({ content }),
-      signal,
-    }
-  )
-  if (!response.ok) throw new Error(await parseApiError(response))
-  return (await response.json()) as ChatTurnResponse
 }
 
 export async function fetchGrades(): Promise<ClassGrade[]> {

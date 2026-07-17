@@ -1,12 +1,14 @@
 from app.schemas.chat import (
-    ChatMessageCreate,
     ChatMessageResponse,
-    ChatSessionCreate,
     ChatSessionDetail,
     ChatSessionResponse,
-    ChatSessionUpdate,
+    ChatStreamDoneEvent,
+    ChatStreamErrorEvent,
+    ChatStreamThinkingEvent,
+    ChatStreamTokenEvent,
+    ChatStreamToolEndEvent,
+    ChatStreamToolStartEvent,
     ChatTurnRequest,
-    ChatTurnResponse,
 )
 from app.schemas.document import ChunkType, IngestRequest, IngestResponse
 from app.schemas.notebook import (
@@ -22,14 +24,16 @@ from app.schemas.user import UserProfileResponse, UserProfileUpdate
 
 __all__ = [
     "ChapterCatalogItem",
-    "ChatMessageCreate",
     "ChatMessageResponse",
-    "ChatSessionCreate",
     "ChatSessionDetail",
     "ChatSessionResponse",
-    "ChatSessionUpdate",
+    "ChatStreamDoneEvent",
+    "ChatStreamErrorEvent",
+    "ChatStreamThinkingEvent",
+    "ChatStreamTokenEvent",
+    "ChatStreamToolEndEvent",
+    "ChatStreamToolStartEvent",
     "ChatTurnRequest",
-    "ChatTurnResponse",
     "ChunkType",
     "IngestRequest",
     "IngestResponse",

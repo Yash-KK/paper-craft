@@ -5,6 +5,9 @@ import os
 _TEST_ENV = {
     "OPENAI_API_KEY": "test-openai-key",
     "DENSE_MODEL": "text-embedding-3-small",
+    "OPENAI_OSS_MODEL": "openai/gpt-oss-120b",
+    "TOGETHER_API_KEY": "test-together-key",
+    "TOGETHER_BASE_URL": "https://api.together.ai/v1",
     "QDRANT_URL": "http://localhost:6333",
     "COLLECTION_NAME": "test-collection",
     "SPARSE_MODEL": "Qdrant/bm25",

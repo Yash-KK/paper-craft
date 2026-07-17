@@ -2,11 +2,10 @@ import * as React from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
-import { Thread } from "@/components/assistant-ui/thread"
 import { AuthStatus, useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ChatRuntimeProvider } from "@/features/chat/runtime/chat-runtime-provider"
+import { ChatPanel } from "@/features/chat"
 import { useNotebookChat } from "@/hooks/use-notebook-chat"
 import { useNotebooks } from "@/hooks/use-notebooks"
 
@@ -76,13 +75,12 @@ export function NotebookPage() {
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <ChatRuntimeProvider
+      <ChatPanel
         key={chat.data.id}
         notebookId={notebook.id}
-        messages={chat.data.messages}
-      >
-        <Thread notebookName={notebook.name} />
-      </ChatRuntimeProvider>
+        notebookName={notebook.name}
+        initialMessages={chat.data.messages}
+      />
     </section>
   )
 }
