@@ -84,7 +84,7 @@ async def stream_notebook_chat(
                 tool_name = event.get("name", "")
                 if tool_name not in STREAMED_TOOL_NAMES:
                     continue
-                raw_input = event.get("data", {}).get("input", {})
+                raw_input: Any = event.get("data", {}).get("input", {})
                 if (
                     tool_name == WEB_SEARCH_TOOL_NAME
                     and (
