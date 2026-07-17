@@ -9,7 +9,6 @@ import {
   CreateNotebookCard,
   NotebookCard,
 } from "@/components/notebooks/notebook-card"
-import { NotebookStats } from "@/components/notebooks/notebook-stats"
 import { NotebooksEmptyState } from "@/components/notebooks/notebooks-empty-state"
 import { Button } from "@/components/ui/button"
 import {
@@ -96,8 +95,6 @@ export function DashboardPage() {
           </Card>
 
           <Separator />
-
-          <NotebookStats notebooks={notebooks} />
 
           {loading ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

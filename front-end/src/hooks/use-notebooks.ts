@@ -9,10 +9,11 @@ import {
 import { queryKeys } from "@/lib/query-keys"
 import type { NotebookCreatePayload } from "@/lib/types/notebook"
 
-export function useNotebooks() {
+export function useNotebooks(enabled = true) {
   const query = useQuery({
     queryKey: queryKeys.notebooks,
     queryFn: fetchNotebooks,
+    enabled,
   })
 
   return {

@@ -13,9 +13,14 @@ import { cn } from "@/lib/utils"
 type NotebookStatsProps = {
   notebooks: NotebookListItem[]
   className?: string
+  compact?: boolean
 }
 
-export function NotebookStats({ notebooks, className }: NotebookStatsProps) {
+export function NotebookStats({
+  notebooks,
+  className,
+  compact = false,
+}: NotebookStatsProps) {
   const stats = [
     {
       label: "Total Notebooks",
@@ -34,21 +39,46 @@ export function NotebookStats({ notebooks, className }: NotebookStatsProps) {
   ] as const
 
   return (
-    <div className={cn("grid gap-3 sm:grid-cols-2 sm:gap-4", className)}>
+    <div
+      className={cn(
+        "grid gap-3",
+        !compact && "sm:grid-cols-2 sm:gap-4",
+        className
+      )}
+    >
       {stats.map((stat) => (
-        <Card key={stat.label} className="bg-card/80 shadow-sm">
-          <CardHeader className="flex-row items-center">
+        <Card
+          key={stat.label}
+          size={compact ? "sm" : "default"}
+          className={cn("bg-card/80 shadow-sm", compact && "gap-0")}
+        >
+          <CardHeader
+            className={cn(
+              "flex-row items-center",
+              compact && "gap-3 px-3 py-3"
+            )}
+          >
             <div
               className={cn(
-                "flex size-10 items-center justify-center rounded-xl",
+                "flex items-center justify-center rounded-xl",
+                compact ? "size-9" : "size-10",
                 stat.iconBg
               )}
             >
-              <stat.icon className={cn("size-5", stat.accent)} />
+              <stat.icon
+                className={cn(compact ? "size-4" : "size-5", stat.accent)}
+              />
             </div>
             <CardContent className="min-w-0 px-0">
-              <CardDescription>{stat.label}</CardDescription>
-              <CardTitle className="text-xl font-semibold">
+              <CardDescription className={cn(compact && "text-xs")}>
+                {stat.label}
+              </CardDescription>
+              <CardTitle
+                className={cn(
+                  "font-semibold",
+                  compact ? "text-lg" : "text-xl"
+                )}
+              >
                 {stat.value}
               </CardTitle>
             </CardContent>

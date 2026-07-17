@@ -22,9 +22,9 @@ export function QuestionPapersSidebar({
   papers = MOCK_QUESTION_PAPERS,
 }: QuestionPapersSidebarProps) {
   return (
-    <aside
+    <div
       className={cn(
-        "flex h-full min-h-0 w-full flex-col border-r bg-muted/20",
+        "flex h-full min-h-0 w-full flex-col",
         className
       )}
     >
@@ -101,6 +101,6 @@ export function QuestionPapersSidebar({
           )}
         </div>
       </ScrollArea>
-    </aside>
+    </div>
   )
 }
