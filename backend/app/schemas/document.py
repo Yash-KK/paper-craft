@@ -9,6 +9,14 @@ class ChunkType(str, enum.Enum):
     TABLE = "table"
 
 
+class ContentType(str, enum.Enum):
+    THEORY = "theory"
+    EXAMPLE = "example"
+    EXERCISE = "exercise"
+    FIGURE = "figure"
+    TABLE = "table"
+
+
 class DocumentMetadata(BaseModel):
     book_code: str
     subject: str
@@ -16,9 +24,11 @@ class DocumentMetadata(BaseModel):
     chapter_number: int
     chapter_name: str | None = None
     page_number: int
+    chunk_id: str
     chunk_type: ChunkType
-    content_types: list[str] = Field(default_factory=list)
+    content_type: ContentType
     source_file: str
+    asset_file: str | None = None
 
 
 class IngestRequest(BaseModel):

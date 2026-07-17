@@ -3,7 +3,7 @@ from pathlib import Path
 from langchain_core.documents import Document
 
 from app.core.config import settings
-from app.schemas.document import ChunkType
+from app.schemas.document import ChunkType, ContentType, DocumentMetadata
 from app.services.ingestion.parser import (
     EXAMPLE_RE,
     EXERCISE_RE,
@@ -12,6 +12,14 @@ from app.services.ingestion.parser import (
     parse_filename,
     split_pages,
 )
+
+
+def _text_content_type(content: str) -> ContentType:
+    if EXERCISE_RE.search(content):
+        return ContentType.EXERCISE
+    if EXAMPLE_RE.search(content):
+        return ContentType.EXAMPLE
+    return ContentType.THEORY
 
 
 def build_documents(path: Path) -> list[Document]:
@@ -23,16 +31,17 @@ def build_documents(path: Path) -> list[Document]:
     page_assets = collect_page_assets(book_dir)
 
     def meta(page_num: int, **extra) -> dict:
-        return {
-            "book_code": book_code,
-            "subject": book_meta["subject"],
-            "grade": book_meta["grade"],
-            "chapter_number": chapter_number,
-            "chapter_name": chapter_name,
-            "page_number": page_num,
-            "source_file": path.name,
+        metadata = DocumentMetadata(
+            book_code=book_code.lower(),
+            subject=str(book_meta["subject"]).strip().lower(),
+            grade=int(book_meta["grade"]),
+            chapter_number=int(chapter_number),
+            chapter_name=chapter_name.lower() if chapter_name else None,
+            page_number=int(page_num),
+            source_file=path.name.lower(),
             **extra,
-        }
+        )
+        return metadata.model_dump(mode="json", exclude_none=True)
 
     documents: list[Document] = []
     for page_num, content in split_pages(full_text):
@@ -44,9 +53,7 @@ def build_documents(path: Path) -> list[Document]:
                         page_num,
                         chunk_id=f"{book_code}_ch{chapter_number}_pg{page_num}_text",
                         chunk_type=ChunkType.TEXT,
-                        content_types=["theory"]
-                        + (["example"] if EXAMPLE_RE.search(content) else [])
-                        + (["exercise"] if EXERCISE_RE.search(content) else []),
+                        content_type=_text_content_type(content),
                     ),
                 )
             )
@@ -63,8 +70,10 @@ def build_documents(path: Path) -> list[Document]:
                             page_num,
                             chunk_id=f"{book_code}_ch{chapter_number}_pg{page_num}_img{idx}",
                             chunk_type=ChunkType.IMAGE,
-                            content_types=["figure"],
-                            asset_file=str(image_path.relative_to(book_dir)),
+                            content_type=ContentType.FIGURE,
+                            asset_file=image_path.relative_to(book_dir)
+                            .as_posix()
+                            .lower(),
                         ),
                     )
                 )
@@ -81,8 +90,10 @@ def build_documents(path: Path) -> list[Document]:
                             page_num,
                             chunk_id=f"{book_code}_ch{chapter_number}_pg{page_num}_tbl{idx}",
                             chunk_type=ChunkType.TABLE,
-                            content_types=["table"],
-                            asset_file=str(table_path.relative_to(book_dir)),
+                            content_type=ContentType.TABLE,
+                            asset_file=table_path.relative_to(book_dir)
+                            .as_posix()
+                            .lower(),
                         ),
                     )
                 )
