@@ -1,20 +1,15 @@
+# chat/agent.py
 from collections.abc import AsyncIterator
 from typing import Any
 
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langgraph.graph.state import CompiledStateGraph
 
 from app.db.models.chat import ChatMessage, ChatMessageRole
 from app.prompts.rag import RAG_CHAT_INSTRUCTIONS
 from app.services.chat.llm import get_chat_model
 from app.services.chat.rag import RETRIEVE_TOOL_NAME, build_retrieve_tool
-from app.services.chat.streaming import (
-    chunk_has_tool_calls,
-    extract_stream_text,
-    serialize_tool_input,
-    serialize_tool_output,
-)
 from app.services.chat.tools import WEB_SEARCH_TOOL_NAME, build_web_search_tool
 
 STREAMED_TOOL_NAMES = {RETRIEVE_TOOL_NAME, WEB_SEARCH_TOOL_NAME}
@@ -31,16 +26,20 @@ def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
     return history
 
 
-def create_notebook_agent(
-    *,
-    selected_chapters: list[dict[str, Any]],
-    top_k: int,
-) -> CompiledStateGraph:
-    """Build a notebook-scoped ReAct agent with the retrieve_context tool."""
-    retrieve_tool = build_retrieve_tool(
-        selected_chapters=selected_chapters,
-        top_k=top_k,
+def extract_text(msg: AIMessage) -> str:
+    """Visible answer text only — skips thinking/reasoning content blocks."""
+    if isinstance(msg.content, str):
+        return msg.content
+    return "".join(
+        block.get("text", "")
+        for block in msg.content
+        if isinstance(block, dict) and block.get("type") == "text"
     )
+
+
+def create_notebook_agent(*, selected_chapters: list[dict[str, Any]], top_k: int) -> CompiledStateGraph:
+    """Build a notebook-scoped ReAct agent with the retrieve_context tool."""
+    retrieve_tool = build_retrieve_tool(selected_chapters=selected_chapters, top_k=top_k)
     return create_agent(
         model=get_chat_model(),
         tools=[retrieve_tool, build_web_search_tool()],
@@ -54,106 +53,42 @@ async def stream_notebook_chat(
     history: list[ChatMessage],
     selected_chapters: list[dict[str, Any]],
     top_k: int,
-) -> AsyncIterator[dict[str, Any]]:
-    """Stream normalized chat events from the notebook agent."""
-    tool_calls: list[dict[str, Any]] = []
+) -> AsyncIterator[dict[str, str]]:
+    """Yield SSE-ready {event, data} dicts: token / tool_start / tool_end / done / error."""
     answer_parts: list[str] = []
-    model_turn_calls_tool = False
-
-    yield {"type": "thinking"}
 
     try:
-        agent = create_notebook_agent(
-            selected_chapters=selected_chapters,
-            top_k=top_k,
-        )
-        messages = to_langchain_history(history) + [
-            HumanMessage(content=question)
-        ]
+        agent = create_notebook_agent(selected_chapters=selected_chapters, top_k=top_k)
+        messages = to_langchain_history(history) + [HumanMessage(content=question)]
 
-        async for event in agent.astream_events(
-            {"messages": messages},
-            version="v2",
+        async for stream_item in agent.astream(
+            {"messages": messages}, stream_mode=["messages", "updates"]
         ):
-            kind = event["event"]
+            if not isinstance(stream_item, tuple) or len(stream_item) != 2:
+                continue
+            mode, chunk = stream_item
 
-            if kind == "on_chat_model_start":
-                model_turn_calls_tool = False
-
-            elif kind == "on_tool_start":
-                tool_name = event.get("name", "")
-                if tool_name not in STREAMED_TOOL_NAMES:
+            if mode == "messages" and isinstance(chunk, tuple) and len(chunk) == 2:
+                msg, _ = chunk
+                if not isinstance(msg, AIMessage) or msg.tool_calls:
                     continue
-                raw_input: Any = event.get("data", {}).get("input", {})
-                if (
-                    tool_name == WEB_SEARCH_TOOL_NAME
-                    and (
-                        not isinstance(raw_input, dict)
-                        or not raw_input.get("query")
-                    )
-                ):
-                    continue
-                tool_input = serialize_tool_input(raw_input)
-                tool_calls.append(
-                    {
-                        "tool": tool_name,
-                        "input": tool_input,
-                        "output": None,
-                        "status": "done",
-                    }
-                )
-                yield {
-                    "type": "tool_start",
-                    "tool": tool_name,
-                    "input": tool_input,
-                }
-
-            elif kind == "on_tool_end":
-                tool_name = event.get("name", "")
-                if tool_name not in STREAMED_TOOL_NAMES:
-                    continue
-                raw_output = event.get("data", {}).get("output", "")
-                if (
-                    tool_name == WEB_SEARCH_TOOL_NAME
-                    and not hasattr(raw_output, "content")
-                ):
-                    continue
-                tool_output = serialize_tool_output(raw_output)
-                for tool_call in reversed(tool_calls):
-                    if tool_call["tool"] == tool_name and tool_call["output"] is None:
-                        tool_call["output"] = tool_output
-                        break
-                yield {
-                    "type": "tool_end",
-                    "tool": tool_name,
-                    "output": tool_output,
-                }
-                if tool_name == WEB_SEARCH_TOOL_NAME and not answer_parts:
-                    answer_parts.append(tool_output)
-                    yield {"type": "token", "content": tool_output}
-
-            elif kind == "on_chat_model_stream":
-                chunk = event.get("data", {}).get("chunk")
-                if not chunk:
-                    continue
-                if chunk_has_tool_calls(chunk):
-                    model_turn_calls_tool = True
-                    continue
-                if model_turn_calls_tool:
-                    continue
-                for text in extract_stream_text(chunk):
-                    if tool_calls and not answer_parts and text.strip().lower() in {
-                        "final",
-                        "assistant",
-                    }:
-                        continue
+                text = extract_text(msg)
+                if text:
                     answer_parts.append(text)
-                    yield {"type": "token", "content": text}
+                    yield {"event": "token", "data": text}
 
-        yield {
-            "type": "complete",
-            "answer": "".join(answer_parts).strip(),
-            "tool_calls": tool_calls,
-        }
+            elif mode == "updates" and isinstance(chunk, dict):
+                for node_output in chunk.values():
+                    if not isinstance(node_output, dict):
+                        continue
+                    for m in node_output.get("messages", []):
+                        if isinstance(m, AIMessage) and m.tool_calls:
+                            for tc in m.tool_calls:
+                                if tc["name"] in STREAMED_TOOL_NAMES:
+                                    yield {"event": "tool_start", "data": tc["name"]}
+                        elif isinstance(m, ToolMessage) and m.name in STREAMED_TOOL_NAMES:
+                            yield {"event": "tool_end", "data": m.name}
+
+        yield {"event": "done", "data": "".join(answer_parts).strip()}
     except Exception as exc:
-        yield {"type": "error", "message": str(exc)}
+        yield {"event": "error", "data": str(exc)}

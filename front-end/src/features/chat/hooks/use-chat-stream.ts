@@ -1,10 +1,12 @@
+// chat/hooks/use-chat-stream.ts
 import { useCallback, useRef, useState } from "react"
+import { fetchEventSource } from "@microsoft/fetch-event-source"
 
 import {
   applyStreamEvent,
   fromPersisted,
+  fromWireEvent,
   makeId,
-  parseSseChunk,
 } from "@/features/chat/lib/chat-stream-utils"
 import type { ChatMessage, PersistedMessage } from "@/features/chat/types/chat"
 import { API_URL, getToken } from "@/lib/api"
@@ -35,58 +37,61 @@ export function useChatStream(
     async (question: string) => {
       if (isStreaming || !question.trim()) return
 
-      const userMsg: ChatMessage = {
-        id: makeId(),
-        role: "user",
-        content: question.trim(),
-        toolCalls: [],
-        isStreaming: false,
-      }
-      const assistantMsg: ChatMessage = {
-        id: makeId(),
-        role: "assistant",
-        content: "",
-        toolCalls: [],
-        isStreaming: true,
-      }
-      setMessages((prev) => [...prev, userMsg, assistantMsg])
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: makeId(),
+          role: "user",
+          content: question.trim(),
+          toolCalls: [],
+          isStreaming: false,
+        },
+        {
+          id: makeId(),
+          role: "assistant",
+          content: "",
+          toolCalls: [],
+          isStreaming: true,
+        },
+      ])
       setIsStreaming(true)
 
       const controller = new AbortController()
       abortRef.current = controller
+      let finished = false
 
       try {
-        const token = getToken()
-        const response = await fetch(
+        await fetchEventSource(
           `${API_URL}/api/v1/notebooks/${notebookId}/chat/messages`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${getToken()}`,
             },
             body: JSON.stringify({ content: question.trim() }),
             signal: controller.signal,
+            openWhenHidden: true,
+            onmessage(ev) {
+              const event = fromWireEvent(ev.event, ev.data)
+              if (!event) return
+
+              applyStreamEvent(event, patchLast, setIsStreaming)
+
+              if (event.type === "done" || event.type === "error") {
+                finished = true
+                controller.abort()
+              }
+            },
+            onclose() {
+              if (finished) return
+              throw new Error("Stream closed unexpectedly")
+            },
+            onerror(err) {
+              throw err
+            },
           }
         )
-
-        if (!response.ok || !response.body) {
-          throw new Error(`HTTP ${response.status}`)
-        }
-
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ""
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer = parseSseChunk(
-            buffer + decoder.decode(value, { stream: true }),
-            (event) => applyStreamEvent(event, patchLast, setIsStreaming)
-          )
-        }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           patchLast((m) => ({
@@ -94,8 +99,9 @@ export function useChatStream(
             content: m.content || "Connection error — please try again.",
             isStreaming: false,
           }))
-          setIsStreaming(false)
         }
+      } finally {
+        setIsStreaming(false)
       }
     },
     [isStreaming, notebookId, patchLast]

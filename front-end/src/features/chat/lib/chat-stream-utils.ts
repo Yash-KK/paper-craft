@@ -1,4 +1,8 @@
-import type { ChatMessage, PersistedMessage, SSEEvent } from "@/features/chat/types/chat"
+import type {
+  ChatMessage,
+  PersistedMessage,
+  SSEEvent,
+} from "@/features/chat/types/chat"
 
 export function makeId(): string {
   return Math.random().toString(36).slice(2)
@@ -18,6 +22,27 @@ export function fromPersisted(message: PersistedMessage): ChatMessage | null {
       status: "done" as const,
     })),
     isStreaming: false,
+  }
+}
+
+/** Map backend EventSourceResponse frames (`event` + plain `data`) to UI events. */
+export function fromWireEvent(event: string, data: string): SSEEvent | null {
+  switch (event) {
+    case "token":
+      return data ? { type: "token", content: data } : null
+    case "tool_start":
+      return data ? { type: "tool_start", tool: data, input: "" } : null
+    case "tool_end":
+      return data ? { type: "tool_end", tool: data, output: "" } : null
+    case "done":
+      return { type: "done" }
+    case "error":
+      return {
+        type: "error",
+        message: data || "The chat service could not generate a response",
+      }
+    default:
+      return null
   }
 }
 
@@ -56,7 +81,8 @@ export function applyStreamEvent(
       patchLast((message) => ({
         ...message,
         toolCalls: message.toolCalls.map((toolCall) =>
-          toolCall.status === "running"
+          toolCall.status === "running" &&
+          (!event.tool || toolCall.tool === event.tool)
             ? { ...toolCall, output: event.output, status: "done" as const }
             : toolCall
         ),
@@ -77,25 +103,4 @@ export function applyStreamEvent(
       setIsStreaming(false)
       break
   }
-}
-
-export function parseSseChunk(
-  chunk: string,
-  onEvent: (event: SSEEvent) => void
-): string {
-  const lines = chunk.split("\n")
-  const remainder = lines.pop() ?? ""
-
-  for (const line of lines) {
-    if (!line.startsWith("data: ")) continue
-    const raw = line.slice(6).trim()
-    if (!raw) continue
-    try {
-      onEvent(JSON.parse(raw) as SSEEvent)
-    } catch {
-      // skip malformed JSON
-    }
-  }
-
-  return remainder
 }
