@@ -1,3 +1,4 @@
+# chat/service.py
 import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
@@ -10,7 +11,7 @@ from app.db.models.user import User
 from app.repositories.chat import ChatRepository
 from app.schemas.chat import ChatMessageResponse, ChatSessionDetail
 from app.services.chat.agent import stream_notebook_chat
-from app.services.chat.streaming import encode_sse
+from app.services.chat.streaming import sse_event
 
 
 class ChatService:
@@ -19,17 +20,10 @@ class ChatService:
     def __init__(self, repository: ChatRepository) -> None:
         self._repo = repository
 
-    async def get_chat(
-        self,
-        notebook_id: UUID,
-        user: User,
-    ) -> ChatSessionDetail:
+    async def get_chat(self, notebook_id: UUID, user: User) -> ChatSessionDetail:
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
         if notebook is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Notebook not found",
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found")
 
         session = await self._repo.get_or_create_session(notebook)
         messages = await self._repo.list_messages(session.id)
@@ -40,9 +34,7 @@ class ChatService:
             title=session.title,
             created_at=session.created_at,
             updated_at=session.updated_at,
-            messages=[
-                ChatMessageResponse.model_validate(message) for message in messages
-            ],
+            messages=[ChatMessageResponse.model_validate(message) for message in messages],
         )
 
     async def start_turn(
@@ -52,7 +44,7 @@ class ChatService:
         user: User,
         content: str,
         top_k: int,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[dict[str, Any]]:
         """Validate ownership, persist the user message, then return the SSE generator.
 
         Ownership and persistence run before the generator is returned so HTTP
@@ -60,10 +52,7 @@ class ChatService:
         """
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
         if notebook is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Notebook not found",
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found")
 
         session = await self._repo.get_or_create_session(notebook)
         history = await self._repo.list_messages(session.id)
@@ -73,9 +62,7 @@ class ChatService:
             role=ChatMessageRole.USER,
             content=content,
         )
-        user_payload = ChatMessageResponse.model_validate(user_message).model_dump(
-            mode="json"
-        )
+        user_payload = ChatMessageResponse.model_validate(user_message).model_dump(mode="json")
 
         return self._generate_turn(
             question=content,
@@ -95,7 +82,7 @@ class ChatService:
         top_k: int,
         session_id: UUID,
         user_payload: dict[str, Any],
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[dict[str, Any]]:
         try:
             async for event in stream_notebook_chat(
                 question=question,
@@ -106,16 +93,14 @@ class ChatService:
                 event_type = event.get("type")
 
                 if event_type == "complete":
-                    async for line in self._persist_assistant_and_done(
-                        session_id=session_id,
-                        user_payload=user_payload,
-                        event=event,
+                    async for item in self._persist_assistant_and_done(
+                        session_id=session_id, user_payload=user_payload, event=event
                     ):
-                        yield line
+                        yield item
                     return
 
                 if event_type == "error":
-                    yield encode_sse(
+                    yield sse_event(
                         {
                             "type": "error",
                             "message": event.get("message")
@@ -124,11 +109,11 @@ class ChatService:
                     )
                     return
 
-                yield encode_sse(event)
+                yield sse_event(event)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            yield encode_sse({"type": "error", "message": str(exc)})
+            yield sse_event({"type": "error", "message": str(exc)})
 
     async def _persist_assistant_and_done(
         self,
@@ -136,14 +121,11 @@ class ChatService:
         session_id: UUID,
         user_payload: dict[str, Any],
         event: dict[str, Any],
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[dict[str, Any]]:
         answer = event.get("answer") or ""
         if not answer:
-            yield encode_sse(
-                {
-                    "type": "error",
-                    "message": "The chat service could not generate a response",
-                }
+            yield sse_event(
+                {"type": "error", "message": "The chat service could not generate a response"}
             )
             return
 
@@ -155,7 +137,7 @@ class ChatService:
             touch_session=True,
         )
 
-        yield encode_sse(
+        yield sse_event(
             {
                 "type": "done",
                 "session_id": str(session_id),

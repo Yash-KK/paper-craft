@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from sse_starlette import EventSourceResponse
 
 from app.api.deps import ChatServiceDep, CurrentUser
 from app.schemas.chat import ChatSessionDetail, ChatTurnRequest
-from app.services.chat.streaming import SSE_HEADERS
 
 router = APIRouter(prefix="/notebooks/{notebook_id}/chat", tags=["chat"])
 
@@ -25,15 +24,11 @@ async def create_chat_turn(
     body: ChatTurnRequest,
     current_user: CurrentUser,
     chat_service: ChatServiceDep,
-) -> StreamingResponse:
+) -> EventSourceResponse:
     stream = await chat_service.start_turn(
         notebook_id=notebook_id,
         user=current_user,
         content=body.content,
         top_k=body.top_k,
     )
-    return StreamingResponse(
-        stream,
-        media_type="text/event-stream",
-        headers=SSE_HEADERS,
-    )
+    return EventSourceResponse(stream)

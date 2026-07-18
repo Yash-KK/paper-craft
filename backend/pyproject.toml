@@ -23,6 +23,7 @@ dependencies = [
     "python-jose[cryptography]>=3.5.0",
     "qdrant-client>=1.13.0",
     "sqlalchemy>=2.0.51",
+    "sse-starlette>=3.4.5",
 ]
 
 [dependency-groups]
