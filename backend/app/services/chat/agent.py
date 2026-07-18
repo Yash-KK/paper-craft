@@ -61,20 +61,26 @@ async def stream_notebook_chat(
         agent = create_notebook_agent(selected_chapters=selected_chapters, top_k=top_k)
         messages = to_langchain_history(history) + [HumanMessage(content=question)]
 
-        async for mode, chunk in agent.astream(
+        async for stream_item in agent.astream(
             {"messages": messages}, stream_mode=["messages", "updates"]
         ):
-            if mode == "messages":
+            if not isinstance(stream_item, tuple) or len(stream_item) != 2:
+                continue
+            mode, chunk = stream_item
+
+            if mode == "messages" and isinstance(chunk, tuple) and len(chunk) == 2:
                 msg, _ = chunk
                 if not isinstance(msg, AIMessage) or msg.tool_calls:
-                    continue  # tool-deciding turn, no visible text yet
+                    continue
                 text = extract_text(msg)
                 if text:
                     answer_parts.append(text)
                     yield {"event": "token", "data": text}
 
-            elif mode == "updates":
+            elif mode == "updates" and isinstance(chunk, dict):
                 for node_output in chunk.values():
+                    if not isinstance(node_output, dict):
+                        continue
                     for m in node_output.get("messages", []):
                         if isinstance(m, AIMessage) and m.tool_calls:
                             for tc in m.tool_calls:
