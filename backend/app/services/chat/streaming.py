@@ -10,6 +10,20 @@ def sse_event(payload: dict[str, Any]) -> dict[str, str]:
     return {"data": json.dumps(payload, default=str)}
 
 
+def extract_text(msg: Any) -> str:
+    """Pull only visible answer text from a message, dropping thinking/reasoning blocks."""
+    content = msg.content
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+    return ""
+
+
 def serialize_tool_input(raw: Any) -> str:
     """Turn tool input into a readable string for the UI."""
     if isinstance(raw, dict):
