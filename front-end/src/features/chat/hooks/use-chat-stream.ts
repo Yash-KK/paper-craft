@@ -5,6 +5,7 @@ import { fetchEventSource } from "@microsoft/fetch-event-source"
 import {
   applyStreamEvent,
   fromPersisted,
+  fromWireEvent,
   makeId,
 } from "@/features/chat/lib/chat-stream-utils"
 import type { ChatMessage, PersistedMessage } from "@/features/chat/types/chat"
@@ -57,6 +58,7 @@ export function useChatStream(
 
       const controller = new AbortController()
       abortRef.current = controller
+      let finished = false
 
       try {
         await fetchEventSource(
@@ -71,7 +73,19 @@ export function useChatStream(
             signal: controller.signal,
             openWhenHidden: true,
             onmessage(ev) {
-              applyStreamEvent(JSON.parse(ev.data), patchLast, setIsStreaming)
+              const event = fromWireEvent(ev.event, ev.data)
+              if (!event) return
+
+              applyStreamEvent(event, patchLast, setIsStreaming)
+
+              if (event.type === "done" || event.type === "error") {
+                finished = true
+                controller.abort()
+              }
+            },
+            onclose() {
+              if (finished) return
+              throw new Error("Stream closed unexpectedly")
             },
             onerror(err) {
               throw err

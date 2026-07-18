@@ -41,10 +41,10 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
 
           {message.content !== "" && (
             <div className="rounded-2xl rounded-tl-sm border bg-card px-4 py-3">
-              <ChatMarkdown text={message.content} />
-              {message.isStreaming && (
-                <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-violet-500 align-text-bottom" />
-              )}
+              <ChatMarkdown
+                text={message.content}
+                isStreaming={message.isStreaming}
+              />
             </div>
           )}
         </div>

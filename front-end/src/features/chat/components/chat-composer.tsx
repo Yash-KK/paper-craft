@@ -79,8 +79,8 @@ export function ChatComposer({
       ) : (
         <p className="mt-1.5 text-center text-xs text-muted-foreground">
           <kbd className="rounded bg-muted px-1 font-mono">Enter</kbd> send ·{" "}
-          <kbd className="rounded bg-muted px-1 font-mono">Shift+Enter</kbd>{" "}
-          new line
+          <kbd className="rounded bg-muted px-1 font-mono">Shift+Enter</kbd> new
+          line
         </p>
       )}
     </div>
