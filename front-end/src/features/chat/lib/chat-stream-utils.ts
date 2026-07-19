@@ -65,6 +65,7 @@ export function applyStreamEvent(
     case "tool_start":
       patchLast((message) => ({
         ...message,
+        content: "",
         toolCalls: [
           ...message.toolCalls,
           {
