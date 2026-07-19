@@ -5,7 +5,9 @@ import { ToolCallCard } from "@/features/chat/components/tool-card"
 import type { ChatMessage } from "@/features/chat/types/chat"
 
 export function ChatMessageBubble({ message }: { message: ChatMessage }) {
-  const hasRunningTools = message.toolCalls.some((tc) => tc.status === "running")
+  const hasRunningTools = message.toolCalls.some(
+    (tc) => tc.status === "running"
+  )
   const showThinking =
     message.role === "assistant" &&
     message.isStreaming &&
@@ -38,10 +40,10 @@ export function ChatMessageBubble({ message }: { message: ChatMessage }) {
 
         {message.content !== "" && (
           <div className="rounded-2xl rounded-tl-sm border bg-card px-4 py-3">
-            <ChatMarkdown text={message.content} />
-            {message.isStreaming && (
-              <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-violet-500 align-text-bottom" />
-            )}
+            <ChatMarkdown
+              text={message.content}
+              isStreaming={message.isStreaming}
+            />
           </div>
         )}
       </div>
