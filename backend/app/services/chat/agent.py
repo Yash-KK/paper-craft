@@ -1,13 +1,14 @@
+# chat/agent.py
 from collections.abc import AsyncIterator
+from functools import lru_cache
 from typing import Any, cast
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
-from langgraph.graph.state import CompiledStateGraph
 
 from app.db.models.chat import ChatMessage, ChatMessageRole
 from app.services.chat.llm import get_chat_model
-from app.services.chat.tools import make_retrieve, web_search
+from app.services.chat.tools import AGENT_TOOLS, NotebookContext
 
 
 def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
@@ -20,10 +21,12 @@ def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
     ]
 
 
-def get_chat_agent(*, selected_chapters: list[dict[str, Any]], top_k: int) -> CompiledStateGraph:
+@lru_cache
+def get_chat_agent() -> Any:
     return create_agent(
         model=get_chat_model(),
-        tools=[make_retrieve(selected_chapters, top_k), web_search],
+        tools=AGENT_TOOLS,
+        context_schema=NotebookContext,
     )
 
 
@@ -38,11 +41,14 @@ async def stream_notebook_chat(
     answer_parts: list[str] = []
 
     try:
-        agent = get_chat_agent(selected_chapters=selected_chapters, top_k=top_k)
+        agent = get_chat_agent()
         messages = to_langchain_history(history) + [HumanMessage(content=question)]
+        context = NotebookContext(selected_chapters=selected_chapters, top_k=top_k)
 
         async for mode, chunk in agent.astream(
-            {"messages": messages}, stream_mode=["messages", "updates"]
+            {"messages": messages},
+            stream_mode=["messages", "updates"],
+            context=context,
         ):
             if mode == "messages":
                 msg, _ = cast(tuple[Any, Any], chunk)

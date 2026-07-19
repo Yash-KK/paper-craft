@@ -1,7 +1,9 @@
+# chat/tools.py
 import json
+from dataclasses import dataclass
 from typing import Any
 
-from langchain.tools import BaseTool, tool
+from langchain.tools import ToolRuntime, tool
 from langchain_tavily import TavilySearch
 from qdrant_client import models
 
@@ -20,50 +22,56 @@ _METADATA_KEYS = (
 )
 
 
-def make_retrieve(selected_chapters: list[dict[str, Any]], top_k: int) -> BaseTool:
-    """Notebook-scoped retriever — chapters/top_k come from the current request."""
+@dataclass
+class NotebookContext:
+    """Per-turn notebook scope passed into agent.astream(context=...)."""
 
-    @tool("retrieve_context")
-    async def retrieve_context(query: str) -> str:
-        """Retrieve relevant passages from this notebook's selected chapters."""
-        chapter_filters = [
-            models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="metadata.book_code",
-                        match=models.MatchValue(value=chapter["book_code"]),
-                    ),
-                    models.FieldCondition(
-                        key="metadata.chapter_number",
-                        match=models.MatchValue(value=chapter["chapter_number"]),
-                    ),
-                ]
-            )
-            for chapter in selected_chapters
-            if chapter.get("book_code") and chapter.get("chapter_number") is not None
-        ]
-        search_kwargs: dict[str, Any] = {"k": top_k}
-        if chapter_filters:
-            search_kwargs["filter"] = models.Filter(should=chapter_filters)
+    selected_chapters: list[dict[str, Any]]
+    top_k: int
 
-        docs = await get_vector_store().as_retriever(
-            search_type="similarity",
-            search_kwargs=search_kwargs,
-        ).ainvoke(query)
 
-        if not docs:
-            return "No relevant passages found."
+@tool("retrieve_context")
+async def retrieve_context(query: str, runtime: ToolRuntime[NotebookContext]) -> str:
+    """Retrieve relevant passages from this notebook's selected chapters."""
+    selected_chapters = runtime.context.selected_chapters
+    top_k = runtime.context.top_k
 
-        blocks = []
-        for doc in docs:
-            meta = {k: doc.metadata[k] for k in _METADATA_KEYS if k in doc.metadata}
-            blocks.append(
-                f"metadata: {json.dumps(meta, ensure_ascii=False)}\n"
-                f"page_content:\n{doc.page_content}"
-            )
-        return "\n\n------\n\n".join(blocks)
+    chapter_filters = [
+        models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="metadata.book_code",
+                    match=models.MatchValue(value=chapter["book_code"]),
+                ),
+                models.FieldCondition(
+                    key="metadata.chapter_number",
+                    match=models.MatchValue(value=chapter["chapter_number"]),
+                ),
+            ]
+        )
+        for chapter in selected_chapters
+        if chapter.get("book_code") and chapter.get("chapter_number") is not None
+    ]
+    search_kwargs: dict[str, Any] = {"k": top_k}
+    if chapter_filters:
+        search_kwargs["filter"] = models.Filter(should=chapter_filters)
 
-    return retrieve_context
+    docs = await get_vector_store().as_retriever(
+        search_type="similarity",
+        search_kwargs=search_kwargs,
+    ).ainvoke(query)
+
+    if not docs:
+        return "No relevant passages found."
+
+    blocks = []
+    for doc in docs:
+        meta = {k: doc.metadata[k] for k in _METADATA_KEYS if k in doc.metadata}
+        blocks.append(
+            f"metadata: {json.dumps(meta, ensure_ascii=False)}\n"
+            f"page_content:\n{doc.page_content}"
+        )
+    return "\n\n------\n\n".join(blocks)
 
 
 @tool(
@@ -87,3 +95,6 @@ def web_search(query: str) -> Any:
         include_answer=True,
         tavily_api_key=settings.tavily_api_key.get_secret_value(),
     ).invoke(query)
+
+
+AGENT_TOOLS = [retrieve_context, web_search]
