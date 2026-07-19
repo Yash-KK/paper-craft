@@ -1,4 +1,3 @@
-# chat/agent.py
 from collections.abc import AsyncIterator
 from typing import Any, cast
 
@@ -7,9 +6,8 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from langgraph.graph.state import CompiledStateGraph
 
 from app.db.models.chat import ChatMessage, ChatMessageRole
-from app.prompts.rag import RAG_CHAT_INSTRUCTIONS
 from app.services.chat.llm import get_chat_model
-from app.services.chat.tools import build_agent_tools
+from app.services.chat.tools import AGENT_TOOLS, notebook_scope
 
 
 def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
@@ -22,12 +20,10 @@ def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
     ]
 
 
-def get_chat_agent(*, selected_chapters: list[dict[str, Any]], top_k: int) -> CompiledStateGraph:
-    """Build a notebook-scoped ReAct agent with retrieve + web search tools."""
+def get_chat_agent() -> CompiledStateGraph:
     return create_agent(
         model=get_chat_model(),
-        tools=build_agent_tools(selected_chapters=selected_chapters, top_k=top_k),
-        system_prompt=RAG_CHAT_INSTRUCTIONS,
+        tools=AGENT_TOOLS,
     )
 
 
@@ -40,9 +36,10 @@ async def stream_notebook_chat(
 ) -> AsyncIterator[dict[str, str]]:
     """Yield SSE events: token / tool_start / tool_end / done / error."""
     answer_parts: list[str] = []
+    scope = notebook_scope.set((selected_chapters, top_k))
 
     try:
-        agent = get_chat_agent(selected_chapters=selected_chapters, top_k=top_k)
+        agent = get_chat_agent()
         messages = to_langchain_history(history) + [HumanMessage(content=question)]
 
         async for mode, chunk in agent.astream(
@@ -68,3 +65,5 @@ async def stream_notebook_chat(
         yield {"event": "done", "data": "".join(answer_parts).strip()}
     except Exception as exc:
         yield {"event": "error", "data": str(exc)}
+    finally:
+        notebook_scope.reset(scope)
