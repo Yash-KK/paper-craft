@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 from app.db.models.chat import ChatMessage, ChatMessageRole
 from app.services.chat.llm import get_chat_model
 from app.services.chat.tools import AGENT_TOOLS, NotebookContext
-
+from app.services.chat.prompts import SYSTEM_PROMPT
 
 def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
     return [
@@ -25,6 +25,7 @@ def get_chat_agent() -> Any:
     return create_agent(
         model=get_chat_model(),
         tools=AGENT_TOOLS,
+        system_prompt=SYSTEM_PROMPT,
         context_schema=NotebookContext,
     )
 
@@ -57,7 +58,6 @@ async def stream_notebook_chat(
                 for node_output in cast(dict[str, Any], chunk).values():
                     for m in node_output.get("messages", []):
                         if isinstance(m, AIMessage) and m.tool_calls:
-                            # Discard any text streamed before tool calls on this turn.
                             stream_answer = False
                             answer_parts.clear()
                             for tc in m.tool_calls:
