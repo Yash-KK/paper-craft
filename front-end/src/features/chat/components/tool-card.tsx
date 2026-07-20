@@ -1,6 +1,8 @@
 import { BookOpen, Globe, Loader2 } from "lucide-react"
 
+import { Badge } from "@/components/ui/badge"
 import type { ToolCall } from "@/features/chat/types/chat"
+import { cn } from "@/lib/utils"
 
 const TOOL_LABELS: Record<string, string> = {
   retrieve_context: "Using TextBooks",
@@ -13,19 +15,21 @@ export function ToolCallCard({ tc }: { tc: ToolCall }) {
   const ToolIcon = tc.tool === "web_search" ? Globe : BookOpen
 
   return (
-    <div
-      className={`my-1.5 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${
+    <Badge
+      variant="outline"
+      className={cn(
+        "my-1.5 h-auto gap-2 rounded-xl px-3 py-2 font-semibold",
         running
           ? "border-violet-200 bg-violet-50/60 text-violet-700"
-          : "border-border bg-muted/40 text-muted-foreground"
-      }`}
+          : "bg-muted/40 text-muted-foreground"
+      )}
     >
       {running ? (
-        <Loader2 size={12} className="shrink-0 animate-spin" />
+        <Loader2 className="size-3 animate-spin" />
       ) : (
-        <ToolIcon size={12} className="shrink-0 text-emerald-500" />
+        <ToolIcon className="size-3 text-emerald-500" />
       )}
-      <span className="font-semibold">{running ? label : `✓ ${label}`}</span>
-    </div>
+      {running ? label : `✓ ${label}`}
+    </Badge>
   )
 }

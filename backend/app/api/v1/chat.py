@@ -21,6 +21,10 @@ async def create_chat_turn(
     notebook_id: UUID, body: ChatTurnRequest, current_user: CurrentUser, chat_service: ChatServiceDep
 ) -> EventSourceResponse:
     stream = await chat_service.start_turn(
-        notebook_id=notebook_id, user=current_user, content=body.content, top_k=body.top_k
+        notebook_id=notebook_id,
+        user=current_user,
+        content=body.content,
+        top_k=body.top_k,
+        enabled_tools=body.enabled_tools,
     )
     return EventSourceResponse(stream)

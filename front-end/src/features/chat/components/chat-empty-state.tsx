@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button"
+
 const SUGGESTIONS = [
   "Explain the key concepts in this notebook",
   "Walk me through a worked example",
@@ -20,14 +22,16 @@ export function ChatEmptyState({ notebookName, onSend }: ChatEmptyStateProps) {
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {SUGGESTIONS.map((suggestion) => (
-          <button
+          <Button
             key={suggestion}
             type="button"
+            variant="outline"
+            size="xs"
             onClick={() => onSend(suggestion)}
-            className="rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="rounded-full text-muted-foreground"
           >
             {suggestion}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

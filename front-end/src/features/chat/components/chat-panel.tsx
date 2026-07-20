@@ -18,10 +18,14 @@ export function ChatPanel({
   notebookName,
   initialMessages,
 }: ChatPanelProps) {
-  const { messages, isStreaming, sendMessage, stopStream } = useChatStream(
-    notebookId,
-    initialMessages
-  )
+  const {
+    messages,
+    isStreaming,
+    webSearch,
+    setWebSearch,
+    sendMessage,
+    stopStream,
+  } = useChatStream(notebookId, initialMessages)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -49,6 +53,8 @@ export function ChatPanel({
 
       <ChatComposer
         isStreaming={isStreaming}
+        webSearch={webSearch}
+        onWebSearchChange={setWebSearch}
         onSend={(question) => void sendMessage(question)}
         onStop={stopStream}
       />
