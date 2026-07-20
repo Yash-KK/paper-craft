@@ -1,4 +1,3 @@
-import { useMemo } from "react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkMath from "remark-math"
 import { MathJax } from "better-react-mathjax"
@@ -8,92 +7,22 @@ import { prepareMarkdownContent } from "@/features/chat/lib/latex-markdown"
 import { cn } from "@/lib/utils"
 
 function classList(className: unknown): string[] {
-  if (Array.isArray(className)) {
-    return className.map(String)
-  }
-  if (typeof className === "string") {
-    return className.split(/\s+/).filter(Boolean)
-  }
+  if (Array.isArray(className)) return className.map(String)
+  if (typeof className === "string") return className.split(/\s+/).filter(Boolean)
   return []
-}
-
-function hastText(node: Element | undefined): string {
-  if (!node) return ""
-  return node.children
-    .map((child) => (child.type === "text" ? child.value : ""))
-    .join("")
 }
 
 function isMathDisplayPre(node: Element | undefined): boolean {
   const first = node?.children?.[0]
-  if (!first || first.type !== "element" || first.tagName !== "code") {
-    return false
-  }
+  if (!first || first.type !== "element" || first.tagName !== "code") return false
   return classList(first.properties?.className).includes("math-display")
 }
 
-const markdownComponents: Components = {
-  h1: ({ className, ...props }) => (
-    <h1
-      className={cn("mt-3 mb-2 text-base font-semibold first:mt-0", className)}
-      {...props}
-    />
-  ),
-  h2: ({ className, ...props }) => (
-    <h2
-      className={cn("mt-3 mb-1.5 text-sm font-semibold first:mt-0", className)}
-      {...props}
-    />
-  ),
-  h3: ({ className, ...props }) => (
-    <h3
-      className={cn("mt-2.5 mb-1 text-sm font-semibold first:mt-0", className)}
-      {...props}
-    />
-  ),
-  p: ({ className, ...props }) => (
-    <p
-      className={cn("my-2 leading-relaxed first:mt-0 last:mb-0", className)}
-      {...props}
-    />
-  ),
-  ul: ({ className, ...props }) => (
-    <ul className={cn("my-2 list-disc space-y-1 pl-5", className)} {...props} />
-  ),
-  ol: ({ className, ...props }) => (
-    <ol
-      className={cn("my-2 list-decimal space-y-1 pl-5", className)}
-      {...props}
-    />
-  ),
-  li: ({ className, ...props }) => (
-    <li className={cn("leading-relaxed", className)} {...props} />
-  ),
-  strong: ({ className, ...props }) => (
-    <strong className={cn("font-semibold", className)} {...props} />
-  ),
-  em: ({ className, ...props }) => (
-    <em className={cn("italic", className)} {...props} />
-  ),
-  a: ({ className, ...props }) => (
-    <a
-      className={cn(
-        "font-medium text-violet-600 underline underline-offset-2 hover:text-violet-700",
-        className
-      )}
-      target="_blank"
-      rel="noreferrer"
-      {...props}
-    />
-  ),
-  code: ({ className, children, ...props }) => {
+const components: Components = {
+  code({ className, children, ...props }) {
     const classes = classList(className)
     if (classes.includes("math-inline")) {
-      return (
-        <MathJax inline dynamic>
-          {`\\(${String(children)}\\)`}
-        </MathJax>
-      )
+      return <MathJax inline dynamic>{`\\(${String(children)}\\)`}</MathJax>
     }
     if (classes.includes("math-display")) {
       return (
@@ -102,9 +31,7 @@ const markdownComponents: Components = {
         </MathJax>
       )
     }
-
-    const isBlock = classes.some((c) => c.startsWith("language-"))
-    if (isBlock) {
+    if (classes.some((c) => c.startsWith("language-"))) {
       return (
         <code className={cn("font-mono text-[0.8em]", className)} {...props}>
           {children}
@@ -123,16 +50,8 @@ const markdownComponents: Components = {
       </code>
     )
   },
-  pre: ({ className, children, node, ...props }) => {
-    if (isMathDisplayPre(node)) {
-      const codeNode = node?.children?.[0] as Element | undefined
-      const tex = hastText(codeNode)
-      return (
-        <MathJax dynamic className="my-2 overflow-x-auto">
-          {`\\[${tex}\\]`}
-        </MathJax>
-      )
-    }
+  pre({ className, children, node, ...props }) {
+    if (isMathDisplayPre(node)) return <>{children}</>
     return (
       <pre
         className={cn(
@@ -145,30 +64,38 @@ const markdownComponents: Components = {
       </pre>
     )
   },
-  blockquote: ({ className, ...props }) => (
-    <blockquote
-      className={cn(
-        "my-2 border-l-2 border-violet-300 pl-3 text-muted-foreground",
-        className
-      )}
-      {...props}
-    />
-  ),
-  hr: ({ className, ...props }) => (
-    <hr className={cn("my-3 border-border", className)} {...props} />
-  ),
+  a({ className, ...props }) {
+    return (
+      <a
+        className={cn(
+          "font-medium text-violet-600 underline underline-offset-2 hover:text-violet-700",
+          className
+        )}
+        target="_blank"
+        rel="noreferrer"
+        {...props}
+      />
+    )
+  },
 }
 
-export function ChatMarkdown({ text }: { text: string; isStreaming?: boolean }) {
-  const markdown = useMemo(() => prepareMarkdownContent(text), [text])
+const wrapperClass = cn(
+  "typeset text-sm text-foreground",
+  "[&_h1]:mt-3 [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h1:first-child]:mt-0",
+  "[&_h2]:mt-3 [&_h2]:mb-1.5 [&_h2]:text-sm [&_h2]:font-semibold [&_h2:first-child]:mt-0",
+  "[&_h3]:mt-2.5 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_h3:first-child]:mt-0",
+  "[&_p]:my-2 [&_p]:leading-relaxed [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+  "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5",
+  "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5",
+  "[&_li]:leading-relaxed",
+  "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-violet-300 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground"
+)
 
+export function ChatMarkdown({ text }: { text: string }) {
   return (
-    <div className="typeset text-sm text-foreground">
-      <ReactMarkdown
-        remarkPlugins={[remarkMath]}
-        components={markdownComponents}
-      >
-        {markdown}
+    <div className={wrapperClass}>
+      <ReactMarkdown remarkPlugins={[remarkMath]} components={components}>
+        {prepareMarkdownContent(text)}
       </ReactMarkdown>
     </div>
   )
