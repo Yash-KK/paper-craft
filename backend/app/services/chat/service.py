@@ -1,6 +1,6 @@
 # chat/service.py
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -42,7 +42,7 @@ class ChatService:
         user: User,
         content: str,
         top_k: int,
-        enabled_tools: list[str] | None = None,
+        enabled_tools: Sequence[str] | None = None,
     ) -> AsyncIterator[dict[str, str]]:
         """Validate ownership, persist the user message, then return the SSE generator."""
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
