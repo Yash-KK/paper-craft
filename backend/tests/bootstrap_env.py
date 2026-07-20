@@ -5,7 +5,7 @@ import os
 _TEST_ENV = {
     "OPENAI_API_KEY": "test-openai-key",
     "DENSE_MODEL": "text-embedding-3-small",
-    "AIC_META_8_MODEL": "openai/gpt-oss-120b",
+    "AIC_MODEL": "openai/gpt-oss-120b",
     "AIC_API_KEY": "test-aic-key",
     "AIC_BASE_URL": "https://api.aicredits.in/v1",
     "TAVILY_API_KEY": "test-tavily-key",
