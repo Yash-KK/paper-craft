@@ -19,9 +19,9 @@ class Settings(BaseSettings):
 
     openai_api_key: SecretStr = Field(alias="OPENAI_API_KEY")
     dense_model: str = Field(alias="DENSE_MODEL")
-    openai_oss_model: str = Field(alias="OPENAI_OSS_MODEL")
-    together_api_key: SecretStr = Field(alias="TOGETHER_API_KEY")
-    together_base_url: str = Field(alias="TOGETHER_BASE_URL")
+    aic_model: str = Field(alias="AIC_MODEL")
+    aic_api_key: SecretStr = Field(alias="AIC_API_KEY")
+    aic_base_url: str = Field(alias="AIC_BASE_URL")
     tavily_api_key: SecretStr | None = Field(default=None, alias="TAVILY_API_KEY")
     qdrant_url: str = Field(alias="QDRANT_URL")
     collection_name: str = Field(alias="COLLECTION_NAME")

@@ -22,6 +22,7 @@ export function useChatStream(
     })
   )
   const [isStreaming, setIsStreaming] = useState(false)
+  const [webSearch, setWebSearch] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const patchLast = useCallback((updater: (m: ChatMessage) => ChatMessage) => {
@@ -69,7 +70,10 @@ export function useChatStream(
               "Content-Type": "application/json",
               Authorization: `Bearer ${getToken()}`,
             },
-            body: JSON.stringify({ content: question.trim() }),
+            body: JSON.stringify({
+              content: question.trim(),
+              enabled_tools: webSearch ? ["web_search"] : [],
+            }),
             signal: controller.signal,
             openWhenHidden: true,
             onmessage(ev) {
@@ -104,7 +108,7 @@ export function useChatStream(
         setIsStreaming(false)
       }
     },
-    [isStreaming, notebookId, patchLast]
+    [isStreaming, notebookId, patchLast, webSearch]
   )
 
   const stopStream = useCallback(() => {
@@ -113,5 +117,12 @@ export function useChatStream(
     setIsStreaming(false)
   }, [patchLast])
 
-  return { messages, isStreaming, sendMessage, stopStream }
+  return {
+    messages,
+    isStreaming,
+    webSearch,
+    setWebSearch,
+    sendMessage,
+    stopStream,
+  }
 }

@@ -77,9 +77,9 @@ async def retrieve_context(query: str, runtime: ToolRuntime[NotebookContext]) ->
 @tool(
     "web_search",
     description=(
-        "Searches the web for current, factual, and up-to-date information. "
-        "Use it for recent events, factual lookups, statistics, news, "
-        "documentation, and information that may have changed. "
+        "Search the live web for current facts. Required for sports results, news, "
+        "current events, dates, winners, schedules, and anything that may have changed. "
+        "Do not skip this tool when the answer depends on up-to-date information. "
         "Input should be a concise, specific search query."
     ),
 )
@@ -89,12 +89,9 @@ def web_search(query: str) -> Any:
         raise RuntimeError("TAVILY_API_KEY is not configured")
 
     return TavilySearch(
-        max_results=3,
+        max_results=5,
         topic="general",
-        search_depth="basic",
+        search_depth="advanced",
         include_answer=True,
         tavily_api_key=settings.tavily_api_key.get_secret_value(),
     ).invoke(query)
-
-
-AGENT_TOOLS = [retrieve_context, web_search]

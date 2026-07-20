@@ -1,14 +1,30 @@
-import { Loader2, Send, Square } from "lucide-react"
+import { Globe, Loader2, Plus, Send, Square } from "lucide-react"
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Textarea } from "@/components/ui/textarea"
 
 type ChatComposerProps = {
   isStreaming: boolean
+  webSearch: boolean
+  onWebSearchChange: (enabled: boolean) => void
   onSend: (question: string) => void
   onStop: () => void
 }
 
 export function ChatComposer({
   isStreaming,
+  webSearch,
+  onWebSearchChange,
   onSend,
   onStop,
 }: ChatComposerProps) {
@@ -37,9 +53,9 @@ export function ChatComposer({
   }
 
   return (
-    <div className="shrink-0 border-t px-4 py-3">
-      <div className="mx-auto flex max-w-4xl items-end gap-2 rounded-xl border bg-muted/40 px-3 py-2 focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-200">
-        <textarea
+    <div className="relative z-10 shrink-0 border-t bg-background px-4 py-3">
+      <div className="mx-auto flex max-w-4xl flex-col gap-2 rounded-xl border bg-muted/40 p-3 focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-200">
+        <Textarea
           ref={textareaRef}
           rows={1}
           value={input}
@@ -47,29 +63,75 @@ export function ChatComposer({
           onKeyDown={handleKey}
           placeholder="Ask a question…"
           disabled={isStreaming}
-          className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-50"
+          className="max-h-30 min-h-6 w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:border-0 focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent dark:disabled:bg-transparent"
         />
 
-        {isStreaming ? (
-          <button
-            type="button"
-            onClick={onStop}
-            className="mb-0.5 shrink-0 rounded-lg bg-red-500 p-1.5 text-white hover:bg-red-400"
-            title="Stop"
-          >
-            <Square size={13} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={!input.trim()}
-            className="mb-0.5 shrink-0 rounded-lg bg-violet-600 p-1.5 text-white hover:bg-violet-500 disabled:opacity-30"
-            title="Send"
-          >
-            <Send size={13} />
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={isStreaming}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="text-muted-foreground"
+                  title="Tools"
+                  aria-label="Tools"
+                />
+              }
+            >
+              <Plus />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" sideOffset={8} className="min-w-44">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Tools</DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={webSearch}
+                  onCheckedChange={(value) => onWebSearchChange(value === true)}
+                >
+                  Web Search
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {webSearch && (
+            <Badge
+              variant="secondary"
+              className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
+              onClick={() => !isStreaming && onWebSearchChange(false)}
+              title="Remove Web Search"
+            >
+              <Globe />
+              Web Search
+            </Badge>
+          )}
+
+          <div className="ml-auto shrink-0">
+            {isStreaming ? (
+              <Button
+                type="button"
+                size="icon-xs"
+                className="bg-red-500 text-white hover:bg-red-400"
+                onClick={onStop}
+                title="Stop"
+              >
+                <Square />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="icon-xs"
+                className="bg-violet-600 text-white hover:bg-violet-500"
+                onClick={handleSend}
+                disabled={!input.trim()}
+                title="Send"
+              >
+                <Send />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
       {isStreaming ? (
         <p className="mt-1.5 flex items-center justify-center gap-1.5 text-center text-xs text-violet-500">

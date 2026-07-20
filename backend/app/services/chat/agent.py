@@ -7,8 +7,9 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMe
 
 from app.db.models.chat import ChatMessage, ChatMessageRole
 from app.services.chat.llm import get_chat_model
-from app.services.chat.tools import AGENT_TOOLS, NotebookContext
-from app.services.chat.prompts import SYSTEM_PROMPT
+from app.services.chat.prompts import build_system_prompt
+from app.services.chat.tools import NotebookContext, retrieve_context, web_search
+
 
 def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
     return [
@@ -21,11 +22,12 @@ def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
 
 
 @lru_cache
-def get_chat_agent() -> Any:
+def get_chat_agent(enable_web_search: bool = False) -> Any:
+    tools = [retrieve_context, web_search] if enable_web_search else [retrieve_context]
     return create_agent(
         model=get_chat_model(),
-        tools=AGENT_TOOLS,
-        system_prompt=SYSTEM_PROMPT,
+        tools=tools,
+        system_prompt=build_system_prompt(enable_web_search=enable_web_search),
         context_schema=NotebookContext,
     )
 
@@ -36,6 +38,7 @@ async def stream_notebook_chat(
     history: list[ChatMessage],
     selected_chapters: list[dict[str, Any]],
     top_k: int,
+    enable_web_search: bool = False,
 ) -> AsyncIterator[dict[str, str]]:
     """Yield SSE events: token / tool_start / tool_end / done / error.
 
@@ -45,7 +48,7 @@ async def stream_notebook_chat(
     stream_answer = True
 
     try:
-        agent = get_chat_agent()
+        agent = get_chat_agent(enable_web_search)
         messages = to_langchain_history(history[-5:]) + [HumanMessage(content=question)]
         context = NotebookContext(selected_chapters=selected_chapters, top_k=top_k)
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import { MathJaxContext } from "better-react-mathjax"
 
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChatComposer } from "@/features/chat/components/chat-composer"
@@ -6,6 +7,22 @@ import { ChatEmptyState } from "@/features/chat/components/chat-empty-state"
 import { ChatMessageBubble } from "@/features/chat/components/chat-message"
 import { useChatStream } from "@/features/chat/hooks/use-chat-stream"
 import type { PersistedMessage } from "@/features/chat/types/chat"
+
+const mathJaxConfig = {
+  loader: { load: ["input/tex", "output/chtml"] },
+  tex: {
+    inlineMath: [
+      ["$", "$"],
+      ["\\(", "\\)"],
+    ],
+    displayMath: [
+      ["$$", "$$"],
+      ["\\[", "\\]"],
+    ],
+    processEscapes: true,
+    packages: { "[+]": ["ams"] },
+  },
+}
 
 type ChatPanelProps = {
   notebookId: string
@@ -18,10 +35,14 @@ export function ChatPanel({
   notebookName,
   initialMessages,
 }: ChatPanelProps) {
-  const { messages, isStreaming, sendMessage, stopStream } = useChatStream(
-    notebookId,
-    initialMessages
-  )
+  const {
+    messages,
+    isStreaming,
+    webSearch,
+    setWebSearch,
+    sendMessage,
+    stopStream,
+  } = useChatStream(notebookId, initialMessages)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -29,29 +50,33 @@ export function ChatPanel({
   }, [messages, isStreaming])
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="min-h-full space-y-4 px-4 py-4">
-          {messages.length === 0 && (
-            <ChatEmptyState
-              notebookName={notebookName}
-              onSend={(prompt) => void sendMessage(prompt)}
-            />
-          )}
+    <MathJaxContext config={mathJaxConfig}>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="min-h-full space-y-4 px-4 py-4">
+            {messages.length === 0 && (
+              <ChatEmptyState
+                notebookName={notebookName}
+                onSend={(prompt) => void sendMessage(prompt)}
+              />
+            )}
 
-          {messages.map((message) => (
-            <ChatMessageBubble key={message.id} message={message} />
-          ))}
+            {messages.map((message) => (
+              <ChatMessageBubble key={message.id} message={message} />
+            ))}
 
-          <div ref={bottomRef} />
-        </div>
-      </ScrollArea>
+            <div ref={bottomRef} />
+          </div>
+        </ScrollArea>
 
-      <ChatComposer
-        isStreaming={isStreaming}
-        onSend={(question) => void sendMessage(question)}
-        onStop={stopStream}
-      />
-    </div>
+        <ChatComposer
+          isStreaming={isStreaming}
+          webSearch={webSearch}
+          onWebSearchChange={setWebSearch}
+          onSend={(question) => void sendMessage(question)}
+          onStop={stopStream}
+        />
+      </div>
+    </MathJaxContext>
   )
 }

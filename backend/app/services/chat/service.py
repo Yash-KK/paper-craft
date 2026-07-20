@@ -1,6 +1,6 @@
 # chat/service.py
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -36,7 +36,13 @@ class ChatService:
         )
 
     async def start_turn(
-        self, *, notebook_id: UUID, user: User, content: str, top_k: int
+        self,
+        *,
+        notebook_id: UUID,
+        user: User,
+        content: str,
+        top_k: int,
+        enabled_tools: Sequence[str] | None = None,
     ) -> AsyncIterator[dict[str, str]]:
         """Validate ownership, persist the user message, then return the SSE generator."""
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
@@ -53,15 +59,27 @@ class ChatService:
             history=history,
             selected_chapters=list(notebook.selected_chapters),
             top_k=top_k,
+            enable_web_search="web_search" in (enabled_tools or ()),
             session_id=session.id,
         )
 
     async def _generate_turn(
-        self, *, question: str, history: list[ChatMessage], selected_chapters, top_k: int, session_id: UUID
+        self,
+        *,
+        question: str,
+        history: list[ChatMessage],
+        selected_chapters,
+        top_k: int,
+        enable_web_search: bool,
+        session_id: UUID,
     ) -> AsyncIterator[dict[str, str]]:
         try:
             async for event in stream_notebook_chat(
-                question=question, history=history, selected_chapters=selected_chapters, top_k=top_k
+                question=question,
+                history=history,
+                selected_chapters=selected_chapters,
+                top_k=top_k,
+                enable_web_search=enable_web_search,
             ):
                 if event["event"] == "done":
                     answer = event["data"]
