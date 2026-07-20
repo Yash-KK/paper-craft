@@ -1,4 +1,5 @@
 import ReactMarkdown, { type Components } from "react-markdown"
+import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import { MathJax } from "better-react-mathjax"
 import type { Element } from "hast"
@@ -77,6 +78,16 @@ const components: Components = {
       />
     )
   },
+  table({ className, ...props }) {
+    return (
+      <div className="my-3 overflow-x-auto">
+        <table
+          className={cn("w-full border-collapse text-left text-xs", className)}
+          {...props}
+        />
+      </div>
+    )
+  },
 }
 
 const wrapperClass = cn(
@@ -88,13 +99,18 @@ const wrapperClass = cn(
   "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5",
   "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5",
   "[&_li]:leading-relaxed",
-  "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-violet-300 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground"
+  "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-violet-300 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground",
+  "[&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-2 [&_th]:py-1.5 [&_th]:font-semibold",
+  "[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1.5 [&_td]:align-top"
 )
 
 export function ChatMarkdown({ text }: { text: string }) {
   return (
     <div className={wrapperClass}>
-      <ReactMarkdown remarkPlugins={[remarkMath]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        components={components}
+      >
         {prepareMarkdownContent(text)}
       </ReactMarkdown>
     </div>
