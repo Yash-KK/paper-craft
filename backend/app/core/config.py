@@ -17,15 +17,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    openai_api_key: SecretStr = Field(alias="OPENAI_API_KEY")
-    dense_model: str = Field(alias="DENSE_MODEL")
+    aic_dense_embedding_model: str = Field(alias="AIC_DENSE_EMBEDDING_MODEL")
     aic_model: str = Field(alias="AIC_MODEL")
     aic_api_key: SecretStr = Field(alias="AIC_API_KEY")
     aic_base_url: str = Field(alias="AIC_BASE_URL")
     tavily_api_key: SecretStr | None = Field(default=None, alias="TAVILY_API_KEY")
     qdrant_url: str = Field(alias="QDRANT_URL")
     collection_name: str = Field(alias="COLLECTION_NAME")
-    sparse_model: str = Field(alias="SPARSE_MODEL")
+    sparse_embedding_model: str = Field(alias="SPARSE_EMBEDDING_MODEL")
     extracted_data_dir: Path = Field(alias="EXTRACTED_DATA_DIR")
     ncert_book_config: dict[str, dict[str, str | int]] = Field(alias="NCERT_BOOK_CONFIG")
 
