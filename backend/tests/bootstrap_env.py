@@ -6,7 +6,7 @@ _TEST_ENV = {
     "AIC_MODEL": "openai/gpt-oss-120b",
     "AIC_API_KEY": "test-aic-key",
     "AIC_BASE_URL": "https://api.aicredits.in/v1",
-    "AIC_DENSE_EMBEDDING_MODEL": "openai/text-embedding-3-small",
+    "AIC_DENSE_EMBEDDING_MODEL": "text-embedding-3-small",
     "TAVILY_API_KEY": "test-tavily-key",
     "QDRANT_URL": "http://localhost:6333",
     "COLLECTION_NAME": "test-collection",
