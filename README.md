@@ -15,6 +15,20 @@ Teachers can organize work into notebooks, select the relevant class, subject, a
 5. Refine future versions through chat while retaining the first version as context.
 6. Export a clean, classroom-ready document.
 
+## Product Preview
+
+### Notebook Dashboard
+
+![PaperCraft notebook dashboard](docs/images/dashboard.png)
+
+### Chapter-Aware AI Chat
+
+![PaperCraft notebook chat with mathematical content](docs/images/notebook-chat.png)
+
+### Create a Notebook
+
+![PaperCraft notebook creation workflow](docs/images/create-notebook.png)
+
 ## Current Capabilities
 
 - Google sign-in with JWT-based API authentication
