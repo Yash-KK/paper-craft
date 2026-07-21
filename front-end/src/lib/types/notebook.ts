@@ -21,6 +21,7 @@ export type ChapterCatalogItem = {
   chapter_number: number
   chapter_name: string
   book_code: string
+  is_available: boolean
 }
 
 export type NotebookCreatePayload = {

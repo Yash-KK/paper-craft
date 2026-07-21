@@ -20,6 +20,7 @@ class ChapterCatalogItem(BaseModel):
     chapter_number: int
     chapter_name: str
     book_code: str
+    is_available: bool
 
 
 class NotebookCreate(BaseModel):

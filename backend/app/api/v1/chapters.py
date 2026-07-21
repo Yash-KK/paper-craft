@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from app.api.deps import SessionDep
@@ -46,3 +46,31 @@ async def list_chapters(
         .order_by(ChapterCatalog.chapter_number)
     )
     return list(result.scalars().all())
+
+
+@router.patch("/availability", response_model=ChapterCatalogItem)
+async def set_chapter_availability(
+    grade: ClassGrade,
+    subject: Subject,
+    chapter_number: int,
+    is_available: bool,
+    db: SessionDep,
+) -> ChapterCatalog:
+    result = await db.execute(
+        select(ChapterCatalog).where(
+            ChapterCatalog.grade == grade,
+            ChapterCatalog.subject == subject,
+            ChapterCatalog.chapter_number == chapter_number,
+        )
+    )
+    chapter = result.scalar_one_or_none()
+    if chapter is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chapter not found",
+        )
+
+    chapter.is_available = is_available
+    await db.commit()
+    await db.refresh(chapter)
+    return chapter
