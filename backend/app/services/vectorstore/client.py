@@ -21,8 +21,8 @@ def get_vector_store() -> QdrantVectorStore:
         collection_name=settings.collection_name,
         embedding=OpenAIEmbeddings(
             model=settings.aic_dense_embedding_model,
-            api_key=settings.aic_api_key,
-            base_url=settings.aic_base_url,
+            openai_api_key=settings.aic_api_key,
+            openai_api_base=settings.aic_base_url,
         ),
         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         retrieval_mode=RetrievalMode.HYBRID,
