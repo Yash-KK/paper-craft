@@ -283,17 +283,21 @@ export function CreateNotebookDialog({
                             chapter.chapter_number
                           )
                           return (
-                            <button
+                            <Button
                               key={chapter.chapter_number}
                               type="button"
+                              variant="outline"
+                              disabled={!chapter.is_available}
                               onClick={() =>
                                 toggleChapter(chapter.chapter_number)
                               }
                               className={cn(
-                                "rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
-                                selected
-                                  ? "border-primary bg-primary/10 text-primary dark:bg-primary/15"
-                                  : "border-border bg-background hover:bg-muted dark:bg-card"
+                                "h-auto flex-col items-start justify-start whitespace-normal px-3 py-2.5 text-left",
+                                !chapter.is_available
+                                  ? "opacity-50"
+                                  : selected
+                                    ? "border-primary bg-primary/10 text-primary dark:bg-primary/15"
+                                    : "dark:bg-card"
                               )}
                             >
                               <span className="font-medium">
@@ -302,7 +306,7 @@ export function CreateNotebookDialog({
                               <span className="mt-0.5 block text-xs text-muted-foreground">
                                 {chapter.chapter_name}
                               </span>
-                            </button>
+                            </Button>
                           )
                         })
                       )}

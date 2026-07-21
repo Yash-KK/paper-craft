@@ -57,6 +57,7 @@ async def create_notebook(
         select(ChapterCatalog).where(
             ChapterCatalog.grade == body.class_grade,
             ChapterCatalog.subject == body.subject,
+            ChapterCatalog.is_available.is_(True),
             ChapterCatalog.chapter_number.in_(body.selected_chapter_numbers),
         )
     )

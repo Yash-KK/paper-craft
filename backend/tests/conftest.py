@@ -65,11 +65,17 @@ def client(mock_user: User, mock_db: AsyncMock) -> Generator[TestClient, None, N
     app.dependency_overrides.clear()
 
 
-def make_catalog_chapter(chapter_number: int, chapter_name: str) -> MagicMock:
+def make_catalog_chapter(
+    chapter_number: int,
+    chapter_name: str,
+    *,
+    is_available: bool = True,
+) -> MagicMock:
     chapter = MagicMock()
     chapter.book_code = "jemh1"
     chapter.chapter_number = chapter_number
     chapter.chapter_name = chapter_name
+    chapter.is_available = is_available
     return chapter
 
 
