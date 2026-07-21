@@ -28,10 +28,11 @@ def ingest_directory(root_dir: Path) -> dict:
     QdrantVectorStore.from_documents(
         documents,
         embedding=OpenAIEmbeddings(
-            model=settings.dense_model,
-            openai_api_key=settings.openai_api_key,
+            model=settings.aic_dense_embedding_model,
+            openai_api_key=settings.aic_api_key,
+            openai_api_base=settings.aic_base_url,
         ),
-        sparse_embedding=FastEmbedSparse(model_name=settings.sparse_model),
+        sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         collection_name=settings.collection_name,
         retrieval_mode=RetrievalMode.HYBRID,
         url=settings.qdrant_url,

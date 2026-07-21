@@ -3,15 +3,14 @@
 import os
 
 _TEST_ENV = {
-    "OPENAI_API_KEY": "test-openai-key",
-    "DENSE_MODEL": "text-embedding-3-small",
     "AIC_MODEL": "openai/gpt-oss-120b",
     "AIC_API_KEY": "test-aic-key",
     "AIC_BASE_URL": "https://api.aicredits.in/v1",
+    "AIC_DENSE_EMBEDDING_MODEL": "text-embedding-3-small",
     "TAVILY_API_KEY": "test-tavily-key",
     "QDRANT_URL": "http://localhost:6333",
     "COLLECTION_NAME": "test-collection",
-    "SPARSE_MODEL": "Qdrant/bm25",
+    "SPARSE_EMBEDDING_MODEL": "Qdrant/bm25",
     "EXTRACTED_DATA_DIR": "extracted_data",
     "NCERT_BOOK_CONFIG": "{}",
     "GOOGLE_CLIENT_ID": "test-client-id",
