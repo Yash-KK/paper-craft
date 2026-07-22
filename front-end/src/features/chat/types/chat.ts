@@ -6,6 +6,8 @@ export type ToolCall = {
   status: "running" | "done"
 }
 
+export type ChatToolId = "retrieve_context" | "web_search"
+
 export type ChatMessage = {
   id: string
   role: "user" | "assistant"

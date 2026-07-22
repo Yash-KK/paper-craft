@@ -8,7 +8,11 @@ import {
   fromWireEvent,
   makeId,
 } from "@/features/chat/lib/chat-stream-utils"
-import type { ChatMessage, PersistedMessage } from "@/features/chat/types/chat"
+import type {
+  ChatMessage,
+  ChatToolId,
+  PersistedMessage,
+} from "@/features/chat/types/chat"
 import { API_URL, getToken } from "@/lib/api"
 
 export function useChatStream(
@@ -22,7 +26,7 @@ export function useChatStream(
     })
   )
   const [isStreaming, setIsStreaming] = useState(false)
-  const [webSearch, setWebSearch] = useState(false)
+  const [enabledTools, setEnabledTools] = useState<ChatToolId[]>([])
   const abortRef = useRef<AbortController | null>(null)
 
   const patchLast = useCallback((updater: (m: ChatMessage) => ChatMessage) => {
@@ -72,7 +76,7 @@ export function useChatStream(
             },
             body: JSON.stringify({
               content: question.trim(),
-              enabled_tools: webSearch ? ["web_search"] : [],
+              enabled_tools: enabledTools,
             }),
             signal: controller.signal,
             openWhenHidden: true,
@@ -108,7 +112,7 @@ export function useChatStream(
         setIsStreaming(false)
       }
     },
-    [isStreaming, notebookId, patchLast, webSearch]
+    [enabledTools, isStreaming, notebookId, patchLast]
   )
 
   const stopStream = useCallback(() => {
@@ -120,8 +124,8 @@ export function useChatStream(
   return {
     messages,
     isStreaming,
-    webSearch,
-    setWebSearch,
+    enabledTools,
+    setEnabledTools,
     sendMessage,
     stopStream,
   }

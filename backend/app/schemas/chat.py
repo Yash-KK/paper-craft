@@ -10,7 +10,7 @@ from app.db.models.chat import ChatMessageRole
 class ChatTurnRequest(BaseModel):
     content: str = Field(min_length=1)
     top_k: int = Field(default=5, ge=1, le=20)
-    enabled_tools: list[Literal["web_search"]] = Field(default_factory=list)
+    enabled_tools: list[Literal["retrieve_context", "web_search"]] = Field(default_factory=list)
 
     @field_validator("content")
     @classmethod
