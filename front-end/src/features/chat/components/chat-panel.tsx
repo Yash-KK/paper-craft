@@ -38,8 +38,8 @@ export function ChatPanel({
   const {
     messages,
     isStreaming,
-    webSearch,
-    setWebSearch,
+    enabledTools,
+    setEnabledTools,
     sendMessage,
     stopStream,
   } = useChatStream(notebookId, initialMessages)
@@ -71,8 +71,8 @@ export function ChatPanel({
 
         <ChatComposer
           isStreaming={isStreaming}
-          webSearch={webSearch}
-          onWebSearchChange={setWebSearch}
+          enabledTools={enabledTools}
+          onEnabledToolsChange={setEnabledTools}
           onSend={(question) => void sendMessage(question)}
           onStop={stopStream}
         />

@@ -1,4 +1,4 @@
-import { Globe, Loader2, Plus, Send, Square } from "lucide-react"
+import { BookOpen, Globe, Loader2, Plus, Send, Square } from "lucide-react"
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -12,19 +12,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import type { ChatToolId } from "@/features/chat/types/chat"
+
+const TOOL_OPTIONS: ReadonlyArray<{
+  id: ChatToolId
+  label: string
+  icon: typeof BookOpen
+}> = [
+  { id: "retrieve_context", label: "Textbook", icon: BookOpen },
+  { id: "web_search", label: "Web Search", icon: Globe },
+]
 
 type ChatComposerProps = {
   isStreaming: boolean
-  webSearch: boolean
-  onWebSearchChange: (enabled: boolean) => void
+  enabledTools: ChatToolId[]
+  onEnabledToolsChange: (tools: ChatToolId[]) => void
   onSend: (question: string) => void
   onStop: () => void
 }
 
 export function ChatComposer({
   isStreaming,
-  webSearch,
-  onWebSearchChange,
+  enabledTools,
+  onEnabledToolsChange,
   onSend,
   onStop,
 }: ChatComposerProps) {
@@ -50,6 +60,14 @@ export function ChatComposer({
       event.preventDefault()
       handleSend()
     }
+  }
+
+  const toggleTool = (id: ChatToolId, on: boolean) => {
+    if (on) {
+      if (!enabledTools.includes(id)) onEnabledToolsChange([...enabledTools, id])
+      return
+    }
+    onEnabledToolsChange(enabledTools.filter((t) => t !== id))
   }
 
   return (
@@ -85,27 +103,34 @@ export function ChatComposer({
             <DropdownMenuContent align="start" side="top" sideOffset={8} className="min-w-44">
               <DropdownMenuGroup>
                 <DropdownMenuLabel>Tools</DropdownMenuLabel>
-                <DropdownMenuCheckboxItem
-                  checked={webSearch}
-                  onCheckedChange={(value) => onWebSearchChange(value === true)}
-                >
-                  Web Search
-                </DropdownMenuCheckboxItem>
+                {TOOL_OPTIONS.map((tool) => (
+                  <DropdownMenuCheckboxItem
+                    key={tool.id}
+                    checked={enabledTools.includes(tool.id)}
+                    onCheckedChange={(value) => toggleTool(tool.id, value === true)}
+                  >
+                    {tool.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {webSearch && (
-            <Badge
-              variant="secondary"
-              className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
-              onClick={() => !isStreaming && onWebSearchChange(false)}
-              title="Remove Web Search"
-            >
-              <Globe />
-              Web Search
-            </Badge>
-          )}
+          {TOOL_OPTIONS.filter((tool) => enabledTools.includes(tool.id)).map((tool) => {
+            const Icon = tool.icon
+            return (
+              <Badge
+                key={tool.id}
+                variant="secondary"
+                className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
+                onClick={() => !isStreaming && toggleTool(tool.id, false)}
+                title={`Remove ${tool.label}`}
+              >
+                <Icon />
+                {tool.label}
+              </Badge>
+            )
+          })}
 
           <div className="ml-auto shrink-0">
             {isStreaming ? (

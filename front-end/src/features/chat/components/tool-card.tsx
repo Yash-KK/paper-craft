@@ -5,7 +5,7 @@ import type { ToolCall } from "@/features/chat/types/chat"
 import { cn } from "@/lib/utils"
 
 const TOOL_LABELS: Record<string, string> = {
-  retrieve_context: "Using TextBooks",
+  retrieve_context: "Using Textbook",
   web_search: "Using Web Search",
 }
 

@@ -59,7 +59,7 @@ class ChatService:
             history=history,
             selected_chapters=list(notebook.selected_chapters),
             top_k=top_k,
-            enable_web_search="web_search" in (enabled_tools or ()),
+            enabled_tools=frozenset(enabled_tools or ()),
             session_id=session.id,
         )
 
@@ -70,7 +70,7 @@ class ChatService:
         history: list[ChatMessage],
         selected_chapters,
         top_k: int,
-        enable_web_search: bool,
+        enabled_tools: frozenset[str],
         session_id: UUID,
     ) -> AsyncIterator[dict[str, str]]:
         try:
@@ -79,7 +79,7 @@ class ChatService:
                 history=history,
                 selected_chapters=selected_chapters,
                 top_k=top_k,
-                enable_web_search=enable_web_search,
+                enabled_tools=enabled_tools,
             ):
                 if event["event"] == "done":
                     answer = event["data"]

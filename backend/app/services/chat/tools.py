@@ -76,12 +76,7 @@ async def retrieve_context(query: str, runtime: ToolRuntime[NotebookContext]) ->
 
 @tool(
     "web_search",
-    description=(
-        "Search the live web for current facts. Required for sports results, news, "
-        "current events, dates, winners, schedules, and anything that may have changed. "
-        "Do not skip this tool when the answer depends on up-to-date information. "
-        "Input should be a concise, specific search query."
-    ),
+    description="Search the live web for current, factual, up-to-date information.",
 )
 def web_search(query: str) -> Any:
     """Search the web using Tavily."""
