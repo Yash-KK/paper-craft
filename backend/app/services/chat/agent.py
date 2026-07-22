@@ -28,13 +28,13 @@ def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
 
 
 @wrap_model_call
-def _force_enabled_tools(request, handler):
+async def _force_enabled_tools(request, handler):
     """Require every selected tool before the final answer."""
     used = {m.name for m in request.messages if isinstance(m, ToolMessage) and m.name}
     pending = [t.name for t in request.tools if getattr(t, "name", None) not in used]
     if pending:
-        return handler(request.override(tool_choice=pending[0]))
-    return handler(request.override(tool_choice="none"))
+        return await handler(request.override(tool_choice=pending[0]))
+    return await handler(request.override(tool_choice="none"))
 
 
 @lru_cache
