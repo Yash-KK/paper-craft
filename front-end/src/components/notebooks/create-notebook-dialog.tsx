@@ -1,7 +1,9 @@
 import * as React from "react"
 import { Check, ChevronDown, Loader2 } from "lucide-react"
+import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
+import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -21,14 +23,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
-  useBoards,
   useChapters,
   useGrades,
   useSubjects,
 } from "@/hooks/use-chapter-catalog"
 import { useCreateNotebook } from "@/hooks/use-notebooks"
-import { useAuth } from "@/components/auth-provider"
-import type { Board, ClassGrade, Subject } from "@/lib/types/notebook"
+import type { ClassGrade, Subject } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
 function useQueryErrorToast(
@@ -49,7 +49,6 @@ type CreateNotebookDialogProps = {
 
 type FormState = {
   name: string
-  board: Board | ""
   classGrade: ClassGrade | ""
   subject: Subject | ""
   chapters: number[]
@@ -57,7 +56,6 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   name: "",
-  board: "",
   classGrade: "",
   subject: "",
   chapters: [],
@@ -124,23 +122,18 @@ export function CreateNotebookDialog({
   const { user } = useAuth()
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
   const createNotebook = useCreateNotebook()
-  const board = form.board || user?.board || ""
+  const board = user?.board ?? ""
+  const catalogEnabled = open && Boolean(board)
 
-  const boardsQuery = useBoards(open)
-  const gradesQuery = useGrades(board, open)
-  const subjectsQuery = useSubjects(board, form.classGrade, open)
+  const gradesQuery = useGrades(board, catalogEnabled)
+  const subjectsQuery = useSubjects(board, form.classGrade, catalogEnabled)
   const chaptersQuery = useChapters(
     board,
     form.classGrade,
     form.subject,
-    open
+    catalogEnabled
   )
 
-  useQueryErrorToast(
-    boardsQuery.isError,
-    boardsQuery.error,
-    "Failed to load boards"
-  )
   useQueryErrorToast(
     gradesQuery.isError,
     gradesQuery.error,
@@ -160,16 +153,6 @@ export function CreateNotebookDialog({
   function handleOpenChange(next: boolean) {
     if (!next) setForm(EMPTY_FORM)
     onOpenChange(next)
-  }
-
-  function handleBoardChange(next: Board) {
-    setForm((f) => ({
-      ...f,
-      board: next,
-      classGrade: "",
-      subject: "",
-      chapters: [],
-    }))
   }
 
   function handleClassChange(grade: ClassGrade) {
@@ -192,13 +175,14 @@ export function CreateNotebookDialog({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
 
+    if (!board) {
+      toast.error("Set your board in profile before creating a notebook")
+      return
+    }
+
     const trimmed = form.name.trim()
     if (!trimmed) {
       toast.error("Notebook name is required")
-      return
-    }
-    if (!board) {
-      toast.error("Board is required")
       return
     }
     if (!form.classGrade || !form.subject) {
@@ -213,7 +197,6 @@ export function CreateNotebookDialog({
     try {
       await createNotebook.mutateAsync({
         name: trimmed,
-        board,
         class_grade: form.classGrade,
         subject: form.subject,
         selected_chapter_numbers: form.chapters,
@@ -224,7 +207,6 @@ export function CreateNotebookDialog({
     }
   }
 
-  const boards = boardsQuery.data ?? []
   const grades = gradesQuery.data ?? []
   const subjects = subjectsQuery.data ?? []
   const catalog = chaptersQuery.data ?? []
@@ -238,13 +220,27 @@ export function CreateNotebookDialog({
           <DialogHeader className="gap-1 border-b px-6 py-5">
             <DialogTitle className="text-xl">Create a New Notebook</DialogTitle>
             <DialogDescription>
-              Set up a notebook with the class, subject and chapters you want to
-              work with.
+              Chapters are filtered by your profile board
+              {board ? ` (${board})` : ""}. Change it anytime in profile.
             </DialogDescription>
           </DialogHeader>
 
           <ScrollArea className="min-h-0 flex-1">
             <div className="grid gap-6 px-6 py-6">
+              {!board ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+                  Set your board in{" "}
+                  <Link
+                    to="/profile-update"
+                    className="font-medium underline underline-offset-2"
+                    onClick={() => handleOpenChange(false)}
+                  >
+                    profile settings
+                  </Link>{" "}
+                  first.
+                </p>
+              ) : null}
+
               <div className="grid gap-2">
                 <Label htmlFor="notebook-name">Notebook Name</Label>
                 <Input
@@ -258,16 +254,7 @@ export function CreateNotebookDialog({
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <SelectField
-                  label="Board"
-                  value={board}
-                  placeholder="Select board"
-                  loading={boardsQuery.isPending}
-                  disabled={boardsQuery.isPending}
-                  options={boards}
-                  onChange={handleBoardChange}
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
                 <SelectField
                   label="Select Class"
                   value={form.classGrade}
@@ -306,9 +293,13 @@ export function CreateNotebookDialog({
                 <div className="rounded-xl border bg-muted/30 ring-1 ring-border/60">
                   <ScrollArea className="h-56 sm:h-64 lg:h-72">
                     <div className="grid gap-2 p-4 sm:grid-cols-2">
-                      {!chaptersReady ? (
+                      {!board ? (
                         <p className="text-sm text-muted-foreground sm:col-span-2">
-                          Select board, class and subject first
+                          Set your board in profile first
+                        </p>
+                      ) : !chaptersReady ? (
+                        <p className="text-sm text-muted-foreground sm:col-span-2">
+                          Select class and subject first
                         </p>
                       ) : chaptersQuery.isFetching ? (
                         <p className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
@@ -368,7 +359,11 @@ export function CreateNotebookDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} className="min-w-36">
+            <Button
+              type="submit"
+              disabled={submitting || !board}
+              className="min-w-36"
+            >
               {submitting && <Loader2 className="animate-spin" />}
               Create Notebook
             </Button>

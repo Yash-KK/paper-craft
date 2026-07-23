@@ -58,14 +58,12 @@ async def _resolve_selected_chapters(
     ]
 
 
-def _resolve_board(body_board: Board | None, current_user: CurrentUser) -> Board:
-    board = body_board or (
-        current_user.profile.board if current_user.profile else None
-    )
+def _profile_board(current_user: CurrentUser) -> Board:
+    board = current_user.profile.board if current_user.profile else None
     if board is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Board is required. Set it in your profile or notebook request.",
+            detail="Set your board in profile before creating a notebook",
         )
     return board
 
@@ -89,7 +87,7 @@ async def create_notebook(
     current_user: CurrentUser,
     db: SessionDep,
 ) -> Notebook:
-    board = _resolve_board(body.board, current_user)
+    board = _profile_board(current_user)
 
     existing_id = await db.scalar(
         select(Notebook.id).where(
@@ -169,8 +167,6 @@ async def update_notebook(
             )
         notebook.name = name
 
-    if body.board is not None:
-        notebook.board = body.board
     if body.class_grade is not None:
         notebook.class_grade = body.class_grade
     if body.subject is not None:

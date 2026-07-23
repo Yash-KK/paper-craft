@@ -31,7 +31,6 @@ def test_create_notebook_success(
         "/api/v1/notebooks",
         json={
             "name": "Mid-Term Prep",
-            "board": "CBSE",
             "class_grade": "Class 10",
             "subject": "Mathematics",
             "selected_chapter_numbers": [2],
@@ -68,7 +67,6 @@ def test_create_notebook_rejects_duplicate_name(
         "/api/v1/notebooks",
         json={
             "name": "  mid-term prep  ",
-            "board": "CBSE",
             "class_grade": "Class 10",
             "subject": "Mathematics",
             "selected_chapter_numbers": [2],
@@ -91,7 +89,6 @@ def test_create_notebook_rejects_invalid_chapters(
         "/api/v1/notebooks",
         json={
             "name": "Bad Notebook",
-            "board": "CBSE",
             "class_grade": "Class 10",
             "subject": "Mathematics",
             "selected_chapter_numbers": [99],

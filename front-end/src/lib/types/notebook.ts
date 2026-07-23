@@ -31,7 +31,6 @@ export type ChapterCatalogItem = {
 
 export type NotebookCreatePayload = {
   name: string
-  board?: Board
   class_grade: ClassGrade
   subject: Subject
   selected_chapter_numbers: number[]
@@ -39,7 +38,6 @@ export type NotebookCreatePayload = {
 
 export type NotebookUpdatePayload = {
   name?: string
-  board?: Board
   class_grade?: ClassGrade
   subject?: Subject
   color_hex?: string
