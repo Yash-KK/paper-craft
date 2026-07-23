@@ -2,7 +2,11 @@ import * as React from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import { PanelLeft } from "lucide-react"
+
 import { AuthStatus, useAuth } from "@/components/auth-provider"
+import { NotebookHeader } from "@/components/notebooks/notebook-header"
+import { useSidebarOptional } from "@/components/sidebar-context"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChatPanel } from "@/features/chat"
@@ -75,6 +79,7 @@ export function NotebookPage() {
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <NotebookHeader notebook={notebook} />
       <ChatPanel
         key={chat.data.id}
         notebookId={notebook.id}
@@ -86,12 +91,41 @@ export function NotebookPage() {
 }
 
 function NotebookWorkspaceSkeleton() {
+  const sidebar = useSidebarOptional()
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
-      <Skeleton className="mx-auto h-8 w-64" />
-      <Skeleton className="mx-auto h-24 w-full max-w-4xl" />
-      <div className="mt-auto">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3">
+          {sidebar && !sidebar.sidebarOpen ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-muted-foreground"
+              aria-label="Open sidebar"
+              onClick={() => sidebar.setSidebarOpen(true)}
+            >
+              <PanelLeft className="size-4" />
+            </Button>
+          ) : null}
+          <Skeleton className="size-10 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-5 w-48" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-7 w-20 rounded-full" />
+          <Skeleton className="h-7 w-12 rounded-full" />
+          <Skeleton className="h-7 w-12 rounded-full" />
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
         <Skeleton className="mx-auto h-24 w-full max-w-4xl" />
+        <div className="mt-auto">
+          <Skeleton className="mx-auto h-24 w-full max-w-4xl" />
+        </div>
       </div>
     </div>
   )

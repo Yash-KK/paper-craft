@@ -30,3 +30,11 @@ export type NotebookCreatePayload = {
   subject: Subject
   selected_chapter_numbers: number[]
 }
+
+export type NotebookUpdatePayload = {
+  name?: string
+  class_grade?: ClassGrade
+  subject?: Subject
+  color_hex?: string
+  selected_chapter_numbers?: number[]
+}

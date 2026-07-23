@@ -5,6 +5,7 @@ import type {
   ClassGrade,
   NotebookCreatePayload,
   NotebookListItem,
+  NotebookUpdatePayload,
   Subject,
 } from "@/lib/types/notebook"
 import type { ChatSession } from "@/features/chat/types/chat"
@@ -14,6 +15,7 @@ export type {
   ClassGrade,
   NotebookCreatePayload,
   NotebookListItem,
+  NotebookUpdatePayload,
   Subject,
 } from "@/lib/types/notebook"
 
@@ -158,6 +160,18 @@ export async function createNotebook(
 ): Promise<NotebookListItem> {
   const response = await authFetch("/api/v1/notebooks", {
     method: "POST",
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as NotebookListItem
+}
+
+export async function updateNotebook(
+  notebookId: string,
+  payload: NotebookUpdatePayload
+): Promise<NotebookListItem> {
+  const response = await authFetch(`/api/v1/notebooks/${notebookId}`, {
+    method: "PATCH",
     body: JSON.stringify(payload),
   })
   if (!response.ok) throw new Error(await parseApiError(response))

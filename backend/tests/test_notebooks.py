@@ -99,6 +99,76 @@ def test_create_notebook_rejects_invalid_chapters(
     mock_db.add.assert_not_called()
 
 
+def test_update_notebook_chapters_success(
+    client: TestClient,
+    mock_db: AsyncMock,
+    mock_user: User,
+) -> None:
+    notebook_id = uuid4()
+    notebook = Notebook(
+        id=notebook_id,
+        user_id=mock_user.id,
+        name="Mid-Term Prep",
+        class_grade=ClassGrade.CLASS_10,
+        subject=Subject.MATHEMATICS,
+        selected_chapters=[
+            {
+                "book_code": "jemh1",
+                "chapter_number": 2,
+                "chapter_name": "Polynomials",
+            }
+        ],
+    )
+    chapters = [
+        make_catalog_chapter(2, "Polynomials"),
+        make_catalog_chapter(5, "Arithmetic Progressions"),
+    ]
+    mock_db.get = AsyncMock(return_value=notebook)
+    mock_db.execute = AsyncMock(return_value=mock_execute_result(chapters))
+
+    async def refresh_notebook(item: Notebook) -> None:
+        item.updated_at = datetime.now(timezone.utc)
+
+    mock_db.refresh.side_effect = refresh_notebook
+
+    response = client.patch(
+        f"/api/v1/notebooks/{notebook_id}",
+        json={"selected_chapter_numbers": [2, 5]},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["selected_chapters"] == [
+        {
+            "book_code": "jemh1",
+            "chapter_number": 2,
+            "chapter_name": "Polynomials",
+        },
+        {
+            "book_code": "jemh1",
+            "chapter_number": 5,
+            "chapter_name": "Arithmetic Progressions",
+        },
+    ]
+    mock_db.commit.assert_awaited_once()
+
+
+def test_update_notebook_not_found(
+    client: TestClient,
+    mock_db: AsyncMock,
+) -> None:
+    mock_db.get = AsyncMock(return_value=None)
+
+    response = client.patch(
+        f"/api/v1/notebooks/{uuid4()}",
+        json={"selected_chapter_numbers": [1]},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Notebook not found"
+    mock_db.commit.assert_not_awaited()
+
+
 def test_delete_notebook_success(
     client: TestClient,
     mock_db: AsyncMock,

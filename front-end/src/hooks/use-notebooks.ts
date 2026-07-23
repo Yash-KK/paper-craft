@@ -5,9 +5,14 @@ import {
   createNotebook,
   deleteNotebook,
   fetchNotebooks,
+  updateNotebook,
 } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
-import type { NotebookCreatePayload } from "@/lib/types/notebook"
+import type {
+  NotebookCreatePayload,
+  NotebookListItem,
+  NotebookUpdatePayload,
+} from "@/lib/types/notebook"
 
 export function useNotebooks(enabled = true) {
   const query = useQuery({
@@ -35,6 +40,34 @@ export function useCreateNotebook() {
     onError: (err) => {
       toast.error(
         err instanceof Error ? err.message : "Failed to create notebook"
+      )
+    },
+  })
+}
+
+export function useUpdateNotebook() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      notebookId,
+      payload,
+    }: {
+      notebookId: string
+      payload: NotebookUpdatePayload
+    }) => updateNotebook(notebookId, payload),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<NotebookListItem[]>(
+        queryKeys.notebooks,
+        (current) =>
+          current?.map((item) => (item.id === updated.id ? updated : item)) ?? [
+            updated,
+          ]
+      )
+    },
+    onError: (err) => {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update notebook"
       )
     },
   })
