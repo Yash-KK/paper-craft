@@ -57,12 +57,8 @@ export function useUpdateNotebook() {
       payload: NotebookUpdatePayload
     }) => updateNotebook(notebookId, payload),
     onSuccess: (updated) => {
-      queryClient.setQueryData<NotebookListItem[]>(
-        queryKeys.notebooks,
-        (current) =>
-          current?.map((item) => (item.id === updated.id ? updated : item)) ?? [
-            updated,
-          ]
+      queryClient.setQueryData<NotebookListItem[]>(queryKeys.notebooks, (current) =>
+        current?.map((item) => (item.id === updated.id ? updated : item))
       )
     },
     onError: (err) => {
