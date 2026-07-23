@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { AuthStatus, useAuth } from "@/components/auth-provider"
+import { NotebookHeader } from "@/components/notebooks/notebook-header"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChatPanel } from "@/features/chat"
@@ -30,11 +31,12 @@ export function NotebookPage() {
     if (error) toast.error(error)
   }, [error])
 
-  if (status === AuthStatus.Loading || status === AuthStatus.Unauthenticated) {
-    return <NotebookWorkspaceSkeleton />
-  }
-
-  if (loading) {
+  if (
+    status === AuthStatus.Loading ||
+    status === AuthStatus.Unauthenticated ||
+    loading ||
+    chat.isPending
+  ) {
     return <NotebookWorkspaceSkeleton />
   }
 
@@ -51,10 +53,6 @@ export function NotebookPage() {
         <Button render={<Link to="/dashboard" />}>Back to dashboard</Button>
       </div>
     )
-  }
-
-  if (chat.isPending) {
-    return <NotebookWorkspaceSkeleton />
   }
 
   if (chat.error || !chat.data) {
@@ -75,6 +73,7 @@ export function NotebookPage() {
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <NotebookHeader notebook={notebook} />
       <ChatPanel
         key={chat.data.id}
         notebookId={notebook.id}
@@ -87,11 +86,19 @@ export function NotebookPage() {
 
 function NotebookWorkspaceSkeleton() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
-      <Skeleton className="mx-auto h-8 w-64" />
-      <Skeleton className="mx-auto h-24 w-full max-w-4xl" />
-      <div className="mt-auto">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center gap-3 border-b px-4 py-3 sm:px-6">
+        <Skeleton className="size-10 rounded-xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-5 w-48" />
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
         <Skeleton className="mx-auto h-24 w-full max-w-4xl" />
+        <div className="mt-auto">
+          <Skeleton className="mx-auto h-24 w-full max-w-4xl" />
+        </div>
       </div>
     </div>
   )
