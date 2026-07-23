@@ -54,6 +54,7 @@ async def stream_notebook_chat(
     question: str,
     history: list[ChatMessage],
     selected_chapters: list[dict[str, Any]],
+    board: str | None = None,
     top_k: int,
     enabled_tools: frozenset[str] = frozenset(),
 ) -> AsyncIterator[dict[str, str]]:
@@ -67,7 +68,11 @@ async def stream_notebook_chat(
             return
 
         agent = get_chat_agent(enabled_tools)
-        context = NotebookContext(selected_chapters=selected_chapters, top_k=top_k)
+        context = NotebookContext(
+            selected_chapters=selected_chapters,
+            board=board,
+            top_k=top_k,
+        )
         answer_parts: list[str] = []
         stream_answer = True
 

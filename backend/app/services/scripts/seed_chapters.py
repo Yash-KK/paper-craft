@@ -1,5 +1,5 @@
 from app.db.models.chapter_catalog import ChapterCatalog
-from app.db.models.notebook import ClassGrade, Subject
+from app.db.models.notebook import Board, ClassGrade, Subject
 from app.db.session import SyncSessionLocal
 
 CLASS_10_MATH_CHAPTERS = [
@@ -29,6 +29,7 @@ def seed_chapters() -> None:
             existing = (
                 db.query(ChapterCatalog)
                 .filter(
+                    ChapterCatalog.board == Board.CBSE,
                     ChapterCatalog.book_code == chapter["book_code"],
                     ChapterCatalog.chapter_number == chapter["chapter_number"],
                 )
@@ -37,6 +38,7 @@ def seed_chapters() -> None:
 
             if not existing:
                 new_chapter = ChapterCatalog(
+                    board=Board.CBSE,
                     book_code=chapter["book_code"],
                     subject=Subject.MATHEMATICS,
                     grade=ClassGrade.CLASS_10,

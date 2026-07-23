@@ -6,18 +6,27 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.db.models.notebook import ClassGrade, Subject
+from app.db.models.notebook import Board, ClassGrade, Subject
 
 
 class ChapterCatalog(Base):
     __tablename__ = "chapter_catalog"
     __table_args__ = (
-        UniqueConstraint("book_code", "chapter_number", name="uq_chapter_catalog_book_chapter"),
-        Index("ix_chapter_catalog_grade_subject", "grade", "subject"),
+        UniqueConstraint(
+            "board",
+            "book_code",
+            "chapter_number",
+            name="uq_chapter_catalog_board_book_chapter",
+        ),
+        Index("ix_chapter_catalog_board_grade_subject", "board", "grade", "subject"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    board: Mapped[Board] = mapped_column(
+        Enum(Board, name="chapter_catalog_board", native_enum=False, length=20),
+        nullable=False,
     )
     book_code: Mapped[str] = mapped_column(String(50), nullable=False)
     subject: Mapped[Subject] = mapped_column(

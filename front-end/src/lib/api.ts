@@ -1,6 +1,7 @@
 export const API_URL = import.meta.env.VITE_API_URL
 
 import type {
+  Board,
   ChapterCatalogItem,
   ClassGrade,
   NotebookCreatePayload,
@@ -11,6 +12,7 @@ import type {
 import type { ChatSession } from "@/features/chat/types/chat"
 
 export type {
+  Board,
   ChapterCatalogItem,
   ClassGrade,
   NotebookCreatePayload,
@@ -43,6 +45,7 @@ export type UserProfile = {
   email: string
   full_name: string
   role: string
+  board: Board | null
   school_name: string | null
   phone_number: string | null
   avatar_url: string | null
@@ -72,6 +75,7 @@ export async function fetchCurrentUser(): Promise<UserProfile | null> {
 }
 
 export type ProfileUpdatePayload = {
+  board?: Board | null
   school_name: string | null
   phone_number: string | null
   avatar_url: string | null
@@ -193,25 +197,36 @@ export async function fetchNotebookChat(
   return (await response.json()) as ChatSession
 }
 
-export async function fetchGrades(): Promise<ClassGrade[]> {
-  const response = await authFetch("/api/v1/chapters/grades")
+export async function fetchBoards(): Promise<Board[]> {
+  const response = await authFetch("/api/v1/chapters/boards")
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as Board[]
+}
+
+export async function fetchGrades(board: Board): Promise<ClassGrade[]> {
+  const response = await authFetch(
+    `/api/v1/chapters/grades?board=${encodeURIComponent(board)}`
+  )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ClassGrade[]
 }
 
-export async function fetchSubjects(grade: ClassGrade): Promise<Subject[]> {
-  const response = await authFetch(
-    `/api/v1/chapters/subjects?grade=${encodeURIComponent(grade)}`
-  )
+export async function fetchSubjects(
+  board: Board,
+  grade: ClassGrade
+): Promise<Subject[]> {
+  const params = new URLSearchParams({ board, grade })
+  const response = await authFetch(`/api/v1/chapters/subjects?${params}`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as Subject[]
 }
 
 export async function fetchChapters(
+  board: Board,
   grade: ClassGrade,
   subject: Subject
 ): Promise<ChapterCatalogItem[]> {
-  const params = new URLSearchParams({ grade, subject })
+  const params = new URLSearchParams({ board, grade, subject })
   const response = await authFetch(`/api/v1/chapters?${params}`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChapterCatalogItem[]

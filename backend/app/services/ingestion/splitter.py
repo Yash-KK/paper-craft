@@ -33,6 +33,7 @@ def build_documents(path: Path) -> list[Document]:
     def meta(page_num: int, **extra) -> dict:
         metadata = DocumentMetadata(
             book_code=book_code.lower(),
+            board=str(book_meta.get("board", "CBSE")).strip().upper(),
             subject=str(book_meta["subject"]).strip().lower(),
             grade=int(book_meta["grade"]),
             chapter_number=int(chapter_number),

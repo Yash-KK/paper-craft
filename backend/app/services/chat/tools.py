@@ -12,6 +12,7 @@ from app.services.vectorstore.client import get_vector_store
 
 _METADATA_KEYS = (
     "book_code",
+    "board",
     "subject",
     "grade",
     "chapter_number",
@@ -27,6 +28,7 @@ class NotebookContext:
     """Per-turn notebook scope passed into agent.astream(context=...)."""
 
     selected_chapters: list[dict[str, Any]]
+    board: str | None
     top_k: int
 
 
@@ -34,24 +36,32 @@ class NotebookContext:
 async def retrieve_context(query: str, runtime: ToolRuntime[NotebookContext]) -> str:
     """Retrieve relevant passages from this notebook's selected chapters."""
     selected_chapters = runtime.context.selected_chapters
+    board = runtime.context.board
     top_k = runtime.context.top_k
 
-    chapter_filters = [
-        models.Filter(
-            must=[
+    chapter_filters = []
+    for chapter in selected_chapters:
+        if not chapter.get("book_code") or chapter.get("chapter_number") is None:
+            continue
+        must = [
+            models.FieldCondition(
+                key="metadata.book_code",
+                match=models.MatchValue(value=chapter["book_code"]),
+            ),
+            models.FieldCondition(
+                key="metadata.chapter_number",
+                match=models.MatchValue(value=chapter["chapter_number"]),
+            ),
+        ]
+        if board:
+            must.append(
                 models.FieldCondition(
-                    key="metadata.book_code",
-                    match=models.MatchValue(value=chapter["book_code"]),
-                ),
-                models.FieldCondition(
-                    key="metadata.chapter_number",
-                    match=models.MatchValue(value=chapter["chapter_number"]),
-                ),
-            ]
-        )
-        for chapter in selected_chapters
-        if chapter.get("book_code") and chapter.get("chapter_number") is not None
-    ]
+                    key="metadata.board",
+                    match=models.MatchValue(value=board),
+                )
+            )
+        chapter_filters.append(models.Filter(must=must))
+
     search_kwargs: dict[str, Any] = {"k": top_k}
     if chapter_filters:
         search_kwargs["filter"] = models.Filter(should=chapter_filters)

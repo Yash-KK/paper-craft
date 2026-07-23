@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.chapter_catalog import ChapterCatalog
-from app.db.models.notebook import ClassGrade, Notebook, Subject
+from app.db.models.notebook import Board, ClassGrade, Notebook, Subject
 from app.schemas.notebook import NotebookCreate, NotebookListItem, NotebookUpdate
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
@@ -26,12 +26,14 @@ NOTEBOOK_COLORS = (
 async def _resolve_selected_chapters(
     db: SessionDep,
     *,
+    board: Board,
     class_grade: ClassGrade,
     subject: Subject,
     chapter_numbers: list[int],
 ) -> list[dict[str, Any]]:
     result = await db.execute(
         select(ChapterCatalog).where(
+            ChapterCatalog.board == board,
             ChapterCatalog.grade == class_grade,
             ChapterCatalog.subject == subject,
             ChapterCatalog.is_available.is_(True),
@@ -56,6 +58,18 @@ async def _resolve_selected_chapters(
     ]
 
 
+def _resolve_board(body_board: Board | None, current_user: CurrentUser) -> Board:
+    board = body_board or (
+        current_user.profile.board if current_user.profile else None
+    )
+    if board is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Board is required. Set it in your profile or notebook request.",
+        )
+    return board
+
+
 @router.get("", response_model=list[NotebookListItem])
 async def list_notebooks(
     current_user: CurrentUser,
@@ -75,6 +89,8 @@ async def create_notebook(
     current_user: CurrentUser,
     db: SessionDep,
 ) -> Notebook:
+    board = _resolve_board(body.board, current_user)
+
     existing_id = await db.scalar(
         select(Notebook.id).where(
             Notebook.user_id == current_user.id,
@@ -89,6 +105,7 @@ async def create_notebook(
 
     selected_chapters = await _resolve_selected_chapters(
         db,
+        board=board,
         class_grade=body.class_grade,
         subject=body.subject,
         chapter_numbers=body.selected_chapter_numbers,
@@ -97,6 +114,7 @@ async def create_notebook(
     notebook = Notebook(
         user_id=current_user.id,
         name=body.name,
+        board=board,
         class_grade=body.class_grade,
         subject=body.subject,
         color_hex=random.choice(NOTEBOOK_COLORS),
@@ -151,6 +169,8 @@ async def update_notebook(
             )
         notebook.name = name
 
+    if body.board is not None:
+        notebook.board = body.board
     if body.class_grade is not None:
         notebook.class_grade = body.class_grade
     if body.subject is not None:
@@ -159,13 +179,18 @@ async def update_notebook(
         notebook.color_hex = body.color_hex
 
     if body.selected_chapter_numbers is not None:
-        if notebook.class_grade is None or notebook.subject is None:
+        if (
+            notebook.board is None
+            or notebook.class_grade is None
+            or notebook.subject is None
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Notebook class and subject are required to update chapters",
+                detail="Notebook board, class, and subject are required to update chapters",
             )
         notebook.selected_chapters = await _resolve_selected_chapters(
             db,
+            board=notebook.board,
             class_grade=notebook.class_grade,
             subject=notebook.subject,
             chapter_numbers=body.selected_chapter_numbers,

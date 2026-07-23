@@ -22,8 +22,11 @@ import {
   type ProfileUpdatePayload,
   type UserProfile,
 } from "@/lib/api"
+import type { Board } from "@/lib/types/notebook"
+import { BOARDS } from "@/lib/types/notebook"
 
 type FormState = {
+  board: Board | ""
   school_name: string
   phone_number: string
   avatar_url: string
@@ -32,6 +35,7 @@ type FormState = {
 type FormErrors = Partial<Record<keyof FormState, string>>
 
 const EMPTY_FORM: FormState = {
+  board: "",
   school_name: "",
   phone_number: "",
   avatar_url: "",
@@ -87,6 +91,7 @@ function toPayload(values: FormState): ProfileUpdatePayload {
     return next.length > 0 ? next : null
   }
   return {
+    board: values.board || null,
     school_name: trim(values.school_name),
     phone_number: trim(values.phone_number),
     avatar_url: trim(values.avatar_url),
@@ -95,6 +100,7 @@ function toPayload(values: FormState): ProfileUpdatePayload {
 
 function toFormState(user: UserProfile): FormState {
   return {
+    board: user.board ?? "",
     school_name: user.school_name ?? "",
     phone_number: user.phone_number ?? "",
     avatar_url: user.avatar_url ?? "",
@@ -244,6 +250,29 @@ export function ProfileUpdatePage() {
               </div>
 
               <div className="flex flex-col gap-2">
+                <Label htmlFor="board">Board</Label>
+                <select
+                  id="board"
+                  className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  value={form.board}
+                  onChange={(event) => {
+                    const value = event.target.value as Board | ""
+                    setForm((prev) => ({ ...prev, board: value }))
+                    setErrors((prev) => ({ ...prev, board: undefined }))
+                    setSubmitError(null)
+                    setSuccess(false)
+                  }}
+                >
+                  <option value="">Select board</option>
+                  {BOARDS.map((board) => (
+                    <option key={board} value={board}>
+                      {board}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="school_name">School name</Label>
                 <Input
                   id="school_name"
@@ -363,7 +392,7 @@ function ProfileFormSkeleton() {
             <Skeleton className="h-3 w-48" />
           </div>
         </div>
-        {Array.from({ length: 3 }).map((_, index) => (
+        {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="flex flex-col gap-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-8 w-full" />

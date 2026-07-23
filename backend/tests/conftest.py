@@ -72,6 +72,7 @@ def make_catalog_chapter(
     is_available: bool = True,
 ) -> MagicMock:
     chapter = MagicMock()
+    chapter.board = "CBSE"
     chapter.book_code = "jemh1"
     chapter.chapter_number = chapter_number
     chapter.chapter_name = chapter_name

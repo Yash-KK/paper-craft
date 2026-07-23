@@ -21,12 +21,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
+  useBoards,
   useChapters,
   useGrades,
   useSubjects,
 } from "@/hooks/use-chapter-catalog"
 import { useCreateNotebook } from "@/hooks/use-notebooks"
-import type { ClassGrade, Subject } from "@/lib/types/notebook"
+import { useAuth } from "@/components/auth-provider"
+import type { Board, ClassGrade, Subject } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
 function useQueryErrorToast(
@@ -47,6 +49,7 @@ type CreateNotebookDialogProps = {
 
 type FormState = {
   name: string
+  board: Board | ""
   classGrade: ClassGrade | ""
   subject: Subject | ""
   chapters: number[]
@@ -54,6 +57,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   name: "",
+  board: "",
   classGrade: "",
   subject: "",
   chapters: [],
@@ -117,13 +121,26 @@ export function CreateNotebookDialog({
   open,
   onOpenChange,
 }: CreateNotebookDialogProps) {
+  const { user } = useAuth()
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
   const createNotebook = useCreateNotebook()
+  const board = form.board || user?.board || ""
 
-  const gradesQuery = useGrades(open)
-  const subjectsQuery = useSubjects(form.classGrade, open)
-  const chaptersQuery = useChapters(form.classGrade, form.subject, open)
+  const boardsQuery = useBoards(open)
+  const gradesQuery = useGrades(board, open)
+  const subjectsQuery = useSubjects(board, form.classGrade, open)
+  const chaptersQuery = useChapters(
+    board,
+    form.classGrade,
+    form.subject,
+    open
+  )
 
+  useQueryErrorToast(
+    boardsQuery.isError,
+    boardsQuery.error,
+    "Failed to load boards"
+  )
   useQueryErrorToast(
     gradesQuery.isError,
     gradesQuery.error,
@@ -143,6 +160,16 @@ export function CreateNotebookDialog({
   function handleOpenChange(next: boolean) {
     if (!next) setForm(EMPTY_FORM)
     onOpenChange(next)
+  }
+
+  function handleBoardChange(next: Board) {
+    setForm((f) => ({
+      ...f,
+      board: next,
+      classGrade: "",
+      subject: "",
+      chapters: [],
+    }))
   }
 
   function handleClassChange(grade: ClassGrade) {
@@ -170,6 +197,10 @@ export function CreateNotebookDialog({
       toast.error("Notebook name is required")
       return
     }
+    if (!board) {
+      toast.error("Board is required")
+      return
+    }
     if (!form.classGrade || !form.subject) {
       toast.error("Class and subject are required")
       return
@@ -182,6 +213,7 @@ export function CreateNotebookDialog({
     try {
       await createNotebook.mutateAsync({
         name: trimmed,
+        board,
         class_grade: form.classGrade,
         subject: form.subject,
         selected_chapter_numbers: form.chapters,
@@ -192,10 +224,11 @@ export function CreateNotebookDialog({
     }
   }
 
+  const boards = boardsQuery.data ?? []
   const grades = gradesQuery.data ?? []
   const subjects = subjectsQuery.data ?? []
   const catalog = chaptersQuery.data ?? []
-  const chaptersReady = Boolean(form.classGrade && form.subject)
+  const chaptersReady = Boolean(board && form.classGrade && form.subject)
   const submitting = createNotebook.isPending
 
   return (
@@ -225,13 +258,22 @@ export function CreateNotebookDialog({
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <SelectField
+                  label="Board"
+                  value={board}
+                  placeholder="Select board"
+                  loading={boardsQuery.isPending}
+                  disabled={boardsQuery.isPending}
+                  options={boards}
+                  onChange={handleBoardChange}
+                />
                 <SelectField
                   label="Select Class"
                   value={form.classGrade}
                   placeholder="Select class"
-                  loading={gradesQuery.isPending}
-                  disabled={gradesQuery.isPending}
+                  loading={gradesQuery.isFetching}
+                  disabled={!board || gradesQuery.isFetching}
                   options={grades}
                   onChange={handleClassChange}
                 />
@@ -266,7 +308,7 @@ export function CreateNotebookDialog({
                     <div className="grid gap-2 p-4 sm:grid-cols-2">
                       {!chaptersReady ? (
                         <p className="text-sm text-muted-foreground sm:col-span-2">
-                          Select class and subject first
+                          Select board, class and subject first
                         </p>
                       ) : chaptersQuery.isFetching ? (
                         <p className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">

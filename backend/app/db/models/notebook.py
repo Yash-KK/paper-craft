@@ -14,6 +14,12 @@ if TYPE_CHECKING:
     from app.db.models.user import User
 
 
+class Board(str, enum.Enum):
+    CBSE = "CBSE"
+    SSC = "SSC"
+    ICSE = "ICSE"
+
+
 class ClassGrade(str, enum.Enum):
     CLASS_9 = "Class 9"
     CLASS_10 = "Class 10"
@@ -36,6 +42,10 @@ class Notebook(Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    board: Mapped[Board | None] = mapped_column(
+        Enum(Board, name="board", native_enum=False, length=20),
+        nullable=True,
+    )
     class_grade: Mapped[ClassGrade | None] = mapped_column(
         Enum(ClassGrade, name="class_grade", native_enum=False, length=50),
         nullable=True,

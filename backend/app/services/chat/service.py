@@ -58,6 +58,7 @@ class ChatService:
             question=content,
             history=history,
             selected_chapters=list(notebook.selected_chapters),
+            board=notebook.board.value if notebook.board else None,
             top_k=top_k,
             enabled_tools=frozenset(enabled_tools or ()),
             session_id=session.id,
@@ -69,6 +70,7 @@ class ChatService:
         question: str,
         history: list[ChatMessage],
         selected_chapters,
+        board: str | None,
         top_k: int,
         enabled_tools: frozenset[str],
         session_id: UUID,
@@ -78,6 +80,7 @@ class ChatService:
                 question=question,
                 history=history,
                 selected_chapters=selected_chapters,
+                board=board,
                 top_k=top_k,
                 enabled_tools=enabled_tools,
             ):

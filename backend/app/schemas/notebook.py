@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.db.models.notebook import ClassGrade, Subject
+from app.db.models.notebook import Board, ClassGrade, Subject
 
 
 class SelectedChapter(BaseModel):
@@ -20,11 +20,13 @@ class ChapterCatalogItem(BaseModel):
     chapter_number: int
     chapter_name: str
     book_code: str
+    board: Board
     is_available: bool
 
 
 class NotebookCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
+    board: Board | None = None
     class_grade: ClassGrade
     subject: Subject
     selected_chapter_numbers: list[int] = Field(min_length=1)
@@ -40,6 +42,7 @@ class NotebookCreate(BaseModel):
 
 class NotebookUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
+    board: Board | None = None
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = Field(default=None, max_length=10)
@@ -53,6 +56,7 @@ class NotebookListItem(BaseModel):
 
     id: UUID
     name: str
+    board: Board | None = None
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = None
@@ -66,6 +70,7 @@ class NotebookResponse(BaseModel):
     id: UUID
     user_id: UUID
     name: str
+    board: Board | None = None
     class_grade: ClassGrade | None = None
     subject: Subject | None = None
     color_hex: str | None = None
