@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.api.deps import get_db
 from app.api.v1.notebooks import NOTEBOOK_COLORS
-from app.db.models.notebook import ClassGrade, Notebook, Subject
+from app.db.models.notebook import Board, ClassGrade, Notebook, Subject
 from app.db.models.user import User
 from app.main import app
 from tests.conftest import make_catalog_chapter, mock_execute_result
@@ -40,6 +40,7 @@ def test_create_notebook_success(
     assert response.status_code == 201
     body = response.json()
     assert body["name"] == "Mid-Term Prep"
+    assert body["board"] == "CBSE"
     assert body["class_grade"] == "Class 10"
     assert body["subject"] == "Mathematics"
     assert body["color_hex"] in NOTEBOOK_COLORS
@@ -109,6 +110,7 @@ def test_update_notebook_chapters_success(
         id=notebook_id,
         user_id=mock_user.id,
         name="Mid-Term Prep",
+        board=Board.CBSE,
         class_grade=ClassGrade.CLASS_10,
         subject=Subject.MATHEMATICS,
         selected_chapters=[

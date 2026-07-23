@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 
 import tests.bootstrap_env  # noqa: F401  # must load before app imports
 from app.api.deps import get_current_user, get_db
-from app.db.models.user import AuthProvider, User, UserRole
+from app.db.models.notebook import Board
+from app.db.models.user import AuthProvider, User, UserProfile, UserRole
 from app.main import app
 
 
@@ -21,7 +22,7 @@ def user_id() -> UUID:
 
 @pytest.fixture
 def mock_user(user_id: UUID) -> User:
-    return User(
+    user = User(
         id=user_id,
         email="teacher@example.com",
         auth_provider=AuthProvider.GOOGLE,
@@ -32,6 +33,15 @@ def mock_user(user_id: UUID) -> User:
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
+    user.profile = UserProfile(
+        id=uuid4(),
+        user_id=user_id,
+        board=Board.CBSE,
+        settings={},
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    return user
 
 
 @pytest.fixture
@@ -72,6 +82,7 @@ def make_catalog_chapter(
     is_available: bool = True,
 ) -> MagicMock:
     chapter = MagicMock()
+    chapter.board = "CBSE"
     chapter.book_code = "jemh1"
     chapter.chapter_number = chapter_number
     chapter.chapter_name = chapter_name

@@ -1,5 +1,8 @@
+export type Board = "CBSE" | "SSC" | "ICSE"
 export type ClassGrade = "Class 9" | "Class 10"
 export type Subject = "Mathematics"
+
+export const BOARDS: Board[] = ["CBSE", "SSC", "ICSE"]
 
 export type SelectedChapter = {
   book_code: string
@@ -10,6 +13,7 @@ export type SelectedChapter = {
 export type NotebookListItem = {
   id: string
   name: string
+  board: Board | null
   class_grade: ClassGrade | null
   subject: Subject | null
   color_hex: string | null
@@ -21,6 +25,7 @@ export type ChapterCatalogItem = {
   chapter_number: number
   chapter_name: string
   book_code: string
+  board: Board
   is_available: boolean
 }
 

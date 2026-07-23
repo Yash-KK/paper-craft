@@ -1,33 +1,56 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { fetchChapters, fetchGrades, fetchSubjects } from "@/lib/api"
+import {
+  fetchBoards,
+  fetchChapters,
+  fetchGrades,
+  fetchSubjects,
+} from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
-import type { ClassGrade, Subject } from "@/lib/types/notebook"
+import type { Board, ClassGrade, Subject } from "@/lib/types/notebook"
 
-export function useGrades(enabled: boolean) {
+export function useBoards(enabled: boolean) {
   return useQuery({
-    queryKey: queryKeys.grades,
-    queryFn: fetchGrades,
+    queryKey: queryKeys.boards,
+    queryFn: fetchBoards,
     enabled,
   })
 }
 
-export function useSubjects(grade: ClassGrade | "", enabled = true) {
+export function useGrades(board: Board | "", enabled = true) {
   return useQuery({
-    queryKey: queryKeys.subjects(grade as ClassGrade),
-    queryFn: () => fetchSubjects(grade as ClassGrade),
-    enabled: enabled && Boolean(grade),
+    queryKey: queryKeys.grades(board as Board),
+    queryFn: () => fetchGrades(board as Board),
+    enabled: enabled && Boolean(board),
+  })
+}
+
+export function useSubjects(
+  board: Board | "",
+  grade: ClassGrade | "",
+  enabled = true
+) {
+  return useQuery({
+    queryKey: queryKeys.subjects(board as Board, grade as ClassGrade),
+    queryFn: () => fetchSubjects(board as Board, grade as ClassGrade),
+    enabled: enabled && Boolean(board) && Boolean(grade),
   })
 }
 
 export function useChapters(
+  board: Board | "",
   grade: ClassGrade | "",
   subject: Subject | "",
   enabled = true
 ) {
   return useQuery({
-    queryKey: queryKeys.chapters(grade as ClassGrade, subject as Subject),
-    queryFn: () => fetchChapters(grade as ClassGrade, subject as Subject),
-    enabled: enabled && Boolean(grade) && Boolean(subject),
+    queryKey: queryKeys.chapters(
+      board as Board,
+      grade as ClassGrade,
+      subject as Subject
+    ),
+    queryFn: () =>
+      fetchChapters(board as Board, grade as ClassGrade, subject as Subject),
+    enabled: enabled && Boolean(board) && Boolean(grade) && Boolean(subject),
   })
 }

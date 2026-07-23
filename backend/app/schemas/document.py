@@ -19,6 +19,7 @@ class ContentType(str, enum.Enum):
 
 class DocumentMetadata(BaseModel):
     book_code: str
+    board: str
     subject: str
     grade: int
     chapter_number: int

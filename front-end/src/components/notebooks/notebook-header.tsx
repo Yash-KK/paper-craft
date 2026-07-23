@@ -25,8 +25,11 @@ const chapterBadgeClass =
 export function NotebookHeader({ notebook }: { notebook: NotebookListItem }) {
   const sidebar = useSidebar()
   const updateNotebook = useUpdateNotebook()
-  const canEdit = Boolean(notebook.class_grade && notebook.subject)
+  const canEdit = Boolean(
+    notebook.board && notebook.class_grade && notebook.subject
+  )
   const { data: catalog = [], isPending, isFetching } = useChapters(
+    notebook.board ?? "",
     notebook.class_grade ?? "",
     notebook.subject ?? "",
     canEdit
@@ -34,7 +37,7 @@ export function NotebookHeader({ notebook }: { notebook: NotebookListItem }) {
 
   const selected = notebook.selected_chapters.map((c) => c.chapter_number)
   const saving = updateNotebook.isPending
-  const breadcrumb = [notebook.class_grade, notebook.subject]
+  const breadcrumb = [notebook.board, notebook.class_grade, notebook.subject]
     .filter(Boolean)
     .join(" / ")
 

@@ -15,6 +15,7 @@ def _to_response(user: User) -> UserProfileResponse:
         email=user.email,
         full_name=user.full_name,
         role=user.role,
+        board=profile.board if profile else None,
         school_name=profile.school_name if profile else None,
         phone_number=profile.phone_number if profile else None,
         avatar_url=profile.avatar_url if profile else None,

@@ -64,7 +64,8 @@ export function ChatComposer({
 
   const toggleTool = (id: ChatToolId, on: boolean) => {
     if (on) {
-      if (!enabledTools.includes(id)) onEnabledToolsChange([...enabledTools, id])
+      if (!enabledTools.includes(id))
+        onEnabledToolsChange([...enabledTools, id])
       return
     }
     onEnabledToolsChange(enabledTools.filter((t) => t !== id))
@@ -100,14 +101,21 @@ export function ChatComposer({
             >
               <Plus />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="top" sideOffset={8} className="min-w-44">
+            <DropdownMenuContent
+              align="start"
+              side="top"
+              sideOffset={8}
+              className="min-w-44"
+            >
               <DropdownMenuGroup>
                 <DropdownMenuLabel>Tools</DropdownMenuLabel>
                 {TOOL_OPTIONS.map((tool) => (
                   <DropdownMenuCheckboxItem
                     key={tool.id}
                     checked={enabledTools.includes(tool.id)}
-                    onCheckedChange={(value) => toggleTool(tool.id, value === true)}
+                    onCheckedChange={(value) =>
+                      toggleTool(tool.id, value === true)
+                    }
                   >
                     {tool.label}
                   </DropdownMenuCheckboxItem>
@@ -116,21 +124,23 @@ export function ChatComposer({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {TOOL_OPTIONS.filter((tool) => enabledTools.includes(tool.id)).map((tool) => {
-            const Icon = tool.icon
-            return (
-              <Badge
-                key={tool.id}
-                variant="secondary"
-                className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
-                onClick={() => !isStreaming && toggleTool(tool.id, false)}
-                title={`Remove ${tool.label}`}
-              >
-                <Icon />
-                {tool.label}
-              </Badge>
-            )
-          })}
+          {TOOL_OPTIONS.filter((tool) => enabledTools.includes(tool.id)).map(
+            (tool) => {
+              const Icon = tool.icon
+              return (
+                <Badge
+                  key={tool.id}
+                  variant="secondary"
+                  className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
+                  onClick={() => !isStreaming && toggleTool(tool.id, false)}
+                  title={`Remove ${tool.label}`}
+                >
+                  <Icon />
+                  {tool.label}
+                </Badge>
+              )
+            }
+          )}
 
           <div className="ml-auto shrink-0">
             {isStreaming ? (
@@ -165,9 +175,7 @@ export function ChatComposer({
         </p>
       ) : (
         <p className="mt-1.5 text-center text-xs text-muted-foreground">
-          <kbd className="rounded bg-muted px-1 font-mono">Enter</kbd> send ·{" "}
-          <kbd className="rounded bg-muted px-1 font-mono">Shift+Enter</kbd> new
-          line
+          PaperCraft can make mistakes
         </p>
       )}
     </div>

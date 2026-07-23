@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.db.models.notebook import Board
 
 if TYPE_CHECKING:
     from app.db.models.notebook import Notebook
@@ -79,6 +80,10 @@ class UserProfile(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
+    )
+    board: Mapped[Board | None] = mapped_column(
+        Enum(Board, name="user_profile_board", native_enum=False, length=20),
+        nullable=True,
     )
     school_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
