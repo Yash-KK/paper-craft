@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import docx
+from docx.document import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml
 from docx.oxml.ns import qn
@@ -148,7 +149,7 @@ def add_rich_block(doc, text, **kwargs):
             add_rich_paragraph(doc, line, **kwargs)
 
 
-def load_template(reference_docx: str | Path) -> docx.Document:
+def load_template(reference_docx: str | Path) -> Document:
     doc = docx.Document(str(reference_docx))
     body = doc.element.body
     sect_pr = body.find(qn("w:sectPr"))
@@ -403,7 +404,7 @@ def _build_question_paper_document(
     question_paper: Any,
     final_paper: dict,
     reference_docx: str | Path,
-) -> docx.Document:
+) -> Document:
     doc = load_template(reference_docx)
     add_header_block(doc, header_from_question_paper(question_paper), reference_docx)
 
@@ -429,7 +430,7 @@ def _build_answer_key_document(
     question_paper: Any,
     final_answer_key: dict,
     reference_docx: str | Path,
-) -> docx.Document:
+) -> Document:
     doc = load_template(reference_docx)
     add_header_block(
         doc,
@@ -504,7 +505,7 @@ def add_answer_item(doc, item: dict):
     add_blank_line(doc)
 
 
-def _document_to_bytes(doc: docx.Document) -> bytes:
+def _document_to_bytes(doc: Document) -> bytes:
     buffer = io.BytesIO()
     doc.save(buffer)
     return buffer.getvalue()
@@ -545,8 +546,8 @@ def render_question_paper_docx_bytes(
     final_paper: dict,
     reference_docx: str | Path,
 ) -> bytes:
-    return build_question_paper_docx(
-        question_paper, final_paper, reference_docx, out_path=None
+    return _document_to_bytes(
+        _build_question_paper_document(question_paper, final_paper, reference_docx)
     )
 
 
@@ -555,8 +556,10 @@ def render_answer_key_docx_bytes(
     final_answer_key: dict,
     reference_docx: str | Path,
 ) -> bytes:
-    return build_answer_key_docx(
-        question_paper, final_answer_key, reference_docx, out_path=None
+    return _document_to_bytes(
+        _build_answer_key_document(
+            question_paper, final_answer_key, reference_docx
+        )
     )
 
 
