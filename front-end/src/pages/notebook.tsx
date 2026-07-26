@@ -78,7 +78,6 @@ export function NotebookPage() {
         key={chat.data.id}
         notebookId={notebook.id}
         notebookName={notebook.name}
-        initialMessages={chat.data.messages}
       />
     </section>
   )

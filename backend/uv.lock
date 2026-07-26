@@ -688,6 +688,26 @@ wheels = [
 ]
 
 [[package]]
+name = "fastapi-pagination"
+version = "0.15.15"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f8/79/826b79dd718b0d9a91f21c3cfed365e5ecf44bc31419615c4cebeebb9ada/fastapi_pagination-0.15.15.tar.gz", hash = "sha256:d6e9e4bc4d6e20709dcabc11b16056cd5cd184c995ee214b0190f6b81426fa0c", size = 614873, upload-time = "2026-06-16T17:25:44.055Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/02/2e794ea498515afdadf2891f89aaed404de3ed619dd9cbf1ca637f17df19/fastapi_pagination-0.15.15-py3-none-any.whl", hash = "sha256:dc828d7cd15614c650c284bd2c3a98a8a2d9ce340508be3970dc8986908a02aa", size = 65864, upload-time = "2026-06-16T17:25:42.734Z" },
+]
+
+[package.optional-dependencies]
+sqlalchemy = [
+    { name = "sqlakeyset" },
+    { name = "sqlalchemy" },
+]
+
+[[package]]
 name = "fastapi-sso"
 version = "0.21.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2365,6 +2385,7 @@ dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "fastapi-pagination", extra = ["sqlalchemy"] },
     { name = "fastapi-sso" },
     { name = "fastembed" },
     { name = "langchain" },
@@ -2397,6 +2418,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.18.5" },
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.139.0" },
+    { name = "fastapi-pagination", extras = ["sqlalchemy"], specifier = ">=0.15.15" },
     { name = "fastapi-sso", specifier = ">=0.21.1" },
     { name = "fastembed", specifier = ">=0.6.0" },
     { name = "langchain", specifier = ">=1.3.12" },
@@ -3423,6 +3445,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/87/a6771e1546d97e7e041b6ae58d80074f81b7d5121207425c964ddf5cfdbd/sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc", size = 20372, upload-time = "2024-02-25T23:20:04.057Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2", size = 10235, upload-time = "2024-02-25T23:20:01.196Z" },
+]
+
+[[package]]
+name = "sqlakeyset"
+version = "2.0.1775222100"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "python-dateutil" },
+    { name = "sqlalchemy" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/18/0a06e22a66df13debde3eb799f7f31f17bf02242836f47a20e2c8c45e44c/sqlakeyset-2.0.1775222100.tar.gz", hash = "sha256:c2988c289181fa3615f3c091308a06001d83fa6ebc0591e7d18e08d8b92ee012", size = 114403, upload-time = "2026-04-03T13:15:03.428Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d0/f7/ff211cc8bc2968459b78a63c8b62b3b6819dff0abdfd260aa5ef012a73ec/sqlakeyset-2.0.1775222100-py3-none-any.whl", hash = "sha256:5004e671ddc7d9ecf105bcbd46c079b314cc6d413db3159e63a3567e51e28fa3", size = 27369, upload-time = "2026-04-03T13:15:02.219Z" },
 ]
 
 [[package]]

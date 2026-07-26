@@ -5,10 +5,10 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 
-from app.db.models.chat import ChatMessage, ChatMessageRole
+from app.db.models.chat import ChatMessage, ChatMessageRole, ChatSession
 from app.db.models.user import User
 from app.repositories.chat import ChatRepository
-from app.schemas.chat import ChatMessageResponse, ChatSessionDetail
+from app.schemas.chat import ChatSessionResponse
 from app.services.chat.agent import stream_notebook_chat
 
 
@@ -18,22 +18,22 @@ class ChatService:
     def __init__(self, repository: ChatRepository) -> None:
         self._repo = repository
 
-    async def get_chat(self, notebook_id: UUID, user: User) -> ChatSessionDetail:
+    async def get_or_create_owned_session(
+        self, notebook_id: UUID, user: User
+    ) -> ChatSession:
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
         if notebook is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+            )
+        return await self._repo.get_or_create_session(notebook)
 
-        session = await self._repo.get_or_create_session(notebook)
-        messages = await self._repo.list_messages(session.id)
+    async def get_chat(self, notebook_id: UUID, user: User) -> ChatSessionResponse:
+        session = await self.get_or_create_owned_session(notebook_id, user)
+        return ChatSessionResponse.model_validate(session)
 
-        return ChatSessionDetail(
-            id=session.id,
-            notebook_id=session.notebook_id,
-            title=session.title,
-            created_at=session.created_at,
-            updated_at=session.updated_at,
-            messages=[ChatMessageResponse.model_validate(m) for m in messages],
-        )
+    def messages_cursor_query(self, session_id: UUID):
+        return self._repo.messages_cursor_query(session_id)
 
     async def start_turn(
         self,
@@ -47,10 +47,12 @@ class ChatService:
         """Validate ownership, persist the user message, then return the SSE generator."""
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
         if notebook is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
+            )
 
         session = await self._repo.get_or_create_session(notebook)
-        history = await self._repo.list_messages(session.id)
+        history = await self._repo.list_recent_messages(session.id, limit=20)
 
         await self._repo.create_message(session_id=session.id, role=ChatMessageRole.USER, content=content)
 

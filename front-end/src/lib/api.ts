@@ -15,7 +15,7 @@ import type {
   SampleBlueprintDetail,
   SampleBlueprintSummary,
 } from "@/lib/types/generation"
-import type { ChatSession } from "@/features/chat/types/chat"
+import type { ChatMessagesPage, ChatSession } from "@/features/chat/types/chat"
 
 export type {
   Board,
@@ -205,6 +205,21 @@ export async function fetchNotebookChat(
   const response = await authFetch(`/api/v1/notebooks/${notebookId}/chat`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChatSession
+}
+
+export async function fetchNotebookChatMessages(
+  notebookId: string,
+  options?: { cursor?: string | null; size?: number }
+): Promise<ChatMessagesPage> {
+  const params = new URLSearchParams()
+  if (options?.cursor) params.set("cursor", options.cursor)
+  if (options?.size != null) params.set("size", String(options.size))
+  const query = params.toString()
+  const response = await authFetch(
+    `/api/v1/notebooks/${notebookId}/chat/messages${query ? `?${query}` : ""}`
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as ChatMessagesPage
 }
 
 export async function fetchBoards(): Promise<Board[]> {
