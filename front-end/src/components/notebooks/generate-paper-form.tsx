@@ -66,7 +66,7 @@ function PanelIcon({ children }: { children: ReactNode }) {
 export function GeneratePaperForm({
   notebook,
   schoolName,
-  onGenerated,
+  // onGenerated,
   onCancel,
 }: GeneratePaperFormProps) {
   const form = useGeneratePaperForm(notebook, schoolName)
@@ -75,42 +75,18 @@ export function GeneratePaperForm({
   const classSubject = `${notebook.class_grade ?? "Class"} — ${notebook.subject ?? "Subject"}`
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Question paper
-          </p>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Generate Paper
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Choose a sample blueprint, review the scheme, then generate. Chapters
-            are limited to this notebook&apos;s selection.
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          {onCancel ? (
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            className="gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
-            disabled={
-              !form.sampleSelected || form.generating || form.chapters.length === 0
-            }
-            onClick={() => void form.generate().then((ok) => ok && onGenerated?.())}
-          >
-            {form.generating ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            Generate Paper
-          </Button>
-        </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-1">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Question paper
+        </p>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          Generate Paper
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Choose a sample blueprint, review the scheme, then generate. Chapters
+          are limited to this notebook&apos;s selection.
+        </p>
       </div>
 
       <div className="grid gap-2 rounded-2xl border bg-card p-4 sm:p-5">
@@ -309,6 +285,36 @@ export function GeneratePaperForm({
           marking scheme. All fields stay editable afterward.
         </div>
       )}
+
+      <div className="flex flex-col gap-2">
+        <Button
+          type="button"
+          className="h-11 w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
+          disabled={
+            !form.sampleSelected ||
+            form.generating ||
+            form.chapters.length === 0
+          }
+          onClick={() => alert("Generate Paper")}
+        >
+          {form.generating ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Sparkles className="size-4" />
+          )}
+          Generate Paper
+        </Button>
+        {onCancel ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full"
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+        ) : null}
+      </div>
     </div>
   )
 }
