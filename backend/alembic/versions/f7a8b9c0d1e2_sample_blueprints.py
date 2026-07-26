@@ -79,7 +79,7 @@ def upgrade() -> None:
                 "total_marks": 40,
                 "board": "CBSE",
                 "grade": 10,
-                "subject": "Mathematics",
+                "subject": "MATHEMATICS",
                 "blueprint": FORTY_MARKS_BLUEPRINT,
                 "sort_order": 40,
                 "is_active": True,

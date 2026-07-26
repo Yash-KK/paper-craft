@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.schemas.generation import GenerationResult, QuestionPaperBlueprint
 from app.schemas.notebook import SelectedChapter
+from app.services.documents import DEFAULT_FORMAT_REFERENCE_URI, to_file_uri
 from app.services.generation.format_reference import resolve_format_reference
 from app.services.generation.graph import generation_graph
 
@@ -13,11 +14,19 @@ def generate_paper(
     subject: str,
     grade: int,
     teacher_instructions: str | None = None,
-    format_reference_path: Path | None = None,
+    format_reference_uri: str | None = None,
+    format_reference_upload: Path | None = None,
 ) -> GenerationResult:
     """Plan slots from an editable blueprint → retrieve → generate → assemble."""
-    is_default = format_reference_path is None
-    reference = resolve_format_reference(format_reference_path)
+    if format_reference_upload is not None:
+        uri = to_file_uri(format_reference_upload)
+        is_default = False
+    else:
+        uri = format_reference_uri or DEFAULT_FORMAT_REFERENCE_URI
+        is_default = True
+
+    # Materialize now so missing/invalid refs fail before the LLM graph runs.
+    resolve_format_reference(uri)
 
     result = generation_graph.invoke(
         {
@@ -34,6 +43,6 @@ def generate_paper(
         final_paper=result["final_paper"] or {"sections": {}},
         final_answer_key=result["final_answer_key"] or {"sections": {}},
         generated_items=result.get("generated_items") or [],
-        format_reference_path=str(reference),
+        format_reference_uri=uri,
         format_reference_is_default=is_default,
     )

@@ -1,4 +1,9 @@
-import type { SelectedChapter } from "@/lib/types/notebook"
+import type {
+  Board,
+  ClassGrade,
+  SelectedChapter,
+  Subject,
+} from "@/lib/types/notebook"
 
 export type QuestionType =
   | "MCQ"
@@ -57,6 +62,10 @@ export type SampleBlueprintSummary = {
   slug: string
   label: string
   total_marks: number
+  board: Board | null
+  subject: Subject | null
+  grade: ClassGrade | null
+  format_reference_uri: string | null
 }
 
 export type SampleBlueprintDetail = SampleBlueprintSummary & {
@@ -69,6 +78,7 @@ export type GeneratePaperPayload = {
   subject: string
   grade: number
   teacher_instructions?: string | null
+  format_reference_uri?: string | null
   format_reference?: File | null
 }
 
@@ -77,7 +87,7 @@ export type GenerationResult = {
   final_paper: Record<string, unknown>
   final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
-  format_reference_path: string
+  format_reference_uri: string
   format_reference_is_default: boolean
 }
 

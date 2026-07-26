@@ -26,7 +26,10 @@ export function useGeneratePaperForm(
   schoolName: string | null
 ) {
   const chapters = notebook.selected_chapters
-  const samplesQuery = useSampleBlueprints()
+  const samplesQuery = useSampleBlueprints({
+    board: notebook.board,
+    subject: notebook.subject,
+  })
   const generateMutation = useGenerateQuestionPaper()
 
   const [sample, setSample] = React.useState<SampleBlueprintSummary | null>(
@@ -219,6 +222,7 @@ export function useGeneratePaperForm(
         subject: submissionBlueprint.subject,
         grade: submissionBlueprint.grade,
         teacher_instructions: teacherInstructions.trim() || null,
+        format_reference_uri: sample.format_reference_uri,
         format_reference: formatReference,
       })
       return true

@@ -96,7 +96,9 @@ export class UnauthorizedError extends Error {
 
 async function parseApiError(response: Response): Promise<string> {
   try {
-    const data = (await response.json()) as { detail?: string | { msg: string }[] }
+    const data = (await response.json()) as {
+      detail?: string | { msg: string }[]
+    }
     if (typeof data.detail === "string") return data.detail
     if (Array.isArray(data.detail) && data.detail[0]?.msg) {
       return data.detail[0].msg
@@ -240,8 +242,19 @@ export async function fetchChapters(
   return (await response.json()) as ChapterCatalogItem[]
 }
 
-export async function fetchSampleBlueprints(): Promise<SampleBlueprintSummary[]> {
-  const response = await authFetch("/api/v1/sample-blueprints")
+export async function fetchSampleBlueprints(filters?: {
+  board?: Board | null
+  subject?: Subject | null
+  grade?: ClassGrade | null
+}): Promise<SampleBlueprintSummary[]> {
+  const params = new URLSearchParams()
+  if (filters?.board) params.set("board", filters.board)
+  if (filters?.subject) params.set("subject", filters.subject)
+  if (filters?.grade) params.set("grade", filters.grade)
+  const query = params.toString()
+  const response = await authFetch(
+    `/api/v1/sample-blueprints${query ? `?${query}` : ""}`
+  )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as SampleBlueprintSummary[]
 }

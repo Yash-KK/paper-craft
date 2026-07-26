@@ -3,8 +3,9 @@ from enum import Enum
 from typing import Self, TypedDict
 from uuid import UUID
 
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
+from app.db.models.notebook import Board, ClassGrade, Subject
 from app.schemas.notebook import SelectedChapter
 
 
@@ -182,10 +183,16 @@ class GeneratedPaperResponse(BaseModel):
 
 
 class SampleBlueprintSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     slug: str
     label: str
     total_marks: int
+    board: Board | None = None
+    subject: Subject | None = None
+    grade: ClassGrade | None = None
+    format_reference_uri: str | None = None
 
 
 class SampleBlueprintDetail(SampleBlueprintSummary):
@@ -200,6 +207,7 @@ class GeneratePaperRequest(BaseModel):
     subject: str
     grade: int
     teacher_instructions: str | None = None
+    format_reference_uri: str | None = None
 
 
 class GenerationResult(BaseModel):
@@ -207,7 +215,7 @@ class GenerationResult(BaseModel):
     final_paper: dict
     final_answer_key: dict
     generated_items: list[dict]
-    format_reference_path: str
+    format_reference_uri: str
     format_reference_is_default: bool = True
 
 

@@ -115,8 +115,14 @@ export function GeneratePaperForm({
         <MenuSelect
           label="Sample Blueprint"
           value={form.sample?.id ?? ""}
-          placeholder="Select a sample blueprint"
-          disabled={form.chapters.length === 0}
+          placeholder={
+            form.samplesLoading
+              ? "Loading blueprints…"
+              : form.samples.length === 0
+                ? "No blueprints for this board/subject"
+                : "Select a sample blueprint"
+          }
+          disabled={form.chapters.length === 0 || form.samples.length === 0}
           loading={form.samplesLoading || form.applyingSample}
           className="h-11 w-full justify-between font-normal sm:max-w-md"
           options={form.samples.map((sample) => ({
@@ -138,12 +144,14 @@ export function GeneratePaperForm({
         >
           {form.chapters.length === 0
             ? "Add chapters to this notebook before selecting a blueprint."
-            : `Available chapters: ${form.chapters
-                .map(
-                  (chapter) =>
-                    `Ch ${chapter.chapter_number} (${chapter.chapter_name})`
-                )
-                .join(", ")}`}
+            : form.samples.length === 0 && !form.samplesLoading
+              ? `No sample blueprints match ${notebook.board ?? "this board"} / ${notebook.subject ?? "this subject"}.`
+              : `Available chapters: ${form.chapters
+                  .map(
+                    (chapter) =>
+                      `Ch ${chapter.chapter_number} (${chapter.chapter_name})`
+                  )
+                  .join(", ")}`}
         </p>
       </div>
 
@@ -337,7 +345,7 @@ export function GeneratePaperForm({
 
           <FormPanel
             title="Format Reference"
-            description="Optional. Upload a DOCX to use as the formatting template for the final paper. If you skip this, the built-in 40 Marks sample is used."
+            description="Optional. Upload a DOCX to use as the formatting template for the final paper. If you skip this, the sample blueprint's reference document is used."
           >
             <div className="grid gap-2">
               <Label htmlFor="format-reference">Reference DOCX</Label>
@@ -353,7 +361,12 @@ export function GeneratePaperForm({
               <p className="text-xs text-muted-foreground">
                 {form.formatReference
                   ? `Using uploaded file: ${form.formatReference.name}`
-                  : "Using default: samples/40_marks_sample.docx"}
+                  : `Using blueprint default: ${
+                      form.sample?.format_reference_uri?.replace(
+                        /^local:/,
+                        ""
+                      ) ?? "samples/40_marks_sample.docx"
+                    }`}
               </p>
               {form.formatReference ? (
                 <Button

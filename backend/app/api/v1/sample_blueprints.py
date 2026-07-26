@@ -5,14 +5,14 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.db.models.notebook import Board, ClassGrade, Subject
 from app.db.models.sample_blueprint import SampleBlueprint
 from app.schemas.generation import (
     GeneratePaperRequest,
     GenerationResult,
-    QuestionPaperBlueprint,
     SampleBlueprintDetail,
     SampleBlueprintSummary,
 )
@@ -26,12 +26,28 @@ generation_router = APIRouter(prefix="/generation", tags=["generation"])
 async def list_sample_blueprints(
     current_user: CurrentUser,
     db: SessionDep,
+    board: Board | None = None,
+    subject: Subject | None = None,
+    grade: ClassGrade | None = None,
 ) -> list[SampleBlueprint]:
     del current_user  # auth gate only
+    query = select(SampleBlueprint).where(SampleBlueprint.is_active.is_(True))
+
+    if board is not None:
+        query = query.where(
+            or_(SampleBlueprint.board.is_(None), SampleBlueprint.board == board)
+        )
+    if subject is not None:
+        query = query.where(
+            or_(SampleBlueprint.subject.is_(None), SampleBlueprint.subject == subject)
+        )
+    if grade is not None:
+        query = query.where(
+            or_(SampleBlueprint.grade.is_(None), SampleBlueprint.grade == grade)
+        )
+
     result = await db.execute(
-        select(SampleBlueprint)
-        .where(SampleBlueprint.is_active.is_(True))
-        .order_by(SampleBlueprint.sort_order.asc(), SampleBlueprint.label.asc())
+        query.order_by(SampleBlueprint.sort_order.asc(), SampleBlueprint.label.asc())
     )
     return list(result.scalars().all())
 
@@ -49,12 +65,18 @@ async def get_sample_blueprint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Sample blueprint not found",
         )
-    return SampleBlueprintDetail(
-        id=row.id,
-        slug=row.slug,
-        label=row.label,
-        total_marks=row.total_marks,
-        blueprint=QuestionPaperBlueprint.model_validate(row.blueprint),
+    return SampleBlueprintDetail.model_validate(
+        {
+            "id": row.id,
+            "slug": row.slug,
+            "label": row.label,
+            "total_marks": row.total_marks,
+            "board": row.board,
+            "subject": row.subject,
+            "grade": row.grade,
+            "format_reference_uri": row.format_reference_uri,
+            "blueprint": row.blueprint,
+        }
     )
 
 
@@ -121,14 +143,15 @@ async def create_question_paper(
             subject=body.subject,
             grade=body.grade,
             teacher_instructions=body.teacher_instructions,
-            format_reference_path=uploaded_path,
+            format_reference_uri=body.format_reference_uri,
+            format_reference_upload=uploaded_path,
         )
     except FileNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
-    except ValueError as exc:
+    except (ValueError, NotImplementedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
