@@ -1,6 +1,11 @@
 import pytest
 from pydantic import ValidationError
 
+from app.services.documents import (
+    DEFAULT_FORMAT_REFERENCE_URI,
+    resolve_document,
+    to_local_uri,
+)
 from app.schemas.generation import QuestionPaperBlueprint
 from app.services.generation.format_reference import (
     DEFAULT_FORMAT_REFERENCE,
@@ -88,3 +93,14 @@ def test_default_format_reference_resolves():
     assert path == DEFAULT_FORMAT_REFERENCE.resolve()
     assert path.is_file()
     assert path.suffix.lower() == ".docx"
+
+
+def test_document_store_resolves_local_uri():
+    path = resolve_document(DEFAULT_FORMAT_REFERENCE_URI)
+    assert path == resolve_document(to_local_uri("samples/40_marks_sample.docx"))
+    assert path.is_file()
+
+
+def test_document_store_rejects_unimplemented_s3():
+    with pytest.raises(NotImplementedError, match="S3"):
+        resolve_document("s3://bucket/samples/40_marks_sample.docx")

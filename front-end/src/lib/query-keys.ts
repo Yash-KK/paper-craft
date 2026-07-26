@@ -10,5 +10,9 @@ export const queryKeys = {
     ["chapters", "subjects", board, grade] as const,
   chapters: (board: Board, grade: ClassGrade, subject: Subject) =>
     ["chapters", "list", board, grade, subject] as const,
-  sampleBlueprints: ["sample-blueprints"] as const,
+  sampleBlueprints: (
+    board: Board | null,
+    subject: Subject | null,
+    grade: ClassGrade | null = null
+  ) => ["sample-blueprints", board, subject, grade] as const,
 }
