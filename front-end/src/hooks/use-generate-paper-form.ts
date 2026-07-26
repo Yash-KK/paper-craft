@@ -235,6 +235,7 @@ export function useGeneratePaperForm(
           .filter(Boolean),
       }
       await generateMutation.mutateAsync({
+        notebook_id: notebook.id,
         blueprint: submissionBlueprint,
         selected_chapters: chapters,
         subject: submissionBlueprint.subject,

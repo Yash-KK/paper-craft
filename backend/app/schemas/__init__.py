@@ -18,6 +18,8 @@ from app.schemas.generation import (
     GeneratePaperRequest,
     GenerationResult,
     QuestionPaperBlueprint,
+    QuestionPaperDetail,
+    QuestionPaperSummary,
     QuestionType,
     SampleBlueprintDetail,
     SampleBlueprintSummary,
@@ -34,6 +36,8 @@ from app.schemas.query import QueryRequest, QueryResponse
 from app.schemas.user import UserProfileResponse, UserProfileUpdate
 
 __all__ = [
+    "BloomsLevel",
+    "BlueprintKind",
     "ChapterCatalogItem",
     "ChatMessageResponse",
     "ChatSessionDetail",
@@ -46,8 +50,6 @@ __all__ = [
     "ChatStreamToolEndEvent",
     "ChatStreamToolStartEvent",
     "ChatTurnRequest",
-    "BloomsLevel",
-    "BlueprintKind",
     "ChunkType",
     "GeneratePaperRequest",
     "GenerationResult",
@@ -60,6 +62,8 @@ __all__ = [
     "QueryRequest",
     "QueryResponse",
     "QuestionPaperBlueprint",
+    "QuestionPaperDetail",
+    "QuestionPaperSummary",
     "QuestionType",
     "SampleBlueprintDetail",
     "SampleBlueprintSummary",

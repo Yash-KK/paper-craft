@@ -88,6 +88,7 @@ export type SampleBlueprintDetail = SampleBlueprintSummary & {
 }
 
 export type GeneratePaperPayload = {
+  notebook_id: string
   blueprint: QuestionPaperBlueprint
   selected_chapters: SelectedChapter[]
   subject: string
@@ -97,13 +98,23 @@ export type GeneratePaperPayload = {
   format_reference?: File | null
 }
 
+export type QuestionPaperStatus = "pending" | "running" | "ready" | "failed"
+
 export type GenerationResult = {
+  id: string
+  notebook_id: string
+  title: string
+  status: QuestionPaperStatus
+  version: number
   blueprint: QuestionPaperBlueprint
   final_paper: Record<string, unknown>
   final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
   format_reference_uri: string
   format_reference_is_default: boolean
+  paper_markdown: string
+  answer_key_markdown: string
+  error?: string | null
 }
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {

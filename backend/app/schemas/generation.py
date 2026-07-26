@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Self, TypedDict
 from uuid import UUID
@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from app.db.models.notebook import Board, ClassGrade, Subject
+from app.db.models.question_paper import QuestionPaperStatus
 from app.schemas.notebook import SelectedChapter
 
 
@@ -285,6 +286,7 @@ class SampleBlueprintDetail(SampleBlueprintSummary):
 class GeneratePaperRequest(BaseModel):
     """Request body for question paper generation."""
 
+    notebook_id: UUID
     blueprint: QuestionPaperBlueprint
     selected_chapters: list[SelectedChapter]
     subject: str
@@ -294,12 +296,47 @@ class GeneratePaperRequest(BaseModel):
 
 
 class GenerationResult(BaseModel):
+    id: UUID
+    notebook_id: UUID
+    title: str
+    status: QuestionPaperStatus
+    version: int
     blueprint: QuestionPaperBlueprint
     final_paper: dict
     final_answer_key: dict
     generated_items: list[dict]
     format_reference_uri: str
     format_reference_is_default: bool = True
+    paper_markdown: str
+    answer_key_markdown: str
+    error: str | None = None
+
+
+class QuestionPaperSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    notebook_id: UUID
+    title: str
+    status: QuestionPaperStatus
+    version: int
+    subject: str
+    grade: int
+    format_reference_uri: str
+    format_reference_is_default: bool
+    created_at: datetime
+    updated_at: datetime
+    error: str | None = None
+
+
+class QuestionPaperDetail(QuestionPaperSummary):
+    blueprint: QuestionPaperBlueprint
+    final_paper: dict
+    final_answer_key: dict
+    generated_items: list[dict]
+    teacher_instructions: str | None = None
+    paper_markdown: str
+    answer_key_markdown: str
 
 
 class GenerationState(TypedDict):

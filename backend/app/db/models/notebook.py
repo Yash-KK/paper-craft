@@ -11,6 +11,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.chat import ChatSession
+    from app.db.models.question_paper import QuestionPaper
     from app.db.models.user import User
 
 
@@ -70,6 +71,11 @@ class Notebook(Base):
 
     user: Mapped["User"] = relationship(back_populates="notebooks")
     chat_sessions: Mapped[list["ChatSession"]] = relationship(
+        back_populates="notebook",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    question_papers: Mapped[list["QuestionPaper"]] = relationship(
         back_populates="notebook",
         cascade="all, delete-orphan",
         passive_deletes=True,

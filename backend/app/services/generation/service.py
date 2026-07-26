@@ -20,10 +20,9 @@ def generate_paper(
     """Plan slots from an editable blueprint → retrieve → generate → assemble."""
     if format_reference_upload is not None:
         uri = to_file_uri(format_reference_upload)
-        is_default = False
     else:
         uri = format_reference_uri or DEFAULT_FORMAT_REFERENCE_URI
-        is_default = True
+    is_default = uri == DEFAULT_FORMAT_REFERENCE_URI
 
     # Materialize now so missing/invalid refs fail before the LLM graph runs.
     resolve_format_reference(uri)
