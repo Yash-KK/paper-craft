@@ -43,10 +43,19 @@ type LandingIntroProps = {
 export function LandingIntro({ className }: LandingIntroProps) {
   return (
     <section className={cn("flex flex-col gap-8", className)}>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
+            <BookOpenText className="size-5" aria-hidden />
+          </span>
+          <p className="font-heading text-2xl font-semibold tracking-tight">
+            PaperCraft
+          </p>
+        </div>
+
         <Badge
           variant="outline"
-          className="h-7 gap-1.5 border-violet-500/20 bg-violet-500/10 px-3 text-violet-700 dark:text-violet-300"
+          className="h-7 w-fit gap-1.5 border-violet-500/20 bg-violet-500/10 px-3 text-violet-700 dark:text-violet-300"
         >
           <Sparkles />
           AI-powered question paper generation
@@ -59,8 +68,8 @@ export function LandingIntro({ className }: LandingIntroProps) {
           <p className="max-w-xl text-base text-pretty text-muted-foreground sm:text-lg">
             PaperCraft helps teachers generate high-quality, curriculum-aligned
             question papers in just a few clicks. Select chapters, choose a
-            blueprint, and let AI draft a well-structured paper while you stay
-            in complete control.
+            blueprint and let AI draft a well-structured paper while you stay in
+            complete control.
           </p>
         </div>
       </div>

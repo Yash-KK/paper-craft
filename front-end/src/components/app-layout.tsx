@@ -172,18 +172,6 @@ export function AppLayout() {
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {!authenticated && (
-            <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3 sm:px-6">
-              <Link
-                to="/"
-                className="font-heading text-base font-semibold sm:text-lg"
-              >
-                PaperCraft
-              </Link>
-              <ModeToggle />
-            </header>
-          )}
-
           {authenticated && !sidebarOpen && !notebookMatch && (
             <div className="flex h-12 shrink-0 items-center border-b px-3">
               <Button
