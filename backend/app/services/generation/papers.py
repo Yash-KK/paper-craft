@@ -1,37 +1,73 @@
-"""Persist and load generated question papers."""
+"""Persist and load generated question papers and their versions."""
 
 from __future__ import annotations
 
+import logging
 import shutil
 import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session, selectinload
 
-from app.core.config import PROJECT_ROOT
+from app.core.config import PROJECT_ROOT, settings
+from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.notebook import Notebook
-from app.db.models.question_paper import QuestionPaper, QuestionPaperStatus
+from app.db.models.question_paper import (
+    QuestionPaper,
+    QuestionPaperStatus,
+    QuestionPaperVersion,
+)
 from app.db.models.user import User
+from app.db.session import get_sync_db
 from app.schemas.generation import (
+    GenerateNewVersionRequest,
     GeneratePaperRequest,
     GenerationResult,
     QuestionPaperBlueprint,
     QuestionPaperDetail,
+    QuestionPaperSummary,
+    QuestionPaperVersionDetail,
+    QuestionPaperVersionSummary,
+    SelectedChatMessageSnapshot,
 )
-from app.services.documents import to_local_uri
+from app.schemas.notebook import SelectedChapter
+from app.services.documents import DEFAULT_FORMAT_REFERENCE_URI, to_local_uri
 from app.services.export import (
     render_answer_key_markdown,
     render_paper_markdown,
 )
 from app.services.generation.service import generate_paper
 
+logger = logging.getLogger(__name__)
+
 FORMAT_REFERENCE_DIR = PROJECT_ROOT / "data" / "format_references"
+ACTIVE_STATUSES = (QuestionPaperStatus.PENDING, QuestionPaperStatus.RUNNING)
 
 
-def _paper_title(blueprint: QuestionPaperBlueprint) -> str:
-    title = (blueprint.exam_title or "").strip()
+class ActiveGenerationError(RuntimeError):
+    """Raised when a paper already has a pending/running version."""
+
+
+class NoReadyVersionError(RuntimeError):
+    """Raised when creating a new version without a ready base."""
+
+
+def _paper_title(
+    blueprint: QuestionPaperBlueprint | dict,
+    *,
+    explicit: str | None = None,
+) -> str:
+    if explicit is not None and explicit.strip():
+        return explicit.strip()
+    if isinstance(blueprint, dict):
+        title = (blueprint.get("exam_title") or "").strip()
+    else:
+        title = (blueprint.exam_title or "").strip()
     return title or "Question Paper"
 
 
@@ -42,48 +78,120 @@ def _persist_format_reference_upload(upload_path: Path) -> str:
     return to_local_uri(f"data/format_references/{dest.name}")
 
 
-def _to_generation_result(paper: QuestionPaper) -> GenerationResult:
-    blueprint = QuestionPaperBlueprint.model_validate(paper.blueprint)
-    return GenerationResult(
+def _touch_parent(paper: QuestionPaper) -> None:
+    paper.updated_at = datetime.now(UTC)
+
+
+def _snapshot_messages(messages: list[ChatMessage]) -> list[dict[str, Any]]:
+    snapshots: list[dict[str, Any]] = []
+    for message in messages:
+        created_at = message.created_at
+        snapshots.append(
+            {
+                "id": str(message.id),
+                "role": (
+                    message.role.value
+                    if hasattr(message.role, "value")
+                    else str(message.role)
+                ),
+                "content": message.content,
+                "metadata": message.message_metadata or {},
+                "created_at": created_at.isoformat() if created_at else None,
+            }
+        )
+    return snapshots
+
+
+def _parse_snapshots(
+    raw: list[dict[str, Any]] | None,
+) -> list[SelectedChatMessageSnapshot]:
+    if not raw:
+        return []
+    return [SelectedChatMessageSnapshot.model_validate(item) for item in raw]
+
+
+def _version_summary(version: QuestionPaperVersion) -> QuestionPaperVersionSummary:
+    return QuestionPaperVersionSummary.model_validate(version)
+
+
+def _to_paper_summary(paper: QuestionPaper) -> QuestionPaperSummary:
+    versions = [_version_summary(version) for version in (paper.versions or [])]
+    latest = versions[-1] if versions else None
+    return QuestionPaperSummary(
         id=paper.id,
         notebook_id=paper.notebook_id,
         title=paper.title,
-        status=paper.status,
-        version=paper.version,
-        blueprint=blueprint,
-        final_paper=paper.final_paper or {"sections": {}},
-        final_answer_key=paper.final_answer_key or {"sections": {}},
-        generated_items=paper.generated_items or [],
-        format_reference_uri=paper.format_reference_uri,
-        format_reference_is_default=paper.format_reference_is_default,
-        paper_markdown=render_paper_markdown(blueprint, paper.final_paper or {}),
-        answer_key_markdown=render_answer_key_markdown(
-            blueprint, paper.final_answer_key or {}
-        ),
-        error=paper.error,
+        created_at=paper.created_at,
+        updated_at=paper.updated_at,
+        versions=versions,
+        latest_version=latest,
     )
 
 
-def _to_detail(paper: QuestionPaper) -> QuestionPaperDetail:
-    result = _to_generation_result(paper)
-    return QuestionPaperDetail(
-        id=paper.id,
+def _to_generation_result(
+    paper: QuestionPaper,
+    version: QuestionPaperVersion,
+) -> GenerationResult:
+    blueprint = QuestionPaperBlueprint.model_validate(version.blueprint)
+    final_paper = version.final_paper or {"sections": {}}
+    final_answer_key = version.final_answer_key or {"sections": {}}
+    paper_markdown = ""
+    answer_key_markdown = ""
+    if version.status == QuestionPaperStatus.READY:
+        paper_markdown = render_paper_markdown(blueprint, final_paper)
+        answer_key_markdown = render_answer_key_markdown(blueprint, final_answer_key)
+    return GenerationResult(
+        paper_id=paper.id,
+        version_id=version.id,
         notebook_id=paper.notebook_id,
         title=paper.title,
-        status=paper.status,
-        version=paper.version,
-        subject=paper.subject,
-        grade=paper.grade,
-        format_reference_uri=paper.format_reference_uri,
-        format_reference_is_default=paper.format_reference_is_default,
-        created_at=paper.created_at,
-        updated_at=paper.updated_at,
-        error=paper.error,
+        version_number=version.version_number,
+        status=version.status,
+        blueprint=blueprint,
+        final_paper=final_paper,
+        final_answer_key=final_answer_key,
+        generated_items=version.generated_items or [],
+        format_reference_uri=version.format_reference_uri,
+        format_reference_is_default=version.format_reference_is_default,
+        paper_markdown=paper_markdown,
+        answer_key_markdown=answer_key_markdown,
+        selected_chat_messages=_parse_snapshots(version.selected_chat_messages),
+        error=version.error,
+    )
+
+
+def _to_version_detail(
+    paper: QuestionPaper,
+    version: QuestionPaperVersion,
+) -> QuestionPaperVersionDetail:
+    result = _to_generation_result(paper, version)
+    return QuestionPaperVersionDetail(
+        id=version.id,
+        version_number=version.version_number,
+        status=version.status,
+        subject=version.subject,
+        grade=version.grade,
+        format_reference_uri=version.format_reference_uri,
+        format_reference_is_default=version.format_reference_is_default,
+        created_at=version.created_at,
+        updated_at=version.updated_at,
+        error=version.error,
+        base_version_id=version.base_version_id,
+        question_paper_id=paper.id,
+        notebook_id=paper.notebook_id,
+        title=paper.title,
         blueprint=result.blueprint,
         final_paper=result.final_paper,
         final_answer_key=result.final_answer_key,
         generated_items=result.generated_items,
-        teacher_instructions=paper.teacher_instructions,
+        selected_chapters=[
+            SelectedChapter.model_validate(chapter)
+            for chapter in (version.selected_chapters or [])
+        ],
+        selected_chat_messages=result.selected_chat_messages,
+        teacher_instructions=version.teacher_instructions,
+        generation_context=version.generation_context or {},
+        generation_metadata=version.generation_metadata or {},
         paper_markdown=result.paper_markdown,
         answer_key_markdown=result.answer_key_markdown,
     )
@@ -104,8 +212,18 @@ async def get_owned_paper(
     db: AsyncSession,
     paper_id: UUID,
     user: User,
+    *,
+    load_versions: bool = False,
 ) -> QuestionPaper | None:
-    paper = await db.get(QuestionPaper, paper_id)
+    if load_versions:
+        result = await db.execute(
+            select(QuestionPaper)
+            .where(QuestionPaper.id == paper_id)
+            .options(selectinload(QuestionPaper.versions))
+        )
+        paper = result.scalar_one_or_none()
+    else:
+        paper = await db.get(QuestionPaper, paper_id)
     if paper is None:
         return None
     notebook = await get_owned_notebook(db, paper.notebook_id, user)
@@ -121,18 +239,57 @@ async def list_papers_for_notebook(
     result = await db.execute(
         select(QuestionPaper)
         .where(QuestionPaper.notebook_id == notebook_id)
+        .options(selectinload(QuestionPaper.versions))
         .order_by(QuestionPaper.updated_at.desc())
     )
-    return list(result.scalars().all())
+    return list(result.scalars().unique().all())
 
 
-async def create_and_generate_paper(
+async def _load_chat_message_snapshots(
+    db: AsyncSession,
+    *,
+    notebook_id: UUID,
+    user: User,
+    message_ids: list[UUID],
+) -> list[dict[str, Any]]:
+    if not message_ids:
+        return []
+
+    unique_ids = list(dict.fromkeys(message_ids))
+    result = await db.execute(
+        select(ChatMessage)
+        .join(ChatSession, ChatMessage.session_id == ChatSession.id)
+        .join(Notebook, ChatSession.notebook_id == Notebook.id)
+        .where(
+            ChatMessage.id.in_(unique_ids),
+            Notebook.id == notebook_id,
+            Notebook.user_id == user.id,
+        )
+        .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+    )
+    messages = list(result.scalars().all())
+    found_ids = {message.id for message in messages}
+    missing = [str(message_id) for message_id in unique_ids if message_id not in found_ids]
+    if missing:
+        raise LookupError(
+            "One or more selected chat messages were not found in this notebook"
+        )
+    # Preserve caller order for reproducibility of selected context.
+    by_id = {message.id: message for message in messages}
+    ordered = [by_id[message_id] for message_id in unique_ids]
+    return _snapshot_messages(ordered)
+
+
+async def enqueue_paper_generation(
     db: AsyncSession,
     *,
     user: User,
     body: GeneratePaperRequest,
     format_reference_upload: Path | None = None,
 ) -> GenerationResult:
+    """Create a parent paper + pending Version 1 and enqueue Celery generation."""
+    from app.tasks.generation import generate_question_paper_task
+
     notebook = await get_owned_notebook(db, body.notebook_id, user)
     if notebook is None:
         raise PermissionError("Notebook not found")
@@ -141,55 +298,327 @@ async def create_and_generate_paper(
     if format_reference_upload is not None:
         upload_uri = _persist_format_reference_upload(format_reference_upload)
 
+    format_reference_uri = (
+        upload_uri
+        or (body.format_reference_uri or "").strip()
+        or DEFAULT_FORMAT_REFERENCE_URI
+    )
+    is_default = format_reference_uri == DEFAULT_FORMAT_REFERENCE_URI
+    title = _paper_title(body.blueprint, explicit=body.title)
+
     paper = QuestionPaper(
         notebook_id=notebook.id,
-        title=_paper_title(body.blueprint),
-        status=QuestionPaperStatus.RUNNING,
-        version=1,
-        subject=body.subject,
-        grade=body.grade,
-        teacher_instructions=(body.teacher_instructions or "").strip() or None,
-        blueprint=body.blueprint.model_dump(mode="json"),
-        format_reference_uri=upload_uri
-        or body.format_reference_uri
-        or "local:samples/40_marks_sample.docx",
-        format_reference_is_default=upload_uri is None
-        and not (body.format_reference_uri or "").strip(),
+        title=title,
     )
     db.add(paper)
     await db.flush()
 
+    version = QuestionPaperVersion(
+        question_paper_id=paper.id,
+        version_number=1,
+        status=QuestionPaperStatus.PENDING,
+        subject=body.subject,
+        grade=body.grade,
+        teacher_instructions=(body.teacher_instructions or "").strip() or None,
+        selected_chapters=[c.model_dump(mode="json") for c in body.selected_chapters],
+        blueprint=body.blueprint.model_dump(mode="json"),
+        selected_chat_messages=[],
+        generation_context={},
+        generation_metadata={},
+        format_reference_uri=format_reference_uri,
+        format_reference_is_default=is_default,
+    )
+    db.add(version)
+    _touch_parent(paper)
+    await db.commit()
+    await db.refresh(paper)
+    await db.refresh(version)
+
+    generate_question_paper_task.delay(str(version.id))
+    logger.info(
+        "Enqueued question paper generation paper_id=%s version_id=%s",
+        paper.id,
+        version.id,
+    )
+    return _to_generation_result(paper, version)
+
+
+async def enqueue_new_version(
+    db: AsyncSession,
+    *,
+    user: User,
+    paper_id: UUID,
+    body: GenerateNewVersionRequest,
+) -> GenerationResult:
+    """Create the next version from the latest ready version + chat snapshots."""
+    from app.tasks.generation import generate_question_paper_task
+
+    result = await db.execute(
+        select(QuestionPaper)
+        .where(QuestionPaper.id == paper_id)
+        .options(selectinload(QuestionPaper.versions))
+        .with_for_update()
+    )
+    paper = result.scalar_one_or_none()
+    if paper is None:
+        raise PermissionError("Question paper not found")
+
+    notebook = await get_owned_notebook(db, paper.notebook_id, user)
+    if notebook is None:
+        raise PermissionError("Question paper not found")
+
+    versions = list(paper.versions or [])
+    if any(version.status in ACTIVE_STATUSES for version in versions):
+        raise ActiveGenerationError(
+            "A generation is already pending or running for this paper"
+        )
+
+    ready_versions = [
+        version
+        for version in versions
+        if version.status == QuestionPaperStatus.READY
+    ]
+    if not ready_versions:
+        raise NoReadyVersionError(
+            "No ready version exists to base a new revision on"
+        )
+    base = max(ready_versions, key=lambda version: version.version_number)
+    next_number = (
+        max(version.version_number for version in versions) + 1 if versions else 1
+    )
+
     try:
-        result = generate_paper(
-            blueprint=body.blueprint,
-            selected_chapters=body.selected_chapters,
-            subject=body.subject,
-            grade=body.grade,
-            teacher_instructions=body.teacher_instructions,
-            format_reference_uri=upload_uri or body.format_reference_uri,
-            format_reference_upload=None,
+        snapshots = await _load_chat_message_snapshots(
+            db,
+            notebook_id=paper.notebook_id,
+            user=user,
+            message_ids=body.selected_message_ids,
         )
-        result_uri = upload_uri or result.format_reference_uri
-        is_default = (
-            upload_uri is None and result.format_reference_is_default
+    except LookupError as exc:
+        raise LookupError(str(exc)) from exc
+
+    teacher_instructions = (
+        (body.teacher_instructions or "").strip()
+        or (base.teacher_instructions or "").strip()
+        or None
+    )
+
+    generation_context = {
+        "base_version_id": str(base.id),
+        "base_version_number": base.version_number,
+        "base_final_paper": base.final_paper or {},
+        "base_final_answer_key": base.final_answer_key or {},
+        "base_generated_items": base.generated_items or [],
+        "selected_message_ids": [item["id"] for item in snapshots],
+    }
+
+    version = QuestionPaperVersion(
+        question_paper_id=paper.id,
+        version_number=next_number,
+        status=QuestionPaperStatus.PENDING,
+        subject=base.subject,
+        grade=base.grade,
+        teacher_instructions=teacher_instructions,
+        selected_chapters=list(base.selected_chapters or []),
+        blueprint=dict(base.blueprint or {}),
+        # Seed prior paper so workers/UI can show base until generation completes.
+        final_paper=dict(base.final_paper or {}),
+        final_answer_key=dict(base.final_answer_key or {}),
+        generated_items=list(base.generated_items or []),
+        selected_chat_messages=snapshots,
+        generation_context=generation_context,
+        generation_metadata={},
+        format_reference_uri=base.format_reference_uri,
+        format_reference_is_default=base.format_reference_is_default,
+        base_version_id=base.id,
+    )
+    db.add(version)
+    _touch_parent(paper)
+    await db.commit()
+    await db.refresh(paper)
+    await db.refresh(version)
+
+    generate_question_paper_task.delay(str(version.id))
+    logger.info(
+        "Enqueued question paper revision paper_id=%s version_id=%s base=%s",
+        paper.id,
+        version.id,
+        base.id,
+    )
+    return _to_generation_result(paper, version)
+
+
+def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None:
+    """Sync worker entrypoint: generate and persist results for one version."""
+
+    def _run(session: Session) -> None:
+        version = session.get(QuestionPaperVersion, version_id)
+        if version is None:
+            logger.warning("Version %s not found; skipping generation", version_id)
+            return
+
+        paper = session.get(QuestionPaper, version.question_paper_id)
+        if paper is None:
+            logger.warning(
+                "Parent paper missing for version %s; skipping", version_id
+            )
+            return
+
+        if version.status == QuestionPaperStatus.READY:
+            logger.info("Version %s already ready; skipping", version_id)
+            return
+
+        if version.status == QuestionPaperStatus.FAILED:
+            logger.info(
+                "Version %s previously failed; skipping unless re-queued",
+                version_id,
+            )
+            return
+
+        started_at = datetime.now(UTC)
+        version.status = QuestionPaperStatus.RUNNING
+        version.error = None
+        metadata = dict(version.generation_metadata or {})
+        metadata.update(
+            {
+                "started_at": started_at.isoformat(),
+                "worker": "celery",
+                "task": "generate_question_paper",
+            }
         )
-        paper.title = _paper_title(result.blueprint)
-        paper.status = QuestionPaperStatus.READY
-        paper.blueprint = result.blueprint.model_dump(mode="json")
-        paper.final_paper = result.final_paper
-        paper.final_answer_key = result.final_answer_key
-        paper.generated_items = result.generated_items
-        paper.format_reference_uri = result_uri
-        paper.format_reference_is_default = is_default
-        paper.error = None
-        await db.commit()
-        await db.refresh(paper)
-        return _to_generation_result(paper)
-    except Exception as exc:
-        paper.status = QuestionPaperStatus.FAILED
-        paper.error = str(exc)
-        await db.commit()
-        raise
+        version.generation_metadata = metadata
+        _touch_parent(paper)
+        session.commit()
+
+        try:
+            if not version.selected_chapters:
+                raise ValueError("selected_chapters is empty — cannot generate")
+
+            blueprint = QuestionPaperBlueprint.model_validate(version.blueprint)
+            selected_chapters = [
+                SelectedChapter.model_validate(chapter)
+                for chapter in version.selected_chapters
+            ]
+            revision_context = None
+            context = version.generation_context or {}
+            if version.version_number > 1 or context.get("base_generated_items"):
+                revision_context = {
+                    "base_version_id": context.get("base_version_id"),
+                    "base_version_number": context.get("base_version_number"),
+                    "base_final_paper": context.get("base_final_paper")
+                    or version.final_paper
+                    or {},
+                    "base_generated_items": context.get("base_generated_items")
+                    or version.generated_items
+                    or [],
+                    "selected_chat_messages": version.selected_chat_messages or [],
+                }
+
+            result = generate_paper(
+                blueprint=blueprint,
+                selected_chapters=selected_chapters,
+                subject=version.subject,
+                grade=version.grade,
+                teacher_instructions=version.teacher_instructions,
+                format_reference_uri=version.format_reference_uri,
+                format_reference_upload=None,
+                revision_context=revision_context,
+            )
+
+            finished_at = datetime.now(UTC)
+            version.status = QuestionPaperStatus.READY
+            version.blueprint = result.blueprint.model_dump(mode="json")
+            version.final_paper = result.final_paper
+            version.final_answer_key = result.final_answer_key
+            version.generated_items = result.generated_items
+            version.format_reference_uri = result.format_reference_uri
+            version.format_reference_is_default = result.format_reference_is_default
+            version.error = None
+            metadata = dict(version.generation_metadata or {})
+            metadata.update(
+                {
+                    "finished_at": finished_at.isoformat(),
+                    "duration_seconds": (
+                        finished_at - started_at
+                    ).total_seconds(),
+                }
+            )
+            version.generation_metadata = metadata
+            if not paper.title.strip():
+                paper.title = _paper_title(result.blueprint)
+            _touch_parent(paper)
+            session.commit()
+            logger.info("Version %s generation completed", version_id)
+        except Exception as exc:
+            session.rollback()
+            version = session.get(QuestionPaperVersion, version_id)
+            paper = (
+                session.get(QuestionPaper, version.question_paper_id)
+                if version is not None
+                else None
+            )
+            if version is not None:
+                version.status = QuestionPaperStatus.FAILED
+                version.error = str(exc)
+                metadata = dict(version.generation_metadata or {})
+                metadata["failed_at"] = datetime.now(UTC).isoformat()
+                version.generation_metadata = metadata
+                if paper is not None:
+                    _touch_parent(paper)
+                session.commit()
+            logger.exception("Version %s generation failed", version_id)
+            raise
+
+    if db is not None:
+        _run(db)
+    else:
+        with get_sync_db() as session:
+            _run(session)
+
+
+def fail_stuck_papers(
+    *,
+    timeout_minutes: int | None = None,
+    db: Session | None = None,
+) -> int:
+    """Mark long-running versions as failed. Returns number of rows updated."""
+    minutes = timeout_minutes or settings.generation_stuck_timeout_minutes
+    cutoff = datetime.now(UTC) - timedelta(minutes=minutes)
+
+    def _run(session: Session) -> int:
+        result = session.execute(
+            select(QuestionPaperVersion)
+            .where(
+                QuestionPaperVersion.status == QuestionPaperStatus.RUNNING,
+                QuestionPaperVersion.updated_at < cutoff,
+            )
+            .options(selectinload(QuestionPaperVersion.question_paper))
+        )
+        stuck = list(result.scalars().all())
+        for version in stuck:
+            version.status = QuestionPaperStatus.FAILED
+            version.error = (
+                f"Generation timed out after {minutes} minutes "
+                "with no completion from the worker."
+            )
+            if version.question_paper is not None:
+                _touch_parent(version.question_paper)
+        if stuck:
+            session.commit()
+            logger.warning(
+                "Marked %s stuck question paper version(s) as failed",
+                len(stuck),
+            )
+        return len(stuck)
+
+    if db is not None:
+        return _run(db)
+    with get_sync_db() as session:
+        return _run(session)
+
+
+# Alias used by Celery Beat naming / older imports.
+fail_stuck_versions = fail_stuck_papers
 
 
 async def get_paper_detail(
@@ -197,7 +626,86 @@ async def get_paper_detail(
     paper_id: UUID,
     user: User,
 ) -> QuestionPaperDetail | None:
+    paper = await get_owned_paper(db, paper_id, user, load_versions=True)
+    if paper is None:
+        return None
+    summary = _to_paper_summary(paper)
+    return QuestionPaperDetail(**summary.model_dump())
+
+
+async def list_paper_summaries(
+    db: AsyncSession,
+    notebook_id: UUID,
+) -> list[QuestionPaperSummary]:
+    papers = await list_papers_for_notebook(db, notebook_id)
+    return [_to_paper_summary(paper) for paper in papers]
+
+
+async def get_version_detail(
+    db: AsyncSession,
+    *,
+    paper_id: UUID,
+    version_number: int,
+    user: User,
+) -> QuestionPaperVersionDetail | None:
     paper = await get_owned_paper(db, paper_id, user)
     if paper is None:
         return None
-    return _to_detail(paper)
+    result = await db.execute(
+        select(QuestionPaperVersion).where(
+            QuestionPaperVersion.question_paper_id == paper_id,
+            QuestionPaperVersion.version_number == version_number,
+        )
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        return None
+    return _to_version_detail(paper, version)
+
+
+async def get_owned_version(
+    db: AsyncSession,
+    *,
+    paper_id: UUID,
+    version_number: int,
+    user: User,
+) -> tuple[QuestionPaper, QuestionPaperVersion] | None:
+    paper = await get_owned_paper(db, paper_id, user)
+    if paper is None:
+        return None
+    result = await db.execute(
+        select(QuestionPaperVersion).where(
+            QuestionPaperVersion.question_paper_id == paper_id,
+            QuestionPaperVersion.version_number == version_number,
+        )
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        return None
+    return paper, version
+
+
+# Back-compat alias used by older imports / demos.
+async def create_and_generate_paper(
+    db: AsyncSession,
+    *,
+    user: User,
+    body: GeneratePaperRequest,
+    format_reference_upload: Path | None = None,
+) -> GenerationResult:
+    return await enqueue_paper_generation(
+        db,
+        user=user,
+        body=body,
+        format_reference_upload=format_reference_upload,
+    )
+
+
+def max_version_number(session: Session, paper_id: UUID) -> int:
+    """Utility for tests / sync callers."""
+    value = session.scalar(
+        select(func.coalesce(func.max(QuestionPaperVersion.version_number), 0)).where(
+            QuestionPaperVersion.question_paper_id == paper_id
+        )
+    )
+    return int(value or 0)

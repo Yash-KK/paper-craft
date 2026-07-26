@@ -13,10 +13,12 @@ from app.db.models.notebook import Board, Subject
 from app.db.models.question_paper import QuestionPaperStatus
 from app.db.models.sample_blueprint import SampleBlueprint
 from app.schemas.generation import (
+    GenerateNewVersionRequest,
     GeneratePaperRequest,
     GenerationResult,
     QuestionPaperDetail,
     QuestionPaperSummary,
+    QuestionPaperVersionDetail,
     SampleBlueprintDetail,
     SampleBlueprintSummary,
 )
@@ -28,11 +30,15 @@ from app.services.export import (
     render_question_paper_docx_bytes,
 )
 from app.services.generation.papers import (
-    create_and_generate_paper,
+    ActiveGenerationError,
+    NoReadyVersionError,
+    enqueue_new_version,
+    enqueue_paper_generation,
     get_owned_notebook,
-    get_owned_paper,
+    get_owned_version,
     get_paper_detail,
-    list_papers_for_notebook,
+    get_version_detail,
+    list_paper_summaries,
 )
 
 router = APIRouter(prefix="/sample-blueprints", tags=["sample-blueprints"])
@@ -122,7 +128,11 @@ async def _save_format_reference(upload: UploadFile) -> Path:
         ) from exc
 
 
-@generation_router.post("/papers", response_model=GenerationResult)
+@generation_router.post(
+    "/papers",
+    response_model=GenerationResult,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def create_question_paper(
     current_user: CurrentUser,
     db: SessionDep,
@@ -149,7 +159,7 @@ async def create_question_paper(
         if format_reference is not None and format_reference.filename:
             uploaded_path = await _save_format_reference(format_reference)
 
-        return await create_and_generate_paper(
+        return await enqueue_paper_generation(
             db,
             user=current_user,
             body=body,
@@ -175,6 +185,46 @@ async def create_question_paper(
             uploaded_path.unlink(missing_ok=True)
 
 
+@generation_router.post(
+    "/papers/{paper_id}/versions",
+    response_model=GenerationResult,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def create_question_paper_version(
+    paper_id: UUID,
+    body: GenerateNewVersionRequest,
+    current_user: CurrentUser,
+    db: SessionDep,
+) -> GenerationResult:
+    try:
+        return await enqueue_new_version(
+            db,
+            user=current_user,
+            paper_id=paper_id,
+            body=body,
+        )
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except ActiveGenerationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except NoReadyVersionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+
 @generation_router.get(
     "/notebooks/{notebook_id}/papers",
     response_model=list[QuestionPaperSummary],
@@ -190,8 +240,7 @@ async def list_notebook_papers(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Notebook not found",
         )
-    papers = await list_papers_for_notebook(db, notebook_id)
-    return [QuestionPaperSummary.model_validate(paper) for paper in papers]
+    return await list_paper_summaries(db, notebook_id)
 
 
 @generation_router.get("/papers/{paper_id}", response_model=QuestionPaperDetail)
@@ -209,27 +258,61 @@ async def get_question_paper(
     return detail
 
 
-@generation_router.get("/papers/{paper_id}/export")
-async def export_question_paper(
+@generation_router.get(
+    "/papers/{paper_id}/versions/{version_number}",
+    response_model=QuestionPaperVersionDetail,
+)
+async def get_question_paper_version(
     paper_id: UUID,
+    version_number: int,
+    current_user: CurrentUser,
+    db: SessionDep,
+) -> QuestionPaperVersionDetail:
+    detail = await get_version_detail(
+        db,
+        paper_id=paper_id,
+        version_number=version_number,
+        user=current_user,
+    )
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question paper version not found",
+        )
+    return detail
+
+
+@generation_router.get("/papers/{paper_id}/versions/{version_number}/export")
+async def export_question_paper_version(
+    paper_id: UUID,
+    version_number: int,
     current_user: CurrentUser,
     db: SessionDep,
     variant: Literal["paper", "answer_key"] = "paper",
 ) -> Response:
-    paper = await get_owned_paper(db, paper_id, current_user)
-    if paper is None:
+    owned = await get_owned_version(
+        db,
+        paper_id=paper_id,
+        version_number=version_number,
+        user=current_user,
+    )
+    if owned is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Question paper not found",
+            detail="Question paper version not found",
         )
-    if paper.status != QuestionPaperStatus.READY:
+    paper, version = owned
+    if version.status != QuestionPaperStatus.READY:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Paper is not ready for export (status={paper.status.value})",
+            detail=(
+                "Version is not ready for export "
+                f"(status={version.status.value})"
+            ),
         )
 
     try:
-        reference = resolve_document(paper.format_reference_uri)
+        reference = resolve_document(version.format_reference_uri)
     except (FileNotFoundError, ValueError, NotImplementedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -239,18 +322,23 @@ async def export_question_paper(
     try:
         if variant == "answer_key":
             content = render_answer_key_docx_bytes(
-                paper.blueprint,
-                paper.final_answer_key,
+                version.blueprint,
+                version.final_answer_key,
                 reference,
             )
-            filename = f"{_safe_filename(paper.title)}-answer-key.docx"
+            filename = (
+                f"{_safe_filename(paper.title)}-v{version.version_number}"
+                "-answer-key.docx"
+            )
         else:
             content = render_question_paper_docx_bytes(
-                paper.blueprint,
-                paper.final_paper,
+                version.blueprint,
+                version.final_paper,
                 reference,
             )
-            filename = f"{_safe_filename(paper.title)}.docx"
+            filename = (
+                f"{_safe_filename(paper.title)}-v{version.version_number}.docx"
+            )
     except PandocNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

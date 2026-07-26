@@ -284,42 +284,84 @@ class SampleBlueprintDetail(SampleBlueprintSummary):
 
 
 class GeneratePaperRequest(BaseModel):
-    """Request body for question paper generation."""
+    """Request body for first-time question paper generation (creates Version 1)."""
 
     notebook_id: UUID
     blueprint: QuestionPaperBlueprint
     selected_chapters: list[SelectedChapter]
     subject: str
     grade: int
+    title: str | None = None
     teacher_instructions: str | None = None
     format_reference_uri: str | None = None
 
 
-class GenerationResult(BaseModel):
+class GenerateNewVersionRequest(BaseModel):
+    """Create the next version from the latest ready version + selected chat context."""
+
+    selected_message_ids: list[UUID] = Field(default_factory=list)
+    teacher_instructions: str | None = None
+
+
+class SelectedChatMessageSnapshot(BaseModel):
     id: UUID
-    notebook_id: UUID
-    title: str
-    status: QuestionPaperStatus
-    version: int
+    role: str
+    content: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime | None = None
+
+
+class GeneratedPaperOutput(BaseModel):
+    """Sync graph output before persistence onto a version row."""
+
     blueprint: QuestionPaperBlueprint
     final_paper: dict
     final_answer_key: dict
     generated_items: list[dict]
     format_reference_uri: str
     format_reference_is_default: bool = True
-    paper_markdown: str
-    answer_key_markdown: str
+
+
+class GenerationResult(BaseModel):
+    """Accepted/queued (or completed) version response."""
+
+    paper_id: UUID
+    version_id: UUID
+    notebook_id: UUID
+    title: str
+    version_number: int
+    status: QuestionPaperStatus
+    blueprint: QuestionPaperBlueprint
+    final_paper: dict
+    final_answer_key: dict
+    generated_items: list[dict]
+    format_reference_uri: str
+    format_reference_is_default: bool = True
+    paper_markdown: str = ""
+    answer_key_markdown: str = ""
+    selected_chat_messages: list[SelectedChatMessageSnapshot] = Field(
+        default_factory=list
+    )
     error: str | None = None
 
+    # Back-compat aliases for older clients that still expect `id` / `version`.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def id(self) -> UUID:
+        return self.paper_id
 
-class QuestionPaperSummary(BaseModel):
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def version(self) -> int:
+        return self.version_number
+
+
+class QuestionPaperVersionSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    notebook_id: UUID
-    title: str
+    version_number: int
     status: QuestionPaperStatus
-    version: int
     subject: str
     grade: int
     format_reference_uri: str
@@ -327,16 +369,44 @@ class QuestionPaperSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     error: str | None = None
+    base_version_id: UUID | None = None
+
+
+class QuestionPaperSummary(BaseModel):
+    """Parent paper with nested version summaries for sidebar grouping."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    notebook_id: UUID
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    versions: list[QuestionPaperVersionSummary] = Field(default_factory=list)
+    latest_version: QuestionPaperVersionSummary | None = None
 
 
 class QuestionPaperDetail(QuestionPaperSummary):
+    """Parent paper detail; full version payloads are loaded separately."""
+
+
+class QuestionPaperVersionDetail(QuestionPaperVersionSummary):
+    question_paper_id: UUID
+    notebook_id: UUID
+    title: str
     blueprint: QuestionPaperBlueprint
     final_paper: dict
     final_answer_key: dict
     generated_items: list[dict]
+    selected_chapters: list[SelectedChapter] = Field(default_factory=list)
+    selected_chat_messages: list[SelectedChatMessageSnapshot] = Field(
+        default_factory=list
+    )
     teacher_instructions: str | None = None
-    paper_markdown: str
-    answer_key_markdown: str
+    generation_context: dict[str, Any] = Field(default_factory=dict)
+    generation_metadata: dict[str, Any] = Field(default_factory=dict)
+    paper_markdown: str = ""
+    answer_key_markdown: str = ""
 
 
 class GenerationState(TypedDict):
@@ -349,3 +419,4 @@ class GenerationState(TypedDict):
     generated_items: list[dict]
     final_paper: dict | None
     final_answer_key: dict | None
+    revision_context: dict | None
