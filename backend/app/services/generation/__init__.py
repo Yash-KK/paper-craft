@@ -1,5 +1,4 @@
 from app.services.generation.papers import (
-    create_and_generate_paper,
     enqueue_new_version,
     enqueue_paper_generation,
     get_paper_detail,
@@ -9,7 +8,6 @@ from app.services.generation.papers import (
 from app.services.generation.service import generate_paper
 
 __all__ = [
-    "create_and_generate_paper",
     "enqueue_new_version",
     "enqueue_paper_generation",
     "generate_paper",

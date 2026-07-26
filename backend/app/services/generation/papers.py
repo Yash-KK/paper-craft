@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
@@ -29,7 +29,6 @@ from app.schemas.generation import (
     GeneratePaperRequest,
     GenerationResult,
     QuestionPaperBlueprint,
-    QuestionPaperDetail,
     QuestionPaperSummary,
     QuestionPaperVersionDetail,
     QuestionPaperVersionSummary,
@@ -58,17 +57,13 @@ class NoReadyVersionError(RuntimeError):
 
 
 def _paper_title(
-    blueprint: QuestionPaperBlueprint | dict,
+    blueprint: QuestionPaperBlueprint,
     *,
     explicit: str | None = None,
 ) -> str:
     if explicit is not None and explicit.strip():
         return explicit.strip()
-    if isinstance(blueprint, dict):
-        title = (blueprint.get("exam_title") or "").strip()
-    else:
-        title = (blueprint.exam_title or "").strip()
-    return title or "Question Paper"
+    return (blueprint.exam_title or "").strip() or "Question Paper"
 
 
 def _persist_format_reference_upload(upload_path: Path) -> str:
@@ -83,23 +78,18 @@ def _touch_parent(paper: QuestionPaper) -> None:
 
 
 def _snapshot_messages(messages: list[ChatMessage]) -> list[dict[str, Any]]:
-    snapshots: list[dict[str, Any]] = []
-    for message in messages:
-        created_at = message.created_at
-        snapshots.append(
-            {
-                "id": str(message.id),
-                "role": (
-                    message.role.value
-                    if hasattr(message.role, "value")
-                    else str(message.role)
-                ),
-                "content": message.content,
-                "metadata": message.message_metadata or {},
-                "created_at": created_at.isoformat() if created_at else None,
-            }
-        )
-    return snapshots
+    return [
+        {
+            "id": str(message.id),
+            "role": message.role.value,
+            "content": message.content,
+            "metadata": message.message_metadata or {},
+            "created_at": (
+                message.created_at.isoformat() if message.created_at else None
+            ),
+        }
+        for message in messages
+    ]
 
 
 def _parse_snapshots(
@@ -110,13 +100,11 @@ def _parse_snapshots(
     return [SelectedChatMessageSnapshot.model_validate(item) for item in raw]
 
 
-def _version_summary(version: QuestionPaperVersion) -> QuestionPaperVersionSummary:
-    return QuestionPaperVersionSummary.model_validate(version)
-
-
 def _to_paper_summary(paper: QuestionPaper) -> QuestionPaperSummary:
-    versions = [_version_summary(version) for version in (paper.versions or [])]
-    latest = versions[-1] if versions else None
+    versions = [
+        QuestionPaperVersionSummary.model_validate(version)
+        for version in (paper.versions or [])
+    ]
     return QuestionPaperSummary(
         id=paper.id,
         notebook_id=paper.notebook_id,
@@ -124,7 +112,7 @@ def _to_paper_summary(paper: QuestionPaper) -> QuestionPaperSummary:
         created_at=paper.created_at,
         updated_at=paper.updated_at,
         versions=versions,
-        latest_version=latest,
+        latest_version=versions[-1] if versions else None,
     )
 
 
@@ -165,18 +153,9 @@ def _to_version_detail(
     version: QuestionPaperVersion,
 ) -> QuestionPaperVersionDetail:
     result = _to_generation_result(paper, version)
+    summary = QuestionPaperVersionSummary.model_validate(version)
     return QuestionPaperVersionDetail(
-        id=version.id,
-        version_number=version.version_number,
-        status=version.status,
-        subject=version.subject,
-        grade=version.grade,
-        format_reference_uri=version.format_reference_uri,
-        format_reference_is_default=version.format_reference_is_default,
-        created_at=version.created_at,
-        updated_at=version.updated_at,
-        error=version.error,
-        base_version_id=version.base_version_id,
+        **summary.model_dump(),
         question_paper_id=paper.id,
         notebook_id=paper.notebook_id,
         title=paper.title,
@@ -387,15 +366,12 @@ async def enqueue_new_version(
         max(version.version_number for version in versions) + 1 if versions else 1
     )
 
-    try:
-        snapshots = await _load_chat_message_snapshots(
-            db,
-            notebook_id=paper.notebook_id,
-            user=user,
-            message_ids=body.selected_message_ids,
-        )
-    except LookupError as exc:
-        raise LookupError(str(exc)) from exc
+    snapshots = await _load_chat_message_snapshots(
+        db,
+        notebook_id=paper.notebook_id,
+        user=user,
+        message_ids=body.selected_message_ids,
+    )
 
     teacher_instructions = (
         (body.teacher_instructions or "").strip()
@@ -576,7 +552,7 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
             _run(session)
 
 
-def fail_stuck_papers(
+def fail_stuck_versions(
     *,
     timeout_minutes: int | None = None,
     db: Session | None = None,
@@ -617,20 +593,15 @@ def fail_stuck_papers(
         return _run(session)
 
 
-# Alias used by Celery Beat naming / older imports.
-fail_stuck_versions = fail_stuck_papers
-
-
 async def get_paper_detail(
     db: AsyncSession,
     paper_id: UUID,
     user: User,
-) -> QuestionPaperDetail | None:
+) -> QuestionPaperSummary | None:
     paper = await get_owned_paper(db, paper_id, user, load_versions=True)
     if paper is None:
         return None
-    summary = _to_paper_summary(paper)
-    return QuestionPaperDetail(**summary.model_dump())
+    return _to_paper_summary(paper)
 
 
 async def list_paper_summaries(
@@ -639,28 +610,6 @@ async def list_paper_summaries(
 ) -> list[QuestionPaperSummary]:
     papers = await list_papers_for_notebook(db, notebook_id)
     return [_to_paper_summary(paper) for paper in papers]
-
-
-async def get_version_detail(
-    db: AsyncSession,
-    *,
-    paper_id: UUID,
-    version_number: int,
-    user: User,
-) -> QuestionPaperVersionDetail | None:
-    paper = await get_owned_paper(db, paper_id, user)
-    if paper is None:
-        return None
-    result = await db.execute(
-        select(QuestionPaperVersion).where(
-            QuestionPaperVersion.question_paper_id == paper_id,
-            QuestionPaperVersion.version_number == version_number,
-        )
-    )
-    version = result.scalar_one_or_none()
-    if version is None:
-        return None
-    return _to_version_detail(paper, version)
 
 
 async def get_owned_version(
@@ -685,27 +634,20 @@ async def get_owned_version(
     return paper, version
 
 
-# Back-compat alias used by older imports / demos.
-async def create_and_generate_paper(
+async def get_version_detail(
     db: AsyncSession,
     *,
+    paper_id: UUID,
+    version_number: int,
     user: User,
-    body: GeneratePaperRequest,
-    format_reference_upload: Path | None = None,
-) -> GenerationResult:
-    return await enqueue_paper_generation(
+) -> QuestionPaperVersionDetail | None:
+    owned = await get_owned_version(
         db,
+        paper_id=paper_id,
+        version_number=version_number,
         user=user,
-        body=body,
-        format_reference_upload=format_reference_upload,
     )
-
-
-def max_version_number(session: Session, paper_id: UUID) -> int:
-    """Utility for tests / sync callers."""
-    value = session.scalar(
-        select(func.coalesce(func.max(QuestionPaperVersion.version_number), 0)).where(
-            QuestionPaperVersion.question_paper_id == paper_id
-        )
-    )
-    return int(value or 0)
+    if owned is None:
+        return None
+    paper, version = owned
+    return _to_version_detail(paper, version)

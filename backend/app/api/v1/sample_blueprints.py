@@ -16,7 +16,6 @@ from app.schemas.generation import (
     GenerateNewVersionRequest,
     GeneratePaperRequest,
     GenerationResult,
-    QuestionPaperDetail,
     QuestionPaperSummary,
     QuestionPaperVersionDetail,
     SampleBlueprintDetail,
@@ -82,20 +81,7 @@ async def get_sample_blueprint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Sample blueprint not found",
         )
-    return SampleBlueprintDetail.model_validate(
-        {
-            "id": row.id,
-            "slug": row.slug,
-            "label": row.label,
-            "kind": row.kind,
-            "total_marks": row.total_marks,
-            "board": row.board,
-            "subject": row.subject,
-            "grade": row.grade,
-            "format_reference_uri": row.format_reference_uri,
-            "blueprint": row.blueprint,
-        }
-    )
+    return SampleBlueprintDetail.model_validate(row)
 
 
 async def _save_format_reference(upload: UploadFile) -> Path:
@@ -170,12 +156,7 @@ async def create_question_paper(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    except (ValueError, NotImplementedError) as exc:
+    except (FileNotFoundError, ValueError, NotImplementedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -203,22 +184,12 @@ async def create_question_paper_version(
             paper_id=paper_id,
             body=body,
         )
-    except PermissionError as exc:
+    except (PermissionError, LookupError) as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except LookupError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-    except ActiveGenerationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
-    except NoReadyVersionError as exc:
+    except (ActiveGenerationError, NoReadyVersionError) as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
@@ -243,12 +214,12 @@ async def list_notebook_papers(
     return await list_paper_summaries(db, notebook_id)
 
 
-@generation_router.get("/papers/{paper_id}", response_model=QuestionPaperDetail)
+@generation_router.get("/papers/{paper_id}", response_model=QuestionPaperSummary)
 async def get_question_paper(
     paper_id: UUID,
     current_user: CurrentUser,
     db: SessionDep,
-) -> QuestionPaperDetail:
+) -> QuestionPaperSummary:
     detail = await get_paper_detail(db, paper_id, current_user)
     if detail is None:
         raise HTTPException(

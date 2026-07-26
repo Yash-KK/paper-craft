@@ -344,17 +344,6 @@ class GenerationResult(BaseModel):
     )
     error: str | None = None
 
-    # Back-compat aliases for older clients that still expect `id` / `version`.
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def id(self) -> UUID:
-        return self.paper_id
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def version(self) -> int:
-        return self.version_number
-
 
 class QuestionPaperVersionSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -384,10 +373,6 @@ class QuestionPaperSummary(BaseModel):
     updated_at: datetime
     versions: list[QuestionPaperVersionSummary] = Field(default_factory=list)
     latest_version: QuestionPaperVersionSummary | None = None
-
-
-class QuestionPaperDetail(QuestionPaperSummary):
-    """Parent paper detail; full version payloads are loaded separately."""
 
 
 class QuestionPaperVersionDetail(QuestionPaperVersionSummary):

@@ -5,6 +5,7 @@ import { VersionStatusBadge } from "@/features/question-papers/components/versio
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
 import {
   formatRelativeTime,
+  isActiveGenerationStatus,
   paperHref,
   versionHref,
 } from "@/features/question-papers/lib/question-paper-utils"
@@ -149,9 +150,7 @@ export function QuestionPapersSidebar({
                             <span>v{latest.version_number}</span>
                           ) : null}
                           <span>{formatRelativeTime(paper.updated_at)}</span>
-                          {latest &&
-                          (latest.status === "pending" ||
-                            latest.status === "running") ? (
+                          {latest && isActiveGenerationStatus(latest.status) ? (
                             <Loader2
                               className="size-3 animate-spin text-sky-600"
                               aria-label="Generating"

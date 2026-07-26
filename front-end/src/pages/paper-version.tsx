@@ -5,8 +5,7 @@ import { toast } from "sonner"
 import { AuthStatus, useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { PaperVersionView } from "@/features/question-papers"
-import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
+import { PaperVersionView, useNotebookPapers } from "@/features/question-papers"
 import { useNotebooks } from "@/hooks/use-notebooks"
 
 export function PaperVersionPage() {

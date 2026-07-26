@@ -13,7 +13,6 @@ import type {
   GenerateNewVersionPayload,
   GeneratePaperPayload,
   GenerationResult,
-  QuestionPaperDetail,
   QuestionPaperSummary,
   QuestionPaperVersionDetail,
   SampleBlueprintDetail,
@@ -310,14 +309,6 @@ export async function fetchNotebookPapers(
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as QuestionPaperSummary[]
-}
-
-export async function fetchPaperDetail(
-  paperId: string
-): Promise<QuestionPaperDetail> {
-  const response = await authFetch(`/api/v1/generation/papers/${paperId}`)
-  if (!response.ok) throw new Error(await parseApiError(response))
-  return (await response.json()) as QuestionPaperDetail
 }
 
 export async function fetchPaperVersion(

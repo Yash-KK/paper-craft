@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import { useCreatePaperVersion } from "@/features/question-papers/hooks/use-create-paper-version"
 import {
   canCreateNewVersion,
+  isActiveGenerationStatus,
   versionHref,
 } from "@/features/question-papers/lib/question-paper-utils"
 import type { QuestionPaperSummary } from "@/lib/types/generation"
@@ -103,9 +104,8 @@ export function NewVersionDialog({
           </p>
         ) : !canCreateNewVersion(paper) ? (
           <p className="text-sm text-muted-foreground">
-            {paper.versions.some(
-              (version) =>
-                version.status === "pending" || version.status === "running"
+            {paper.versions.some((version) =>
+              isActiveGenerationStatus(version.status)
             )
               ? "A generation is already in progress for this paper."
               : "This paper has no ready version to revise. Generate a successful paper first."}

@@ -2,10 +2,8 @@ import * as React from "react"
 import { useMutation } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import {
-  useGenerateQuestionPaper,
-  useSampleBlueprints,
-} from "@/hooks/use-sample-blueprints"
+import { useGenerateQuestionPaper } from "@/features/question-papers"
+import { useSampleBlueprints } from "@/hooks/use-sample-blueprints"
 import { fetchSampleBlueprint } from "@/lib/api"
 import type { NotebookListItem, SelectedChapter } from "@/lib/types/notebook"
 import {

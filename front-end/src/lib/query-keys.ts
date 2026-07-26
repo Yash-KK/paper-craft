@@ -16,7 +16,6 @@ export const queryKeys = {
     ["sample-blueprints", board, subject] as const,
   notebookPapers: (notebookId: string) =>
     ["notebooks", notebookId, "papers"] as const,
-  paper: (paperId: string) => ["papers", paperId] as const,
   paperVersion: (paperId: string, versionNumber: number) =>
     ["papers", paperId, "versions", versionNumber] as const,
 }

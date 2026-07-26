@@ -41,7 +41,7 @@ export function useCreatePaperVersion(paperId: string, notebookId: string) {
         queryKey: queryKeys.notebookPapers(notebookId),
       })
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.paper(paperId),
+        queryKey: queryKeys.paperVersion(paperId, result.version_number),
       })
     },
     onError: (err) => {

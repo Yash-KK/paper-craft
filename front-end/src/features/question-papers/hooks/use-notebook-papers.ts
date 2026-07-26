@@ -1,12 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
 
+import { GENERATION_POLL_MS } from "@/features/question-papers/lib/question-paper-utils"
 import { fetchNotebookPapers } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
-import {
-  isActiveGenerationStatus,
-  paperHasActiveGeneration,
-} from "@/lib/types/generation"
-import { GENERATION_POLL_MS } from "@/features/question-papers/lib/question-paper-utils"
+import { paperHasActiveGeneration } from "@/lib/types/generation"
 
 export function useNotebookPapers(notebookId: string, enabled = true) {
   return useQuery({
@@ -20,17 +17,4 @@ export function useNotebookPapers(notebookId: string, enabled = true) {
       return papers.some(paperHasActiveGeneration) ? GENERATION_POLL_MS : false
     },
   })
-}
-
-export function usePaperHasActiveGeneration(
-  notebookId: string,
-  paperId: string | null
-): boolean {
-  const { data } = useNotebookPapers(notebookId, Boolean(paperId))
-  if (!paperId || !data) return false
-  const paper = data.find((item) => item.id === paperId)
-  if (!paper) return false
-  return paper.versions.some((version) =>
-    isActiveGenerationStatus(version.status)
-  )
 }

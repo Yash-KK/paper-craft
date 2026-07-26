@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { useGenerateQuestionPaper } from "@/features/question-papers/hooks/use-create-paper-version"
 import { fetchSampleBlueprints } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import type { Board, Subject } from "@/lib/types/notebook"
@@ -20,5 +19,3 @@ export function useSampleBlueprints(filters?: {
     enabled: enabled && Boolean(board && subject),
   })
 }
-
-export { useGenerateQuestionPaper }

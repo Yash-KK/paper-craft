@@ -1,8 +1,8 @@
 import {
   isActiveGenerationStatus,
+  paperHasActiveGeneration,
   type QuestionPaperStatus,
   type QuestionPaperSummary,
-  type QuestionPaperVersionSummary,
 } from "@/lib/types/generation"
 
 const UUID_RE =
@@ -20,19 +20,13 @@ export function versionHref(
   return `/notebooks/${notebookId}/papers/${paperId}/versions/${versionNumber}`
 }
 
-export function latestVersionNumber(
-  paper: QuestionPaperSummary
-): number | null {
-  if (paper.latest_version) return paper.latest_version.version_number
-  if (paper.versions.length === 0) return null
-  return paper.versions[paper.versions.length - 1]?.version_number ?? null
-}
-
 export function paperHref(
   notebookId: string,
   paper: QuestionPaperSummary
 ): string | null {
-  const versionNumber = latestVersionNumber(paper)
+  const versionNumber =
+    paper.latest_version?.version_number ??
+    paper.versions[paper.versions.length - 1]?.version_number
   if (versionNumber == null) return null
   return versionHref(notebookId, paper.id, versionNumber)
 }
@@ -79,24 +73,10 @@ export function statusBadgeClass(status: QuestionPaperStatus): string {
 }
 
 export function canCreateNewVersion(paper: QuestionPaperSummary): boolean {
-  if (paperHasActive(paper)) return false
+  if (paperHasActiveGeneration(paper)) return false
   return paper.versions.some((version) => version.status === "ready")
 }
 
-export function paperHasActive(paper: QuestionPaperSummary): boolean {
-  return paper.versions.some((version) =>
-    isActiveGenerationStatus(version.status)
-  )
-}
-
-export function readyBaseVersion(
-  paper: QuestionPaperSummary
-): QuestionPaperVersionSummary | null {
-  const ready = paper.versions.filter((version) => version.status === "ready")
-  if (ready.length === 0) return null
-  return ready.reduce((latest, version) =>
-    version.version_number > latest.version_number ? version : latest
-  )
-}
-
 export const GENERATION_POLL_MS = 5000
+
+export { isActiveGenerationStatus }

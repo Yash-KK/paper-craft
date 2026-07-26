@@ -131,10 +131,6 @@ export type GenerationResult = {
   answer_key_markdown: string
   selected_chat_messages?: SelectedChatMessageSnapshot[]
   error?: string | null
-  /** Back-compat alias for paper_id */
-  id: string
-  /** Back-compat alias for version_number */
-  version: number
 }
 
 export type QuestionPaperVersionSummary = {
@@ -160,8 +156,6 @@ export type QuestionPaperSummary = {
   versions: QuestionPaperVersionSummary[]
   latest_version: QuestionPaperVersionSummary | null
 }
-
-export type QuestionPaperDetail = QuestionPaperSummary
 
 export type QuestionPaperVersionDetail = QuestionPaperVersionSummary & {
   question_paper_id: string

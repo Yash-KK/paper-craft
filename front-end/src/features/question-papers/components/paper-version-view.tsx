@@ -11,6 +11,7 @@ import { MathJaxContext } from "better-react-mathjax"
 import { toast } from "sonner"
 
 import { ChatMarkdown } from "@/features/chat/components/chat-markdown"
+import { MATHJAX_CONFIG } from "@/features/chat/lib/mathjax-config"
 import { VersionStatusBadge } from "@/features/question-papers/components/version-status-badge"
 import { usePaperVersion } from "@/features/question-papers/hooks/use-paper-version"
 import {
@@ -18,25 +19,10 @@ import {
   versionHref,
 } from "@/features/question-papers/lib/question-paper-utils"
 import { downloadVersionExport } from "@/lib/api"
+import { isActiveGenerationStatus } from "@/lib/types/generation"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-
-const mathJaxConfig = {
-  loader: { load: ["input/tex", "output/chtml"] },
-  tex: {
-    inlineMath: [
-      ["$", "$"],
-      ["\\(", "\\)"],
-    ],
-    displayMath: [
-      ["$$", "$$"],
-      ["\\[", "\\]"],
-    ],
-    processEscapes: true,
-    packages: { "[+]": ["ams"] },
-  },
-}
 
 type PaperVersionViewProps = {
   notebookId: string
@@ -110,8 +96,7 @@ export function PaperVersionView({
   }
 
   const version = query.data
-  const isActive =
-    version.status === "pending" || version.status === "running"
+  const isActive = isActiveGenerationStatus(version.status)
   const markdown =
     tab === "paper" ? version.paper_markdown : version.answer_key_markdown
   const versions =
@@ -120,7 +105,7 @@ export function PaperVersionView({
       : [version.version_number]
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
+    <MathJaxContext config={MATHJAX_CONFIG}>
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-6 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
