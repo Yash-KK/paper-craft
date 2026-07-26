@@ -1,8 +1,8 @@
 import { useState } from "react"
 import {
   ArrowLeft,
-  BookOpenText,
   LogOut,
+  NotebookText,
   PanelLeft,
   PanelLeftClose,
   UserPen,
@@ -67,7 +67,7 @@ export function AppLayout() {
                   tabIndex={sidebarOpen ? undefined : -1}
                 >
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
-                    <BookOpenText className="size-5" />
+                    <NotebookText className="size-5" />
                   </span>
                   <span className="truncate">PaperCraft</span>
                 </Link>

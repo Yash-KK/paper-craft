@@ -4,6 +4,7 @@ import {
   LayoutTemplate,
   ListChecks,
   Sparkles,
+  NotebookText,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -46,7 +47,7 @@ export function LandingIntro({ className }: LandingIntroProps) {
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
-            <BookOpenText className="size-5" aria-hidden />
+            <NotebookText className="size-5" aria-hidden />
           </span>
           <p className="font-chicle text-4xl tracking-wide text-violet-600 dark:text-violet-400">
             PaperCraft
