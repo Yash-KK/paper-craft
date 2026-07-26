@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_pagination import add_pagination
 
 from app.api.v1 import auth, chapters, chat, notebooks, sample_blueprints, upload, users
 from app.core.config import settings
@@ -15,6 +16,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Paper Craft", lifespan=lifespan)
+add_pagination(app)
 
 app.add_middleware(
     CORSMiddleware,

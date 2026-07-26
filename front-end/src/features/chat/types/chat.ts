@@ -53,5 +53,12 @@ export type ChatSession = {
   title: string | null
   created_at: string
   updated_at: string
-  messages: PersistedMessage[]
+}
+
+export type ChatMessagesPage = {
+  items: PersistedMessage[]
+  next_page: string | null
+  previous_page: string | null
+  current_page: string | null
+  size?: number
 }

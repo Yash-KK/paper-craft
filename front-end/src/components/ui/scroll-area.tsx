@@ -5,12 +5,14 @@ import { cn } from "@/lib/utils"
 function ScrollArea({
   className,
   children,
+  ref,
   ...props
 }: ScrollAreaPrimitive.Root.Props) {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
       className={cn("relative", className)}
+      ref={ref}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport

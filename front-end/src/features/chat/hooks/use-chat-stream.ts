@@ -121,6 +121,20 @@ export function useChatStream(
     setIsStreaming(false)
   }, [patchLast])
 
+  const prependOlderMessages = useCallback((older: PersistedMessage[]) => {
+    const incoming = older.flatMap((message) => {
+      const ui = fromPersisted(message)
+      return ui ? [ui] : []
+    })
+    if (incoming.length === 0) return
+
+    setMessages((prev) => {
+      const existingIds = new Set(prev.map((message) => message.id))
+      const fresh = incoming.filter((message) => !existingIds.has(message.id))
+      return fresh.length ? [...fresh, ...prev] : prev
+    })
+  }, [])
+
   return {
     messages,
     isStreaming,
@@ -128,5 +142,6 @@ export function useChatStream(
     setEnabledTools,
     sendMessage,
     stopStream,
+    prependOlderMessages,
   }
 }

@@ -46,7 +46,12 @@ class ChatSessionResponse(BaseModel):
 
 
 class ChatSessionDetail(ChatSessionResponse):
-    messages: list[ChatMessageResponse] = Field(default_factory=list)
+    """Session metadata. Messages are loaded via the paginated messages endpoint."""
+
+    messages: list[ChatMessageResponse] = Field(
+        default_factory=list,
+        description="Deprecated: always empty. Use GET .../chat/messages.",
+    )
 
 
 class ChatStreamThinkingEvent(BaseModel):

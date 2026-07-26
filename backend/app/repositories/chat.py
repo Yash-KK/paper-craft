@@ -61,6 +61,26 @@ class ChatRepository:
         )
         return list(result.scalars().all())
 
+    async def list_recent_messages(
+        self, session_id: UUID, *, limit: int = 20
+    ) -> list[ChatMessage]:
+        """Newest-first query, returned oldest→newest for agent context."""
+        result = await self._db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+            .limit(limit)
+        )
+        return list(reversed(result.scalars().all()))
+
+    def messages_cursor_query(self, session_id: UUID):
+        """Keyset query: newest first (required for CursorPage)."""
+        return (
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+        )
+
     async def create_message(
         self,
         *,
