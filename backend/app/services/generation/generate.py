@@ -1,4 +1,8 @@
-from app.schemas.generation import GeneratedPaperResponse, GeneratedQuestion, QuestionType
+from app.schemas.generation import (
+    GeneratedPaperResponse,
+    GeneratedQuestion,
+    QuestionType,
+)
 from app.services.chat.llm import get_chat_model
 
 GENERATION_BATCH_SIZE = 5
@@ -89,11 +93,15 @@ def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
         if gq.correct_option not in ("a", "b", "c", "d"):
             errors.append("correct_option must be one of a/b/c/d")
 
-    if slot["question_type"] == QuestionType.ASSERTION_REASON.value:
-        if gq.correct_option not in ("a", "b", "c", "d"):
-            errors.append(
-                "correct_option must be one of a/b/c/d for an Assertion-Reason question"
-            )
+    if slot["question_type"] == QuestionType.ASSERTION_REASON.value and gq.correct_option not in (
+        "a",
+        "b",
+        "c",
+        "d",
+    ):
+        errors.append(
+            "correct_option must be one of a/b/c/d for an Assertion-Reason question"
+        )
 
     if slot["has_internal_choice"] and not gq.alternate_question_text:
         errors.append("has_internal_choice is true but alternate_question_text is missing")
@@ -167,8 +175,10 @@ def _build_batch_messages(
         ("system", GENERATION_SYSTEM_INSTRUCTIONS),
         (
             "human",
-            f"{header}{general_instructions_block}{generation_rules_block}"
-            f"{teacher_block}\n\n{blocks}",
+            (
+                f"{header}{general_instructions_block}{generation_rules_block}"
+                f"{teacher_block}\n\n{blocks}"
+            ),
         ),
     ]
 
