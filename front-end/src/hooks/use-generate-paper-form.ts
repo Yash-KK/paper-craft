@@ -9,6 +9,7 @@ import {
 import { fetchSampleBlueprint } from "@/lib/api"
 import type { NotebookListItem, SelectedChapter } from "@/lib/types/notebook"
 import {
+  blueprintAllocatedMarks,
   classGradeToNumber,
   emptyBlueprint,
   hasForeignChapterAllocations,
@@ -28,9 +29,13 @@ export function useGeneratePaperForm(
   const samplesQuery = useSampleBlueprints()
   const generateMutation = useGenerateQuestionPaper()
 
-  const [sample, setSample] = React.useState<SampleBlueprintSummary | null>(null)
+  const [sample, setSample] = React.useState<SampleBlueprintSummary | null>(
+    null
+  )
   const [teacherInstructions, setTeacherInstructions] = React.useState("")
-  const [formatReference, setFormatReference] = React.useState<File | null>(null)
+  const [formatReference, setFormatReference] = React.useState<File | null>(
+    null
+  )
   const [blueprint, setBlueprint] = React.useState<QuestionPaperBlueprint>(() =>
     emptyBlueprint({
       school_name: schoolName,
@@ -90,19 +95,47 @@ export function useGeneratePaperForm(
     )
   }
 
-  function updateAllocation(
+  function updateChapterQuestionCount(
     sectionIndex: number,
-    allocIndex: number,
-    patch: Partial<ChapterAllocation>
+    allocationIndexes: number[],
+    questionCount: number
   ) {
+    const targetIndexes = new Set(allocationIndexes)
+    const targetCount = Math.max(1, questionCount)
+
     updateSections((sections) =>
       sections.map((section, i) => {
         if (i !== sectionIndex) return section
+
+        let remaining = targetCount
+        let firstUpdatedIndex = -1
+        const updated: ChapterAllocation[] = []
+
+        section.chapter_allocations.forEach((allocation, allocationIndex) => {
+          if (!targetIndexes.has(allocationIndex)) {
+            updated.push(allocation)
+            return
+          }
+
+          if (remaining === 0) return
+          if (firstUpdatedIndex === -1) firstUpdatedIndex = updated.length
+
+          const count = Math.min(allocation.question_count, remaining)
+          remaining -= count
+          updated.push({ ...allocation, question_count: count })
+        })
+
+        if (remaining > 0 && firstUpdatedIndex >= 0) {
+          updated[firstUpdatedIndex] = {
+            ...updated[firstUpdatedIndex],
+            question_count:
+              updated[firstUpdatedIndex].question_count + remaining,
+          }
+        }
+
         return {
           ...section,
-          chapter_allocations: section.chapter_allocations.map((alloc, j) =>
-            j === allocIndex ? { ...alloc, ...patch } : alloc
-          ),
+          chapter_allocations: updated,
         }
       })
     )
@@ -138,14 +171,18 @@ export function useGeneratePaperForm(
     )
   }
 
-  function removeAllocation(sectionIndex: number, allocIndex: number) {
+  function removeChapterAllocations(
+    sectionIndex: number,
+    allocationIndexes: number[]
+  ) {
+    const targetIndexes = new Set(allocationIndexes)
     updateSections((sections) =>
       sections.map((section, i) =>
         i === sectionIndex
           ? {
               ...section,
               chapter_allocations: section.chapter_allocations.filter(
-                (_, j) => j !== allocIndex
+                (_, allocationIndex) => !targetIndexes.has(allocationIndex)
               ),
             }
           : section
@@ -181,6 +218,13 @@ export function useGeneratePaperForm(
     }
     if (blueprint.sections.length === 0) {
       toast.error("Add at least one section to the marking scheme.")
+      return false
+    }
+    const allocatedMarks = blueprintAllocatedMarks(blueprint)
+    if (allocatedMarks !== blueprint.total_marks) {
+      toast.error(
+        `Marking scheme totals ${allocatedMarks} marks, but the paper total is ${blueprint.total_marks}.`
+      )
       return false
     }
     if (hasForeignChapterAllocations(blueprint, chapters)) {
@@ -220,9 +264,9 @@ export function useGeneratePaperForm(
     formatReference,
     setFormatReference,
     updateSection,
-    updateAllocation,
+    updateChapterQuestionCount,
     addChapter,
-    removeAllocation,
+    removeChapterAllocations,
     addSection,
     removeSection,
     generate,

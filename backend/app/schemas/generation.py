@@ -1,9 +1,9 @@
 from datetime import date
 from enum import Enum
-from typing import TypedDict
+from typing import Self, TypedDict
 from uuid import UUID
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from app.schemas.notebook import SelectedChapter
 
@@ -113,6 +113,15 @@ class QuestionPaperBlueprint(BaseModel):
     @property
     def allocated_marks(self) -> float:
         return sum(section.section_total_marks for section in self.sections)
+
+    @model_validator(mode="after")
+    def validate_allocated_marks(self) -> Self:
+        if abs(self.allocated_marks - self.total_marks) > 1e-9:
+            raise ValueError(
+                f"section allocations total {self.allocated_marks:g} marks, "
+                f"but total_marks is {self.total_marks}"
+            )
+        return self
 
 
 class SlotSubPart(BaseModel):

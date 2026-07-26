@@ -26,13 +26,20 @@ type MarkingSchemeSectionProps = {
   section: BlueprintSection
   chapters: SelectedChapter[]
   onChange: (patch: Partial<BlueprintSection>) => void
-  onUpdateAllocation: (
-    allocIndex: number,
-    patch: Partial<ChapterAllocation>
+  onUpdateChapterQuestionCount: (
+    allocationIndexes: number[],
+    questionCount: number
   ) => void
   onAddChapter: (chapter: SelectedChapter) => void
-  onRemoveAllocation: (allocIndex: number) => void
+  onRemoveChapter: (allocationIndexes: number[]) => void
   onRemove: () => void
+}
+
+type ChapterAllocationGroup = {
+  key: string
+  allocation: ChapterAllocation
+  allocationIndexes: number[]
+  questionCount: number
 }
 
 export function MarkingSchemeSection({
@@ -40,12 +47,34 @@ export function MarkingSchemeSection({
   section,
   chapters,
   onChange,
-  onUpdateAllocation,
+  onUpdateChapterQuestionCount,
   onAddChapter,
-  onRemoveAllocation,
+  onRemoveChapter,
   onRemove,
 }: MarkingSchemeSectionProps) {
   const total = sectionAllocatedMarks(section)
+  const chapterGroups = Array.from(
+    section.chapter_allocations
+      .reduce((groups, allocation, allocationIndex) => {
+        const key = `${allocation.chapter_number ?? "unknown"}:${allocation.chapter_name.toLowerCase().trim()}`
+        const existing = groups.get(key)
+
+        if (existing) {
+          existing.allocationIndexes.push(allocationIndex)
+          existing.questionCount += allocation.question_count
+        } else {
+          groups.set(key, {
+            key,
+            allocation,
+            allocationIndexes: [allocationIndex],
+            questionCount: allocation.question_count,
+          })
+        }
+
+        return groups
+      }, new Map<string, ChapterAllocationGroup>())
+      .values()
+  )
   const availableToAdd = chapters.filter(
     (chapter) =>
       !section.chapter_allocations.some(
@@ -119,26 +148,28 @@ export function MarkingSchemeSection({
       <div className="space-y-2 pl-0 sm:pl-11">
         <Label>Chapter Distribution</Label>
         <div className="flex flex-wrap gap-2">
-          {section.chapter_allocations.map((alloc, allocIndex) => (
+          {chapterGroups.map((group) => (
             <div
-              key={`${alloc.chapter_name}-${allocIndex}`}
+              key={group.key}
               className="flex items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1.5 text-xs text-violet-800 dark:text-violet-200"
             >
               <span className="font-medium">
-                {alloc.chapter_number != null
-                  ? `Ch ${alloc.chapter_number}`
-                  : alloc.chapter_name}
+                {group.allocation.chapter_number != null
+                  ? `Ch ${group.allocation.chapter_number}`
+                  : group.allocation.chapter_name}
                 :
               </span>
               <Input
                 type="number"
                 min={1}
-                className="h-6 w-7 border-0 bg-transparent p-0 text-center text-xs shadow-none focus-visible:ring-0"
-                value={alloc.question_count}
+                aria-label={`Questions from ${group.allocation.chapter_name}`}
+                className="h-6 w-8 border-0 bg-transparent p-0 text-center text-xs shadow-none"
+                value={group.questionCount}
                 onChange={(e) =>
-                  onUpdateAllocation(allocIndex, {
-                    question_count: Math.max(1, Number(e.target.value) || 1),
-                  })
+                  onUpdateChapterQuestionCount(
+                    group.allocationIndexes,
+                    Math.max(1, Number(e.target.value) || 1)
+                  )
                 }
               />
               <span className="text-muted-foreground">Qs</span>
@@ -146,7 +177,7 @@ export function MarkingSchemeSection({
                 type="button"
                 className="rounded p-0.5 text-muted-foreground hover:bg-violet-500/20 hover:text-foreground"
                 aria-label="Remove chapter"
-                onClick={() => onRemoveAllocation(allocIndex)}
+                onClick={() => onRemoveChapter(group.allocationIndexes)}
               >
                 <X className="size-3.5" />
               </button>

@@ -115,12 +115,15 @@ export const DURATION_OPTIONS: { label: string; minutes: number }[] = [
 
 export function sectionAllocatedMarks(section: BlueprintSection): number {
   return section.chapter_allocations.reduce(
-    (sum, alloc) => sum + alloc.question_count * (alloc.marks ?? section.marks_each),
+    (sum, alloc) =>
+      sum + alloc.question_count * (alloc.marks ?? section.marks_each),
     0
   )
 }
 
-export function blueprintAllocatedMarks(blueprint: QuestionPaperBlueprint): number {
+export function blueprintAllocatedMarks(
+  blueprint: QuestionPaperBlueprint
+): number {
   return blueprint.sections.reduce(
     (sum, section) => sum + sectionAllocatedMarks(section),
     0
@@ -144,11 +147,6 @@ function matchSelectedChapter(
   alloc: ChapterAllocation,
   selected: SelectedChapterRef[]
 ): SelectedChapterRef | null {
-  if (alloc.chapter_number != null) {
-    const byNumber = selected.find((ch) => ch.chapter_number === alloc.chapter_number)
-    if (byNumber) return byNumber
-  }
-
   const needle = normalizeName(alloc.chapter_name)
   return (
     selected.find((ch) => {
@@ -158,25 +156,45 @@ function matchSelectedChapter(
   )
 }
 
-/** Keep only allocations that map onto the notebook's selected chapters. */
+/**
+ * Preserve the sample's complete marking scheme while assigning every question
+ * to a chapter selected on the notebook. Exact chapter-name matches are kept;
+ * otherwise allocations go to the currently least-loaded selected chapter.
+ */
 export function rematchBlueprintChapters(
   blueprint: QuestionPaperBlueprint,
   selectedChapters: SelectedChapterRef[]
 ): QuestionPaperBlueprint {
+  if (selectedChapters.length === 0) return blueprint
+
+  const assignedMarks = new Map(selectedChapters.map((chapter) => [chapter, 0]))
+
   return {
     ...blueprint,
     sections: blueprint.sections.map((section) => ({
       ...section,
-      chapter_allocations: section.chapter_allocations.flatMap((alloc) => {
-        const matched = matchSelectedChapter(alloc, selectedChapters)
-        if (!matched) return []
-        return [
-          {
-            ...alloc,
-            chapter_number: matched.chapter_number,
-            chapter_name: matched.chapter_name,
-          },
-        ]
+      chapter_allocations: section.chapter_allocations.map((alloc) => {
+        const matched =
+          matchSelectedChapter(alloc, selectedChapters) ??
+          selectedChapters.reduce((leastLoaded, chapter) =>
+            (assignedMarks.get(chapter) ?? 0) <
+            (assignedMarks.get(leastLoaded) ?? 0)
+              ? chapter
+              : leastLoaded
+          )
+        const allocationMarks =
+          alloc.question_count * (alloc.marks ?? section.marks_each)
+
+        assignedMarks.set(
+          matched,
+          (assignedMarks.get(matched) ?? 0) + allocationMarks
+        )
+
+        return {
+          ...alloc,
+          chapter_number: matched.chapter_number,
+          chapter_name: matched.chapter_name,
+        }
       }),
     })),
   }
@@ -195,7 +213,9 @@ export function hasForeignChapterAllocations(
   )
 }
 
-export function emptyBlueprint(partial?: Partial<QuestionPaperBlueprint>): QuestionPaperBlueprint {
+export function emptyBlueprint(
+  partial?: Partial<QuestionPaperBlueprint>
+): QuestionPaperBlueprint {
   return {
     school_name: null,
     exam_title: null,

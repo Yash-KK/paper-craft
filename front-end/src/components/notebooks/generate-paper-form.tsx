@@ -266,12 +266,19 @@ export function GeneratePaperForm({
                   section={section}
                   chapters={form.chapters}
                   onChange={(patch) => form.updateSection(index, patch)}
-                  onUpdateAllocation={(allocIndex, patch) =>
-                    form.updateAllocation(index, allocIndex, patch)
+                  onUpdateChapterQuestionCount={(
+                    allocationIndexes,
+                    questionCount
+                  ) =>
+                    form.updateChapterQuestionCount(
+                      index,
+                      allocationIndexes,
+                      questionCount
+                    )
                   }
                   onAddChapter={(chapter) => form.addChapter(index, chapter)}
-                  onRemoveAllocation={(allocIndex) =>
-                    form.removeAllocation(index, allocIndex)
+                  onRemoveChapter={(allocationIndexes) =>
+                    form.removeChapterAllocations(index, allocationIndexes)
                   }
                   onRemove={() => form.removeSection(index)}
                 />

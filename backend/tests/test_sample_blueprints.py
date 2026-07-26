@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from app.schemas.generation import QuestionPaperBlueprint
 from app.services.generation.format_reference import (
     DEFAULT_FORMAT_REFERENCE,
@@ -35,6 +38,13 @@ def test_forty_marks_blueprint_expands_to_forty_marks():
     assert sum(s.marks for s in slots) == 40
     assert {s.section_name for s in slots} == {"MCQ", "VSA", "SA", "LA", "CBQ"}
     assert sum(1 for s in slots if s.question_type.value == "ASSERTION_REASON") == 2
+
+
+def test_blueprint_rejects_total_that_differs_from_sections():
+    mismatched = {**FORTY_MARKS_BLUEPRINT, "total_marks": 41}
+
+    with pytest.raises(ValidationError, match="section allocations total 40 marks"):
+        QuestionPaperBlueprint.model_validate(mismatched)
 
 
 def test_teacher_instructions_are_prompt_context_only():
