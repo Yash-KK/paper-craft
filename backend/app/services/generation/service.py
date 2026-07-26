@@ -16,27 +16,21 @@ def generate_paper(
     format_reference_path: Path | None = None,
 ) -> GenerationResult:
     """Plan slots from an editable blueprint → retrieve → generate → assemble."""
-    instructions = (teacher_instructions or "").strip() or None
     is_default = format_reference_path is None
     reference = resolve_format_reference(format_reference_path)
 
-    initial_state = {
-        "question_paper": blueprint.model_dump(mode="json"),
-        "selected_chapters": [c.model_dump() for c in selected_chapters],
-        "subject": subject,
-        "grade": grade,
-        "teacher_instructions": instructions,
-        "format_reference_path": str(reference),
-        "slots": [],
-        "generated_items": [],
-        "final_paper": None,
-        "final_answer_key": None,
-    }
-
-    result = generation_graph.invoke(initial_state)
+    result = generation_graph.invoke(
+        {
+            "question_paper": blueprint.model_dump(mode="json"),
+            "selected_chapters": [c.model_dump() for c in selected_chapters],
+            "subject": subject,
+            "grade": grade,
+            "teacher_instructions": (teacher_instructions or "").strip() or None,
+        }
+    )
 
     return GenerationResult(
-        blueprint=QuestionPaperBlueprint.model_validate(result["question_paper"]),
+        blueprint=blueprint,
         final_paper=result["final_paper"] or {"sections": {}},
         final_answer_key=result["final_answer_key"] or {"sections": {}},
         generated_items=result.get("generated_items") or [],

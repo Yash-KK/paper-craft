@@ -14,10 +14,10 @@ import type { SelectedChapter } from "@/lib/types/notebook"
 import {
   QUESTION_TYPE_LABELS,
   SECTION_QUESTION_TYPES,
+  groupChapterAllocations,
   sectionAllocatedMarks,
   sectionLetter,
   type BlueprintSection,
-  type ChapterAllocation,
   type QuestionType,
 } from "@/lib/types/generation"
 
@@ -35,13 +35,6 @@ type MarkingSchemeSectionProps = {
   onRemove: () => void
 }
 
-type ChapterAllocationGroup = {
-  key: string
-  allocation: ChapterAllocation
-  allocationIndexes: number[]
-  questionCount: number
-}
-
 export function MarkingSchemeSection({
   index,
   section,
@@ -53,28 +46,7 @@ export function MarkingSchemeSection({
   onRemove,
 }: MarkingSchemeSectionProps) {
   const total = sectionAllocatedMarks(section)
-  const chapterGroups = Array.from(
-    section.chapter_allocations
-      .reduce((groups, allocation, allocationIndex) => {
-        const key = `${allocation.chapter_number ?? "unknown"}:${allocation.chapter_name.toLowerCase().trim()}`
-        const existing = groups.get(key)
-
-        if (existing) {
-          existing.allocationIndexes.push(allocationIndex)
-          existing.questionCount += allocation.question_count
-        } else {
-          groups.set(key, {
-            key,
-            allocation,
-            allocationIndexes: [allocationIndex],
-            questionCount: allocation.question_count,
-          })
-        }
-
-        return groups
-      }, new Map<string, ChapterAllocationGroup>())
-      .values()
-  )
+  const chapterGroups = groupChapterAllocations(section.chapter_allocations)
   const availableToAdd = chapters.filter(
     (chapter) =>
       !section.chapter_allocations.some(

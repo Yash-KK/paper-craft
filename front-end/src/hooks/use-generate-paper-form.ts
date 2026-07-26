@@ -15,8 +15,8 @@ import {
   hasForeignChapterAllocations,
   rematchBlueprintChapters,
   sectionLetter,
+  updateGroupedQuestionCount,
   type BlueprintSection,
-  type ChapterAllocation,
   type QuestionPaperBlueprint,
   type SampleBlueprintSummary,
 } from "@/lib/types/generation"
@@ -64,10 +64,7 @@ export function useGeneratePaperForm(
       const detail = await fetchSampleBlueprint(next.id)
       return {
         sample: next,
-        blueprint: rematchBlueprintChapters(
-          structuredClone(detail.blueprint),
-          chapters
-        ),
+        blueprint: rematchBlueprintChapters(detail.blueprint, chapters),
       }
     },
     onSuccess: ({ sample: next, blueprint: nextBlueprint }) => {
@@ -76,7 +73,7 @@ export function useGeneratePaperForm(
         ...nextBlueprint,
         school_name: prev.school_name ?? schoolName,
         subject: notebook.subject ?? nextBlueprint.subject,
-        grade: classGradeToNumber(notebook.class_grade) || nextBlueprint.grade,
+        grade: classGradeToNumber(notebook.class_grade),
       }))
       setTeacherInstructions("")
     },
@@ -100,44 +97,19 @@ export function useGeneratePaperForm(
     allocationIndexes: number[],
     questionCount: number
   ) {
-    const targetIndexes = new Set(allocationIndexes)
-    const targetCount = Math.max(1, questionCount)
-
     updateSections((sections) =>
-      sections.map((section, i) => {
-        if (i !== sectionIndex) return section
-
-        let remaining = targetCount
-        let firstUpdatedIndex = -1
-        const updated: ChapterAllocation[] = []
-
-        section.chapter_allocations.forEach((allocation, allocationIndex) => {
-          if (!targetIndexes.has(allocationIndex)) {
-            updated.push(allocation)
-            return
-          }
-
-          if (remaining === 0) return
-          if (firstUpdatedIndex === -1) firstUpdatedIndex = updated.length
-
-          const count = Math.min(allocation.question_count, remaining)
-          remaining -= count
-          updated.push({ ...allocation, question_count: count })
-        })
-
-        if (remaining > 0 && firstUpdatedIndex >= 0) {
-          updated[firstUpdatedIndex] = {
-            ...updated[firstUpdatedIndex],
-            question_count:
-              updated[firstUpdatedIndex].question_count + remaining,
-          }
-        }
-
-        return {
-          ...section,
-          chapter_allocations: updated,
-        }
-      })
+      sections.map((section, index) =>
+        index === sectionIndex
+          ? {
+              ...section,
+              chapter_allocations: updateGroupedQuestionCount(
+                section.chapter_allocations,
+                allocationIndexes,
+                questionCount
+              ),
+            }
+          : section
+      )
     )
   }
 
@@ -260,7 +232,6 @@ export function useGeneratePaperForm(
     samples: samplesQuery.data ?? [],
     samplesLoading: samplesQuery.isPending,
     sample,
-    sampleSelected: Boolean(sample),
     applyingSample: applySampleMutation.isPending,
     applySample: applySampleMutation.mutate,
     blueprint,

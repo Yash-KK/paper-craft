@@ -77,6 +77,7 @@ export function GeneratePaperForm({
   onCancel,
 }: GeneratePaperFormProps) {
   const form = useGeneratePaperForm(notebook, schoolName)
+  const sampleSelected = Boolean(form.sample)
   const allocated = blueprintAllocatedMarks(form.blueprint)
   const marksMismatch = allocated !== form.blueprint.total_marks
   const classSubject = `${notebook.class_grade ?? "Class"} — ${notebook.subject ?? "Subject"}`
@@ -161,7 +162,7 @@ export function GeneratePaperForm({
             <Input
               id="school-name"
               value={form.blueprint.school_name ?? ""}
-              disabled={!form.sampleSelected}
+              disabled={!sampleSelected}
               onChange={(e) =>
                 form.patchBlueprint({ school_name: e.target.value || null })
               }
@@ -183,7 +184,7 @@ export function GeneratePaperForm({
             <Input
               id="exam-title"
               value={form.blueprint.exam_title ?? ""}
-              disabled={!form.sampleSelected}
+              disabled={!sampleSelected}
               onChange={(e) =>
                 form.patchBlueprint({ exam_title: e.target.value || null })
               }
@@ -194,7 +195,7 @@ export function GeneratePaperForm({
             label="Duration"
             value={form.blueprint.duration_minutes ?? ""}
             placeholder="Select duration"
-            disabled={!form.sampleSelected}
+            disabled={!sampleSelected}
             options={DURATION_OPTIONS.map((option) => ({
               value: option.minutes,
               label: option.label,
@@ -211,7 +212,7 @@ export function GeneratePaperForm({
               type="number"
               min={1}
               value={form.blueprint.total_marks}
-              disabled={!form.sampleSelected}
+              disabled={!sampleSelected}
               onChange={(e) =>
                 form.patchBlueprint({
                   total_marks: Number(e.target.value) || 0,
@@ -226,7 +227,7 @@ export function GeneratePaperForm({
               id="exam-date"
               type="date"
               value={form.blueprint.exam_date ?? ""}
-              disabled={!form.sampleSelected}
+              disabled={!sampleSelected}
               onChange={(e) =>
                 form.patchBlueprint({ exam_date: e.target.value || null })
               }
@@ -235,7 +236,7 @@ export function GeneratePaperForm({
         </div>
       </FormPanel>
 
-      {form.sampleSelected ? (
+      {sampleSelected ? (
         <>
           <FormPanel
             title="General Instructions"
@@ -380,9 +381,7 @@ export function GeneratePaperForm({
           type="button"
           className="h-11 w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
           disabled={
-            !form.sampleSelected ||
-            form.generating ||
-            form.chapters.length === 0
+            !sampleSelected || form.generating || form.chapters.length === 0
           }
           onClick={() =>
             void form.generate().then((ok) => {

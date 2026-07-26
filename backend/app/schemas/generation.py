@@ -144,7 +144,6 @@ class Slot(BaseModel):
     book_code: str | None = None
     content_types: list[str] = Field(default_factory=list)
     has_internal_choice: bool = False
-    blooms_level: BloomsLevel | None = None
     sub_parts: list[SlotSubPart] = Field(default_factory=list)
 
 
@@ -218,7 +217,6 @@ class GenerationState(TypedDict):
     subject: str
     grade: int
     teacher_instructions: str | None
-    format_reference_path: str | None
     slots: list[dict]
     generated_items: list[dict]
     final_paper: dict | None

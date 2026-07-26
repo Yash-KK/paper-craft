@@ -1,3 +1,5 @@
+import type { SelectedChapter } from "@/lib/types/notebook"
+
 export type QuestionType =
   | "MCQ"
   | "ASSERTION_REASON"
@@ -61,15 +63,9 @@ export type SampleBlueprintDetail = SampleBlueprintSummary & {
   blueprint: QuestionPaperBlueprint
 }
 
-export type SelectedChapterRef = {
-  book_code: string
-  chapter_number: number
-  chapter_name: string
-}
-
 export type GeneratePaperPayload = {
   blueprint: QuestionPaperBlueprint
-  selected_chapters: SelectedChapterRef[]
+  selected_chapters: SelectedChapter[]
   subject: string
   grade: number
   teacher_instructions?: string | null
@@ -145,8 +141,8 @@ function normalizeName(name: string): string {
 
 function matchSelectedChapter(
   alloc: ChapterAllocation,
-  selected: SelectedChapterRef[]
-): SelectedChapterRef | null {
+  selected: SelectedChapter[]
+): SelectedChapter | null {
   const needle = normalizeName(alloc.chapter_name)
   return (
     selected.find((ch) => {
@@ -163,7 +159,7 @@ function matchSelectedChapter(
  */
 export function rematchBlueprintChapters(
   blueprint: QuestionPaperBlueprint,
-  selectedChapters: SelectedChapterRef[]
+  selectedChapters: SelectedChapter[]
 ): QuestionPaperBlueprint {
   if (selectedChapters.length === 0) return blueprint
 
@@ -202,7 +198,7 @@ export function rematchBlueprintChapters(
 
 export function hasForeignChapterAllocations(
   blueprint: QuestionPaperBlueprint,
-  selectedChapters: SelectedChapterRef[]
+  selectedChapters: SelectedChapter[]
 ): boolean {
   const allowed = new Set(selectedChapters.map((ch) => ch.chapter_number))
   return blueprint.sections.some((section) =>
@@ -211,6 +207,70 @@ export function hasForeignChapterAllocations(
         alloc.chapter_number == null || !allowed.has(alloc.chapter_number)
     )
   )
+}
+
+export type ChapterAllocationGroup = {
+  key: string
+  allocation: ChapterAllocation
+  allocationIndexes: number[]
+  questionCount: number
+}
+
+export function groupChapterAllocations(
+  allocations: ChapterAllocation[]
+): ChapterAllocationGroup[] {
+  const groups = new Map<string, ChapterAllocationGroup>()
+
+  allocations.forEach((allocation, allocationIndex) => {
+    const key = `${allocation.chapter_number ?? "unknown"}:${normalizeName(allocation.chapter_name)}`
+    const group = groups.get(key)
+    if (group) {
+      group.allocationIndexes.push(allocationIndex)
+      group.questionCount += allocation.question_count
+    } else {
+      groups.set(key, {
+        key,
+        allocation,
+        allocationIndexes: [allocationIndex],
+        questionCount: allocation.question_count,
+      })
+    }
+  })
+
+  return [...groups.values()]
+}
+
+export function updateGroupedQuestionCount(
+  allocations: ChapterAllocation[],
+  allocationIndexes: number[],
+  questionCount: number
+): ChapterAllocation[] {
+  const targets = new Set(allocationIndexes)
+  let remaining = Math.max(1, questionCount)
+  let firstUpdatedIndex = -1
+  const updated: ChapterAllocation[] = []
+
+  allocations.forEach((allocation, allocationIndex) => {
+    if (!targets.has(allocationIndex)) {
+      updated.push(allocation)
+      return
+    }
+    if (remaining === 0) return
+    if (firstUpdatedIndex === -1) firstUpdatedIndex = updated.length
+
+    const count = Math.min(allocation.question_count, remaining)
+    remaining -= count
+    updated.push({ ...allocation, question_count: count })
+  })
+
+  if (remaining > 0 && firstUpdatedIndex >= 0) {
+    updated[firstUpdatedIndex] = {
+      ...updated[firstUpdatedIndex],
+      question_count: updated[firstUpdatedIndex].question_count + remaining,
+    }
+  }
+
+  return updated
 }
 
 export function emptyBlueprint(

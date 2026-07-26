@@ -17,7 +17,6 @@ from app.schemas.generation import (
     SampleBlueprintSummary,
 )
 from app.services.generation import generate_paper
-from app.services.generation.format_reference import resolve_format_reference
 
 router = APIRouter(prefix="/sample-blueprints", tags=["sample-blueprints"])
 generation_router = APIRouter(prefix="/generation", tags=["generation"])
@@ -67,7 +66,6 @@ async def _save_format_reference(upload: UploadFile) -> Path:
             detail="Format reference must be a .docx file",
         )
 
-    suffix = Path(filename).suffix or ".docx"
     content = await upload.read()
     if not content:
         raise HTTPException(
@@ -77,14 +75,10 @@ async def _save_format_reference(upload: UploadFile) -> Path:
 
     tmp_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
             tmp_path = Path(tmp.name)
             tmp.write(content)
-        return resolve_format_reference(tmp_path)
-    except HTTPException:
-        if tmp_path is not None:
-            tmp_path.unlink(missing_ok=True)
-        raise
+        return tmp_path.resolve()
     except Exception as exc:
         if tmp_path is not None:
             tmp_path.unlink(missing_ok=True)

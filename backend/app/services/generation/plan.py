@@ -1,5 +1,4 @@
 from app.schemas.generation import (
-    BloomsLevel,
     QuestionPaperBlueprint,
     QuestionType,
     Slot,
@@ -76,7 +75,6 @@ def build_slots(
                 if allocation.is_assertion_reason
                 else section.question_type
             )
-            blooms: BloomsLevel | None = allocation.blooms_level
 
             for _ in range(allocation.question_count):
                 question_number += 1
@@ -97,11 +95,8 @@ def build_slots(
                             "chapter_name", allocation.chapter_name
                         ),
                         book_code=chapter.get("book_code"),
-                        content_types=TYPE_CONTENT_TYPES.get(
-                            q_type, ["theory", "example"]
-                        ),
+                        content_types=TYPE_CONTENT_TYPES[q_type],
                         has_internal_choice=allocation.has_internal_choice,
-                        blooms_level=blooms,
                         sub_parts=[],
                     )
                 )
