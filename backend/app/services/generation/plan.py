@@ -1,8 +1,8 @@
 from app.schemas.generation import (
+    BloomsLevel,
     QuestionPaperBlueprint,
     QuestionType,
     Slot,
-    SlotSubPart,
 )
 
 TYPE_CONTENT_TYPES: dict[QuestionType, list[str]] = {
@@ -18,24 +18,35 @@ TYPE_CONTENT_TYPES: dict[QuestionType, list[str]] = {
 }
 
 
-def assign_chapters(n: int, chapter_numbers: list[int]) -> list[int]:
-    """Largest-remainder equal apportionment, interleaved across chapters."""
-    if n == 0 or not chapter_numbers:
-        return []
-    k = len(chapter_numbers)
-    base, rem = divmod(n, k)
-    counts = {ch: base for ch in chapter_numbers}
-    for ch in chapter_numbers[:rem]:
-        counts[ch] += 1
+def _normalize_name(name: str) -> str:
+    return " ".join(name.lower().split())
 
-    pool: list[int] = []
-    remaining = dict(counts)
-    while sum(remaining.values()) > 0:
-        for ch in chapter_numbers:
-            if remaining[ch] > 0:
-                pool.append(ch)
-                remaining[ch] -= 1
-    return pool[:n]
+
+def _resolve_chapter(
+    allocation_chapter_number: int | None,
+    allocation_chapter_name: str,
+    selected_chapters: list[dict],
+    by_number: dict[int, dict],
+    by_name: dict[str, dict],
+) -> dict:
+    if allocation_chapter_number is not None and allocation_chapter_number in by_number:
+        return by_number[allocation_chapter_number]
+
+    match = by_name.get(_normalize_name(allocation_chapter_name))
+    if match:
+        return match
+
+    # Fuzzy: "Pair of Linear Equations" → catalog full name
+    needle = _normalize_name(allocation_chapter_name)
+    for chapter in selected_chapters:
+        catalog_name = _normalize_name(chapter.get("chapter_name", ""))
+        if needle in catalog_name or catalog_name in needle:
+            return chapter
+
+    if selected_chapters:
+        return selected_chapters[0]
+
+    raise ValueError("selected_chapters is empty — pick at least one chapter")
 
 
 def build_slots(
@@ -45,42 +56,56 @@ def build_slots(
     if not selected_chapters:
         raise ValueError("selected_chapters is empty — pick at least one chapter")
 
-    chapter_numbers = [c["chapter_number"] for c in selected_chapters]
     by_number = {c["chapter_number"]: c for c in selected_chapters}
-
-    all_questions = [
-        (section, q) for section in question_paper.sections for q in section.questions
-    ]
-    chapter_pool = iter(assign_chapters(len(all_questions), chapter_numbers))
+    by_name = {_normalize_name(c["chapter_name"]): c for c in selected_chapters}
 
     slots: list[Slot] = []
-    for section, q in all_questions:
-        chapter_number = next(chapter_pool)
-        chapter = by_number[chapter_number]
-        slots.append(
-            Slot(
-                slot_id=f"Q{q.question_number}",
-                section_name=section.section_name,
-                question_number=q.question_number,
-                question_type=q.question_type,
-                marks=q.marks,
-                chapter_number=chapter_number,
-                chapter_name=chapter.get("chapter_name", f"Chapter {chapter_number}"),
-                book_code=chapter.get("book_code"),
-                content_types=TYPE_CONTENT_TYPES.get(
-                    q.question_type, ["theory", "example"]
-                ),
-                has_internal_choice=q.has_internal_choice,
-                sub_parts=[
-                    SlotSubPart(
-                        label=sp.label,
-                        marks=sp.marks,
-                        has_internal_choice=sp.has_internal_choice,
-                    )
-                    for sp in q.sub_parts
-                ],
+    question_number = 0
+
+    for section in question_paper.sections:
+        for allocation in section.chapter_allocations:
+            chapter = _resolve_chapter(
+                allocation.chapter_number,
+                allocation.chapter_name,
+                selected_chapters,
+                by_number,
+                by_name,
             )
-        )
+            q_type = (
+                QuestionType.ASSERTION_REASON
+                if allocation.is_assertion_reason
+                else section.question_type
+            )
+            blooms: BloomsLevel | None = allocation.blooms_level
+
+            for _ in range(allocation.question_count):
+                question_number += 1
+                marks = (
+                    allocation.marks
+                    if allocation.marks is not None
+                    else section.marks_each
+                )
+                slots.append(
+                    Slot(
+                        slot_id=f"Q{question_number}",
+                        section_name=section.section_name,
+                        question_number=question_number,
+                        question_type=q_type,
+                        marks=marks,
+                        chapter_number=chapter["chapter_number"],
+                        chapter_name=chapter.get(
+                            "chapter_name", allocation.chapter_name
+                        ),
+                        book_code=chapter.get("book_code"),
+                        content_types=TYPE_CONTENT_TYPES.get(
+                            q_type, ["theory", "example"]
+                        ),
+                        has_internal_choice=allocation.has_internal_choice,
+                        blooms_level=blooms,
+                        sub_parts=[],
+                    )
+                )
+
     return slots
 
 

@@ -3,33 +3,41 @@
 Prefer importing from app.services.generation directly in new code.
 """
 
-from pathlib import Path
-
+from app.schemas.generation import QuestionPaperBlueprint
 from app.schemas.notebook import SelectedChapter
 from app.services.generation import generate_paper
+from app.services.generation.sample_blueprints_data import FORTY_MARKS_BLUEPRINT
 
 # %%
-DOCX_PATH = Path(__file__).resolve().parent / "notebooks" / "sample.docx"
-# DOCX_PATH = Path(__file__).resolve().parent / "notebooks" / "revision_sheet.docx"
-
 selected_chapters = [
     SelectedChapter(
         book_code="jemh1",
         chapter_number=1,
         chapter_name="Real Numbers",
     ),
+    SelectedChapter(
+        book_code="jemh1",
+        chapter_number=2,
+        chapter_name="Polynomials",
+    ),
+    SelectedChapter(
+        book_code="jemh1",
+        chapter_number=3,
+        chapter_name="Pair of Linear Equations in Two Variables",
+    ),
 ]
 
 # %%
 if __name__ == "__main__":
+    blueprint = QuestionPaperBlueprint.model_validate(FORTY_MARKS_BLUEPRINT)
     result = generate_paper(
-        docx_path=DOCX_PATH,
+        blueprint=blueprint,
         selected_chapters=selected_chapters,
-        subject="mathematics",
+        subject="Mathematics",
         grade=10,
-        use_sample_as_context=True,
+        teacher_instructions="Focus more on application-based questions.",
     )
-    print("sample_text_used:", result.sample_text_used)
     print("blueprint title:", result.blueprint.exam_title)
+    print("allocated / total:", result.blueprint.allocated_marks, "/", result.blueprint.total_marks)
     print("sections:", list((result.final_paper or {}).get("sections", {}).keys()))
     print("items:", len(result.generated_items))

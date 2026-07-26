@@ -98,6 +98,7 @@ def _build_batch_messages(
     slots: list[dict],
     *,
     sample_text: str | None = None,
+    teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> list[tuple]:
     blocks = "\n\n".join(_render_slot_block(slot) for slot in slots)
@@ -123,9 +124,17 @@ def _build_batch_messages(
             f"{sample_text}\n"
         )
 
+    teacher_block = ""
+    if teacher_instructions:
+        teacher_block = (
+            "\n\nTEACHER INSTRUCTIONS (follow when writing questions; "
+            "do not change the slot/marks structure):\n"
+            f"{teacher_instructions}\n"
+        )
+
     return [
         ("system", GENERATION_SYSTEM_INSTRUCTIONS),
-        ("human", f"{header}{style_block}\n\n{blocks}"),
+        ("human", f"{header}{style_block}{teacher_block}\n\n{blocks}"),
     ]
 
 
@@ -133,6 +142,7 @@ def _run_batches_parallel(
     batches: list[list[dict]],
     *,
     sample_text: str | None = None,
+    teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> dict[str, GeneratedQuestion]:
     if not batches:
@@ -144,7 +154,12 @@ def _run_batches_parallel(
         .with_structured_output(GeneratedPaperResponse)
     )
     message_lists = [
-        _build_batch_messages(batch, sample_text=sample_text, feedback_by_slot=feedback_by_slot)
+        _build_batch_messages(
+            batch,
+            sample_text=sample_text,
+            teacher_instructions=teacher_instructions,
+            feedback_by_slot=feedback_by_slot,
+        )
         for batch in batches
     ]
 
@@ -167,6 +182,7 @@ def generate_paper_node(state: dict) -> dict:
     slots = state["slots"]
     slots_by_id = {s["slot_id"]: s for s in slots}
     sample_text = state.get("sample_text") if state.get("use_sample_as_context") else None
+    teacher_instructions = (state.get("teacher_instructions") or "").strip() or None
 
     items_by_slot: dict[str, GeneratedQuestion] = {}
 
@@ -180,7 +196,11 @@ def generate_paper_node(state: dict) -> dict:
         return errors
 
     initial_batches = list(_chunked(slots, GENERATION_BATCH_SIZE))
-    items_by_slot = _run_batches_parallel(initial_batches, sample_text=sample_text)
+    items_by_slot = _run_batches_parallel(
+        initial_batches,
+        sample_text=sample_text,
+        teacher_instructions=teacher_instructions,
+    )
     errors_by_slot = validate_all()
 
     if errors_by_slot:
@@ -190,6 +210,7 @@ def generate_paper_node(state: dict) -> dict:
             _run_batches_parallel(
                 retry_batches,
                 sample_text=sample_text,
+                teacher_instructions=teacher_instructions,
                 feedback_by_slot=errors_by_slot,
             )
         )

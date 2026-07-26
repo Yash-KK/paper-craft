@@ -13,10 +13,13 @@ from app.schemas.chat import (
 )
 from app.schemas.document import ChunkType, IngestRequest, IngestResponse
 from app.schemas.generation import (
+    BloomsLevel,
     GeneratePaperRequest,
     GenerationResult,
     QuestionPaperBlueprint,
     QuestionType,
+    SampleBlueprintDetail,
+    SampleBlueprintSummary,
 )
 from app.schemas.notebook import (
     ChapterCatalogItem,
@@ -42,6 +45,7 @@ __all__ = [
     "ChatStreamToolEndEvent",
     "ChatStreamToolStartEvent",
     "ChatTurnRequest",
+    "BloomsLevel",
     "ChunkType",
     "GeneratePaperRequest",
     "GenerationResult",
@@ -55,6 +59,8 @@ __all__ = [
     "QueryResponse",
     "QuestionPaperBlueprint",
     "QuestionType",
+    "SampleBlueprintDetail",
+    "SampleBlueprintSummary",
     "SelectedChapter",
     "UserProfileResponse",
     "UserProfileUpdate",

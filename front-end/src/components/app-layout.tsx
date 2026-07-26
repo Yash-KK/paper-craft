@@ -83,7 +83,7 @@ export function AppLayout() {
               </div>
 
               <div className="min-h-0 flex-1">
-                {notebookMatch ? (
+                {notebookMatch && activeNotebook ? (
                   <div className="flex h-full min-h-0 flex-col">
                     <div className="shrink-0 px-3 py-3">
                       <Button
@@ -99,9 +99,16 @@ export function AppLayout() {
                     </div>
                     <Separator />
                     <QuestionPapersSidebar
-                      notebookName={activeNotebook?.name ?? "Notebook"}
+                      notebook={activeNotebook}
+                      schoolName={user.school_name}
                       className="min-h-0 flex-1"
                     />
+                  </div>
+                ) : notebookMatch ? (
+                  <div className="space-y-4 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      Loading notebook…
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4 p-4">

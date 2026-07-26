@@ -9,6 +9,12 @@ import type {
   NotebookUpdatePayload,
   Subject,
 } from "@/lib/types/notebook"
+import type {
+  GeneratePaperPayload,
+  GenerationResult,
+  SampleBlueprintDetail,
+  SampleBlueprintSummary,
+} from "@/lib/types/generation"
 import type { ChatSession } from "@/features/chat/types/chat"
 
 export type {
@@ -230,4 +236,29 @@ export async function fetchChapters(
   const response = await authFetch(`/api/v1/chapters?${params}`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChapterCatalogItem[]
+}
+
+export async function fetchSampleBlueprints(): Promise<SampleBlueprintSummary[]> {
+  const response = await authFetch("/api/v1/sample-blueprints")
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as SampleBlueprintSummary[]
+}
+
+export async function fetchSampleBlueprint(
+  id: string
+): Promise<SampleBlueprintDetail> {
+  const response = await authFetch(`/api/v1/sample-blueprints/${id}`)
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as SampleBlueprintDetail
+}
+
+export async function generateQuestionPaper(
+  payload: GeneratePaperPayload
+): Promise<GenerationResult> {
+  const response = await authFetch("/api/v1/generation/papers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as GenerationResult
 }

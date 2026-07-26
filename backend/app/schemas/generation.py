@@ -1,8 +1,9 @@
+from datetime import date
 from enum import Enum
-from pathlib import Path
 from typing import TypedDict
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.schemas.notebook import SelectedChapter
 
@@ -19,79 +20,99 @@ class QuestionType(str, Enum):
     OTHER = "OTHER"
 
 
-class SubPart(BaseModel):
-    label: str = Field(
-        description="The index tag for the individual nested child sub-question. Examples: 'i', 'ii', 'iii', 'a', 'b', 'c'."
+class BloomsLevel(str, Enum):
+    REMEMBERING = "REMEMBERING"
+    UNDERSTANDING = "UNDERSTANDING"
+    APPLYING = "APPLYING"
+    ANALYSING = "ANALYSING"
+    EVALUATING = "EVALUATING"
+    CREATING = "CREATING"
+
+
+class ChapterAllocation(BaseModel):
+    chapter_number: int | None = Field(
+        default=None,
+        description="Catalog chapter number when known; null until rematched to notebook chapters.",
     )
-    marks: float = Field(
-        description="The specific point or mark allocation assigned strictly to this sub-question sub-item."
+    chapter_name: str = Field(description="Lesson / chapter display name.")
+    question_count: int = Field(ge=1, description="Number of questions for this chapter in the section.")
+    blooms_level: BloomsLevel | None = Field(
+        default=None,
+        description="Optional Bloom's level for generation; not shown as a form section.",
     )
-    has_internal_choice: bool = Field(
+    has_internal_choice: bool = False
+    is_assertion_reason: bool = Field(
         default=False,
-        description="True ONLY if this specific subpart item offers an alternative choice branch.",
+        description="True for Assertion-Reason items nested under an MCQ section.",
+    )
+    marks: float | None = Field(
+        default=None,
+        description="Optional per-allocation marks override; defaults to section marks_each.",
     )
 
 
-class QuestionSpec(BaseModel):
-    question_number: int = Field(
-        description="The clean integer representing the sequential top-level question item number (e.g., 1, 2, 3)."
+class BlueprintSection(BaseModel):
+    section_name: str = Field(
+        description="Display name for the section, e.g. 'MCQ', 'VSA', 'CBQ'."
     )
     question_type: QuestionType = Field(
-        description="The strict classification enum matching how the paper tags this question structure."
+        description="Question type for this section (CBQ maps to CASE_STUDY)."
     )
-    marks: float = Field(
-        description="The full total points allocated to this entire question branch."
-    )
-    has_internal_choice: bool = Field(
-        default=False,
-        description="True if an alternative 'OR' pathway is offered for the entire question unit.",
-    )
-    sub_parts: list[SubPart] = Field(
+    marks_each: float = Field(description="Marks per question in this section.")
+    chapter_allocations: list[ChapterAllocation] = Field(
         default_factory=list,
-        description="Child sub-questions for multi-part items (e.g. Case Study).",
-    )
-
-
-class Section(BaseModel):
-    section_name: str = Field(
-        description="Section title. Examples: 'SECTION A', 'PART I'. Default to 'Section 1' if none."
+        description="Per-chapter question counts within this section.",
     )
     section_instructions: str | None = Field(
         default=None,
-        description="Notes or constraints at the section header.",
+        description="Optional notes at the section header.",
     )
-    questions: list[QuestionSpec] = Field(
-        description="Top-level question specs inside this section.",
-    )
-    stated_total_marks: float | None = Field(
-        default=None,
-        description="Section total if printed in the header; null otherwise.",
-    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def section_total_marks(self) -> float:
+        return sum(
+            a.question_count * (a.marks if a.marks is not None else self.marks_each)
+            for a in self.chapter_allocations
+        )
 
 
 class QuestionPaperBlueprint(BaseModel):
     school_name: str | None = Field(
         default=None,
-        description="Institution name from the header; null if absent.",
+        description="Institution name; null if absent.",
     )
     exam_title: str | None = Field(
         default=None,
-        description="Exam / sheet title (e.g. 'Pre-Board Examination', 'Revision Sheet').",
+        description="Exam / sheet title (e.g. 'Pre-Mid Term Examination').",
     )
     subject: str = Field(description="Subject domain, e.g. 'Mathematics'.")
     grade: int = Field(description="Class / grade level, e.g. 10.")
-    total_marks: int = Field(description="Printed total marks for the paper.")
+    total_marks: int = Field(description="Target total marks for the paper.")
     duration_minutes: int | None = Field(
         default=None,
         description="Duration in minutes (e.g. '2 Hours' -> 120); null if absent.",
+    )
+    exam_date: date | None = Field(
+        default=None,
+        description="Scheduled exam date if set.",
     )
     general_instructions: list[str] = Field(
         default_factory=list,
         description="Items from the General Instructions block.",
     )
-    sections: list[Section] = Field(
-        description="Ordered sections making up the paper.",
+    sections: list[BlueprintSection] = Field(
+        description="Ordered question-type sections making up the paper.",
     )
+    blooms_targets: dict[BloomsLevel, float] | None = Field(
+        default=None,
+        description="Optional Bloom's mark targets from the sample template.",
+    )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def allocated_marks(self) -> float:
+        return sum(section.section_total_marks for section in self.sections)
 
 
 class SlotSubPart(BaseModel):
@@ -111,6 +132,7 @@ class Slot(BaseModel):
     book_code: str | None = None
     content_types: list[str] = Field(default_factory=list)
     has_internal_choice: bool = False
+    blooms_level: BloomsLevel | None = None
     sub_parts: list[SlotSubPart] = Field(default_factory=list)
 
 
@@ -148,14 +170,27 @@ class GeneratedPaperResponse(BaseModel):
     items: list[GeneratedQuestion]
 
 
-class GeneratePaperRequest(BaseModel):
-    """API-ready request body for future routes."""
+class SampleBlueprintSummary(BaseModel):
+    id: UUID
+    slug: str
+    label: str
+    total_marks: int
 
-    docx_path: Path
+
+class SampleBlueprintDetail(SampleBlueprintSummary):
+    blueprint: QuestionPaperBlueprint
+
+
+class GeneratePaperRequest(BaseModel):
+    """Request body for question paper generation."""
+
+    blueprint: QuestionPaperBlueprint
     selected_chapters: list[SelectedChapter]
     subject: str
     grade: int
+    teacher_instructions: str | None = None
     use_sample_as_context: bool = False
+    sample_text: str | None = None
 
 
 class GenerationResult(BaseModel):
@@ -171,6 +206,7 @@ class GenerationState(TypedDict):
     selected_chapters: list[dict]
     subject: str
     grade: int
+    teacher_instructions: str | None
     use_sample_as_context: bool
     sample_text: str | None
     slots: list[dict]
