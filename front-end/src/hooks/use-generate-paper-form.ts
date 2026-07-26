@@ -235,11 +235,17 @@ export function useGeneratePaperForm(
     }
 
     try {
+      const submissionBlueprint = {
+        ...blueprint,
+        general_instructions: blueprint.general_instructions
+          .map((instruction) => instruction.trim())
+          .filter(Boolean),
+      }
       await generateMutation.mutateAsync({
-        blueprint,
+        blueprint: submissionBlueprint,
         selected_chapters: chapters,
-        subject: blueprint.subject,
-        grade: blueprint.grade,
+        subject: submissionBlueprint.subject,
+        grade: submissionBlueprint.grade,
         teacher_instructions: teacherInstructions.trim() || null,
         format_reference: formatReference,
       })

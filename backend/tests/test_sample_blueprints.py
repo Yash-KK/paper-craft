@@ -15,6 +15,8 @@ def test_forty_marks_blueprint_expands_to_forty_marks():
     blueprint = QuestionPaperBlueprint.model_validate(FORTY_MARKS_BLUEPRINT)
     assert blueprint.allocated_marks == 40
     assert blueprint.total_marks == 40
+    assert len(blueprint.general_instructions) == 10
+    assert blueprint.general_instructions[-1] == "Use of a calculator is not allowed."
 
     chapters = [
         {
@@ -37,7 +39,12 @@ def test_forty_marks_blueprint_expands_to_forty_marks():
     assert len(slots) == 19
     assert sum(s.marks for s in slots) == 40
     assert {s.section_name for s in slots} == {"MCQ", "VSA", "SA", "LA", "CBQ"}
-    assert sum(1 for s in slots if s.question_type.value == "ASSERTION_REASON") == 2
+    assert [s.question_number for s in slots if s.question_type.value == "ASSERTION_REASON"] == [
+        9,
+        10,
+    ]
+    assert [(s.question_number, s.marks) for s in slots[-2:]] == [(18, 4), (19, 3)]
+    assert sum(1 for s in slots[-2:] if s.has_internal_choice) == 1
 
 
 def test_blueprint_rejects_total_that_differs_from_sections():
@@ -62,9 +69,16 @@ def test_teacher_instructions_are_prompt_context_only():
                 "context_chunks": [],
             }
         ],
+        general_instructions=[
+            "All questions are compulsory.",
+            "Use of a calculator is not allowed.",
+        ],
         teacher_instructions="Avoid direct textbook questions.",
     )
 
+    assert "GENERAL INSTRUCTIONS FOR THE FINAL PAPER" in messages[1][1]
+    assert "1. All questions are compulsory." in messages[1][1]
+    assert "2. Use of a calculator is not allowed." in messages[1][1]
     assert "TEACHER INSTRUCTIONS" in messages[1][1]
     assert "Avoid direct textbook questions." in messages[1][1]
 

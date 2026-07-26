@@ -96,6 +96,7 @@ def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
 def _build_batch_messages(
     slots: list[dict],
     *,
+    general_instructions: list[str] | None = None,
     teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> list[tuple]:
@@ -122,15 +123,37 @@ def _build_batch_messages(
             f"{teacher_instructions}\n"
         )
 
+    edited_instructions = [
+        instruction.strip()
+        for instruction in (general_instructions or [])
+        if instruction.strip()
+    ]
+    general_instructions_block = ""
+    if edited_instructions:
+        rendered = "\n".join(
+            f"{index}. {instruction}"
+            for index, instruction in enumerate(edited_instructions, start=1)
+        )
+        general_instructions_block = (
+            "\n\nGENERAL INSTRUCTIONS FOR THE FINAL PAPER "
+            "(this is the teacher-edited version; ensure the generated questions "
+            "conform to it):\n"
+            f"{rendered}\n"
+        )
+
     return [
         ("system", GENERATION_SYSTEM_INSTRUCTIONS),
-        ("human", f"{header}{teacher_block}\n\n{blocks}"),
+        (
+            "human",
+            f"{header}{general_instructions_block}{teacher_block}\n\n{blocks}",
+        ),
     ]
 
 
 def _run_batches_parallel(
     batches: list[list[dict]],
     *,
+    general_instructions: list[str] | None = None,
     teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> dict[str, GeneratedQuestion]:
@@ -145,6 +168,7 @@ def _run_batches_parallel(
     message_lists = [
         _build_batch_messages(
             batch,
+            general_instructions=general_instructions,
             teacher_instructions=teacher_instructions,
             feedback_by_slot=feedback_by_slot,
         )
@@ -169,6 +193,7 @@ def _run_batches_parallel(
 def generate_paper_node(state: dict) -> dict:
     slots = state["slots"]
     slots_by_id = {s["slot_id"]: s for s in slots}
+    general_instructions = state["question_paper"].get("general_instructions") or []
     teacher_instructions = (state.get("teacher_instructions") or "").strip() or None
 
     items_by_slot: dict[str, GeneratedQuestion] = {}
@@ -185,6 +210,7 @@ def generate_paper_node(state: dict) -> dict:
     initial_batches = list(_chunked(slots, GENERATION_BATCH_SIZE))
     items_by_slot = _run_batches_parallel(
         initial_batches,
+        general_instructions=general_instructions,
         teacher_instructions=teacher_instructions,
     )
     errors_by_slot = validate_all()
@@ -195,6 +221,7 @@ def generate_paper_node(state: dict) -> dict:
         items_by_slot.update(
             _run_batches_parallel(
                 retry_batches,
+                general_instructions=general_instructions,
                 teacher_instructions=teacher_instructions,
                 feedback_by_slot=errors_by_slot,
             )

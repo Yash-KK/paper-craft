@@ -99,7 +99,10 @@ class QuestionPaperBlueprint(BaseModel):
     )
     general_instructions: list[str] = Field(
         default_factory=list,
-        description="Items from the General Instructions block.",
+        description=(
+            "Editable General Instructions template items included in the final paper "
+            "and question-generation prompt."
+        ),
     )
     sections: list[BlueprintSection] = Field(
         description="Ordered question-type sections making up the paper.",

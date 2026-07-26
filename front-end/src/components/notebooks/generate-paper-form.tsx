@@ -238,6 +238,30 @@ export function GeneratePaperForm({
       {form.sampleSelected ? (
         <>
           <FormPanel
+            title="General Instructions"
+            description="These instructions appear on the question paper. Keep one instruction per line."
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="general-instructions">
+                Instructions (one per line)
+              </Label>
+              <Textarea
+                id="general-instructions"
+                value={form.blueprint.general_instructions.join("\n")}
+                onChange={(e) =>
+                  form.patchBlueprint({
+                    general_instructions: e.target.value
+                      ? e.target.value.split("\n")
+                      : [],
+                  })
+                }
+                placeholder="Add an instruction"
+                className="min-h-64"
+              />
+            </div>
+          </FormPanel>
+
+          <FormPanel
             icon={
               <PanelIcon>
                 <ListChecks className="size-4" />
