@@ -9,6 +9,12 @@ import type {
   NotebookUpdatePayload,
   Subject,
 } from "@/lib/types/notebook"
+import type {
+  GeneratePaperPayload,
+  GenerationResult,
+  SampleBlueprintDetail,
+  SampleBlueprintSummary,
+} from "@/lib/types/generation"
 import type { ChatSession } from "@/features/chat/types/chat"
 
 export type {
@@ -110,7 +116,9 @@ export async function authFetch(
 
   const headers = new Headers(init.headers)
   headers.set("Authorization", `Bearer ${token}`)
-  if (init.body && !headers.has("Content-Type")) {
+  const isFormData =
+    typeof FormData !== "undefined" && init.body instanceof FormData
+  if (init.body && !isFormData && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json")
   }
 
@@ -230,4 +238,36 @@ export async function fetchChapters(
   const response = await authFetch(`/api/v1/chapters?${params}`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChapterCatalogItem[]
+}
+
+export async function fetchSampleBlueprints(): Promise<SampleBlueprintSummary[]> {
+  const response = await authFetch("/api/v1/sample-blueprints")
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as SampleBlueprintSummary[]
+}
+
+export async function fetchSampleBlueprint(
+  id: string
+): Promise<SampleBlueprintDetail> {
+  const response = await authFetch(`/api/v1/sample-blueprints/${id}`)
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as SampleBlueprintDetail
+}
+
+export async function generateQuestionPaper(
+  payload: GeneratePaperPayload
+): Promise<GenerationResult> {
+  const { format_reference, ...request } = payload
+  const body = new FormData()
+  body.append("payload", JSON.stringify(request))
+  if (format_reference) {
+    body.append("format_reference", format_reference)
+  }
+
+  const response = await authFetch("/api/v1/generation/papers", {
+    method: "POST",
+    body,
+  })
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as GenerationResult
 }

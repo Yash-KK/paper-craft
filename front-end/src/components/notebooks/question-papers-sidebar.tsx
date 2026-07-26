@@ -1,4 +1,5 @@
 import { FileText, Plus, Sparkles } from "lucide-react"
+import { Link } from "react-router-dom"
 
 import {
   MOCK_QUESTION_PAPERS,
@@ -8,46 +9,52 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import type { NotebookListItem } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
 type QuestionPapersSidebarProps = {
-  notebookName: string
+  notebook: NotebookListItem
   className?: string
   papers?: MockQuestionPaper[]
 }
 
 export function QuestionPapersSidebar({
-  notebookName,
+  notebook,
   className,
   papers = MOCK_QUESTION_PAPERS,
 }: QuestionPapersSidebarProps) {
+  const canGenerate = notebook.selected_chapters.length > 0
+  const generateHref = `/notebooks/${notebook.id}/generate`
+
   return (
-    <div
-      className={cn(
-        "flex h-full min-h-0 w-full flex-col",
-        className
-      )}
-    >
+    <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
       <div className="space-y-3 border-b p-4">
         <div className="space-y-1">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Notebook
           </p>
           <h2 className="truncate font-heading text-sm font-semibold">
-            {notebookName}
+            {notebook.name}
           </h2>
         </div>
         <Button
           type="button"
-          className="w-full gap-2 bg-violet-600 text-white hover:bg-violet-600/90"
-          disabled
-          title="Coming soon — generation will call the Agentic RAG backend"
+          className="w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
+          disabled={!canGenerate}
+          title={
+            canGenerate
+              ? "Open question paper generation"
+              : "Select chapters on this notebook first"
+          }
+          render={canGenerate ? <Link to={generateHref} /> : undefined}
         >
           <Sparkles className="size-4" />
           Generate Question Paper
         </Button>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Dummy for now. This will create papers scoped to this notebook.
+          {canGenerate
+            ? "Opens the paper builder with sample blueprints and marking scheme."
+            : "Add chapters to this notebook before generating a paper."}
         </p>
       </div>
 

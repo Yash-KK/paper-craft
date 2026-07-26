@@ -24,11 +24,15 @@ wheels/
 ## misc
 misc.ipynb
 misc.py
-sample.docx
+notebooks/*.docx
 question_paper.docx
 generated_answer_key.docx
+generated_question_paper.docx
 project_structure.py
 
+# Keep tracked formatting templates under samples/
+!samples/
+!samples/*.docx
 
 ndmo_standards/
 whitepaper
