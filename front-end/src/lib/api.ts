@@ -116,7 +116,9 @@ export async function authFetch(
 
   const headers = new Headers(init.headers)
   headers.set("Authorization", `Bearer ${token}`)
-  if (init.body && !headers.has("Content-Type")) {
+  const isFormData =
+    typeof FormData !== "undefined" && init.body instanceof FormData
+  if (init.body && !isFormData && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json")
   }
 
@@ -255,9 +257,16 @@ export async function fetchSampleBlueprint(
 export async function generateQuestionPaper(
   payload: GeneratePaperPayload
 ): Promise<GenerationResult> {
+  const { format_reference, ...request } = payload
+  const body = new FormData()
+  body.append("payload", JSON.stringify(request))
+  if (format_reference) {
+    body.append("format_reference", format_reference)
+  }
+
   const response = await authFetch("/api/v1/generation/papers", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body,
   })
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as GenerationResult

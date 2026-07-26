@@ -154,7 +154,7 @@ paper-craft/
 │   ├── alembic/          # Database migrations
 │   ├── data/             # Source textbooks
 │   ├── extracted_data/   # Parsed textbook content
-│   ├── notebooks/        # Extraction and export experiments
+│   ├── samples/          # Default formatting templates (DOCX)
 │   └── tests/
 ├── front-end/
 │   ├── public/

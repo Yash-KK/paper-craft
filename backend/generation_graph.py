@@ -37,6 +37,8 @@ if __name__ == "__main__":
         grade=10,
         teacher_instructions="Focus more on application-based questions.",
     )
+    print("format reference:", result.format_reference_path)
+    print("using default sample:", result.format_reference_is_default)
     print("blueprint title:", result.blueprint.exam_title)
     print("allocated / total:", result.blueprint.allocated_marks, "/", result.blueprint.total_marks)
     print("sections:", list((result.final_paper or {}).get("sections", {}).keys()))

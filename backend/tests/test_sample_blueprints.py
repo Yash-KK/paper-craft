@@ -1,4 +1,9 @@
 from app.schemas.generation import QuestionPaperBlueprint
+from app.services.generation.format_reference import (
+    DEFAULT_FORMAT_REFERENCE,
+    resolve_format_reference,
+)
+from app.services.generation.generate import _build_batch_messages
 from app.services.generation.plan import build_slots
 from app.services.generation.sample_blueprints_data import FORTY_MARKS_BLUEPRINT
 
@@ -30,3 +35,32 @@ def test_forty_marks_blueprint_expands_to_forty_marks():
     assert sum(s.marks for s in slots) == 40
     assert {s.section_name for s in slots} == {"MCQ", "VSA", "SA", "LA", "CBQ"}
     assert sum(1 for s in slots if s.question_type.value == "ASSERTION_REASON") == 2
+
+
+def test_teacher_instructions_are_prompt_context_only():
+    messages = _build_batch_messages(
+        [
+            {
+                "slot_id": "Q1",
+                "section_name": "MCQ",
+                "question_type": "MCQ",
+                "marks": 1,
+                "chapter_number": 1,
+                "chapter_name": "Real Numbers",
+                "has_internal_choice": False,
+                "sub_parts": [],
+                "context_chunks": [],
+            }
+        ],
+        teacher_instructions="Avoid direct textbook questions.",
+    )
+
+    assert "TEACHER INSTRUCTIONS" in messages[1][1]
+    assert "Avoid direct textbook questions." in messages[1][1]
+
+
+def test_default_format_reference_resolves():
+    path = resolve_format_reference()
+    assert path == DEFAULT_FORMAT_REFERENCE.resolve()
+    assert path.is_file()
+    assert path.suffix.lower() == ".docx"

@@ -1,6 +1,10 @@
+import json
+import tempfile
+from pathlib import Path
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -13,8 +17,10 @@ from app.schemas.generation import (
     SampleBlueprintSummary,
 )
 from app.services.generation import generate_paper
+from app.services.generation.format_reference import resolve_format_reference
 
 router = APIRouter(prefix="/sample-blueprints", tags=["sample-blueprints"])
+generation_router = APIRouter(prefix="/generation", tags=["generation"])
 
 
 @router.get("", response_model=list[SampleBlueprintSummary])
@@ -53,25 +59,81 @@ async def get_sample_blueprint(
     )
 
 
-generation_router = APIRouter(prefix="/generation", tags=["generation"])
+async def _save_format_reference(upload: UploadFile) -> Path:
+    filename = (upload.filename or "").lower()
+    if not filename.endswith(".docx"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Format reference must be a .docx file",
+        )
+
+    suffix = Path(filename).suffix or ".docx"
+    content = await upload.read()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded format reference is empty",
+        )
+
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp_path = Path(tmp.name)
+            tmp.write(content)
+        return resolve_format_reference(tmp_path)
+    except HTTPException:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+        raise
+    except Exception as exc:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid format reference: {exc}",
+        ) from exc
 
 
 @generation_router.post("/papers", response_model=GenerationResult)
 async def create_question_paper(
-    body: GeneratePaperRequest,
     current_user: CurrentUser,
+    payload: Annotated[
+        str, Form(description="JSON GeneratePaperRequest body")
+    ],
+    format_reference: Annotated[
+        UploadFile | None,
+        File(
+            description="Optional DOCX used as the formatting template for the final paper",
+        ),
+    ] = None,
 ) -> GenerationResult:
     del current_user
     try:
+        body = GeneratePaperRequest.model_validate(json.loads(payload))
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid payload JSON: {exc}",
+        ) from exc
+
+    uploaded_path: Path | None = None
+    try:
+        if format_reference is not None and format_reference.filename:
+            uploaded_path = await _save_format_reference(format_reference)
+
         return generate_paper(
             blueprint=body.blueprint,
             selected_chapters=body.selected_chapters,
             subject=body.subject,
             grade=body.grade,
             teacher_instructions=body.teacher_instructions,
-            use_sample_as_context=body.use_sample_as_context,
-            sample_text=body.sample_text,
+            format_reference_path=uploaded_path,
         )
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

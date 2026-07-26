@@ -17,7 +17,6 @@ GROUNDING
 - The supplied textbook source text is the source of truth for concepts, definitions, terminology, methods, theorems, values, examples, and exercises.
 - It is OCR/chunked and may be incomplete. Use your own subject knowledge ONLY to: repair OCR/chunk gaps, complete standard notation/terminology, finish a partially shown method, write plausible distractors, and build rubrics.
 - Never introduce chapter-specific facts/formulas/values not supported by the source or by universally standard subject knowledge. If source and your knowledge conflict, trust the source.
-- If a STYLE REFERENCE block is present, match its tone, difficulty, and phrasing style. Do not copy its questions verbatim.
 
 EACH QUESTION must be academically correct, unambiguous, fully solvable, exam-appropriate, concise, and must match the spec's marks and question type — without revealing its answer.
 
@@ -97,7 +96,6 @@ def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
 def _build_batch_messages(
     slots: list[dict],
     *,
-    sample_text: str | None = None,
     teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> list[tuple]:
@@ -116,14 +114,6 @@ def _build_batch_messages(
             f"return ONLY these {len(slots)} items:\n{feedback_text}\n\nSpecs:"
         )
 
-    style_block = ""
-    if sample_text:
-        style_block = (
-            "\n\nSTYLE REFERENCE (match tone/difficulty/phrasing; "
-            "do not copy questions verbatim):\n"
-            f"{sample_text}\n"
-        )
-
     teacher_block = ""
     if teacher_instructions:
         teacher_block = (
@@ -134,14 +124,13 @@ def _build_batch_messages(
 
     return [
         ("system", GENERATION_SYSTEM_INSTRUCTIONS),
-        ("human", f"{header}{style_block}{teacher_block}\n\n{blocks}"),
+        ("human", f"{header}{teacher_block}\n\n{blocks}"),
     ]
 
 
 def _run_batches_parallel(
     batches: list[list[dict]],
     *,
-    sample_text: str | None = None,
     teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> dict[str, GeneratedQuestion]:
@@ -156,7 +145,6 @@ def _run_batches_parallel(
     message_lists = [
         _build_batch_messages(
             batch,
-            sample_text=sample_text,
             teacher_instructions=teacher_instructions,
             feedback_by_slot=feedback_by_slot,
         )
@@ -181,7 +169,6 @@ def _run_batches_parallel(
 def generate_paper_node(state: dict) -> dict:
     slots = state["slots"]
     slots_by_id = {s["slot_id"]: s for s in slots}
-    sample_text = state.get("sample_text") if state.get("use_sample_as_context") else None
     teacher_instructions = (state.get("teacher_instructions") or "").strip() or None
 
     items_by_slot: dict[str, GeneratedQuestion] = {}
@@ -198,7 +185,6 @@ def generate_paper_node(state: dict) -> dict:
     initial_batches = list(_chunked(slots, GENERATION_BATCH_SIZE))
     items_by_slot = _run_batches_parallel(
         initial_batches,
-        sample_text=sample_text,
         teacher_instructions=teacher_instructions,
     )
     errors_by_slot = validate_all()
@@ -209,7 +195,6 @@ def generate_paper_node(state: dict) -> dict:
         items_by_slot.update(
             _run_batches_parallel(
                 retry_batches,
-                sample_text=sample_text,
                 teacher_instructions=teacher_instructions,
                 feedback_by_slot=errors_by_slot,
             )

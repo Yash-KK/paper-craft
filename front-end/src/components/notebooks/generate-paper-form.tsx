@@ -73,7 +73,7 @@ function PanelIcon({ children }: { children: ReactNode }) {
 export function GeneratePaperForm({
   notebook,
   schoolName,
-  // onGenerated,
+  onGenerated,
   onCancel,
 }: GeneratePaperFormProps) {
   const form = useGeneratePaperForm(notebook, schoolName)
@@ -291,7 +291,7 @@ export function GeneratePaperForm({
 
           <FormPanel
             title="Teacher Instructions"
-            description="Optional preferences for the AI. These do not change the blueprint — they are added to the generation prompt only."
+            description="Anything you'd like the paper to focus on or avoid for example, more application questions, or no direct textbook questions."
           >
             <Textarea
               value={form.teacherInstructions}
@@ -301,6 +301,40 @@ export function GeneratePaperForm({
               }
               className="min-h-32"
             />
+          </FormPanel>
+
+          <FormPanel
+            title="Format Reference"
+            description="Optional. Upload a DOCX to use as the formatting template for the final paper. If you skip this, the built-in 40 Marks sample is used."
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="format-reference">Reference DOCX</Label>
+              <Input
+                id="format-reference"
+                key={form.formatReference?.name ?? "default-format-reference"}
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(e) =>
+                  form.setFormatReference(e.target.files?.[0] ?? null)
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {form.formatReference
+                  ? `Using uploaded file: ${form.formatReference.name}`
+                  : "Using default: samples/40_marks_sample.docx"}
+              </p>
+              {form.formatReference ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-fit px-0 text-muted-foreground"
+                  onClick={() => form.setFormatReference(null)}
+                >
+                  Clear upload
+                </Button>
+              ) : null}
+            </div>
           </FormPanel>
         </>
       ) : (
@@ -319,11 +353,11 @@ export function GeneratePaperForm({
             form.generating ||
             form.chapters.length === 0
           }
-          // onClick={() =>
-          //   void form.generate().then((ok) => {
-          //     if (ok) onGenerated?.()
-          //   })
-          // }
+          onClick={() =>
+            void form.generate().then((ok) => {
+              if (ok) onGenerated?.()
+            })
+          }
         >
           {form.generating ? (
             <Loader2 className="size-4 animate-spin" />

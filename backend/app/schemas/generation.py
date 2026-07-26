@@ -189,8 +189,6 @@ class GeneratePaperRequest(BaseModel):
     subject: str
     grade: int
     teacher_instructions: str | None = None
-    use_sample_as_context: bool = False
-    sample_text: str | None = None
 
 
 class GenerationResult(BaseModel):
@@ -198,7 +196,8 @@ class GenerationResult(BaseModel):
     final_paper: dict
     final_answer_key: dict
     generated_items: list[dict]
-    sample_text_used: bool = False
+    format_reference_path: str
+    format_reference_is_default: bool = True
 
 
 class GenerationState(TypedDict):
@@ -207,8 +206,7 @@ class GenerationState(TypedDict):
     subject: str
     grade: int
     teacher_instructions: str | None
-    use_sample_as_context: bool
-    sample_text: str | None
+    format_reference_path: str | None
     slots: list[dict]
     generated_items: list[dict]
     final_paper: dict | None

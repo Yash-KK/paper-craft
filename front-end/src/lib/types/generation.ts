@@ -73,6 +73,7 @@ export type GeneratePaperPayload = {
   subject: string
   grade: number
   teacher_instructions?: string | null
+  format_reference?: File | null
 }
 
 export type GenerationResult = {
@@ -80,6 +81,8 @@ export type GenerationResult = {
   final_paper: Record<string, unknown>
   final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
+  format_reference_path: string
+  format_reference_is_default: boolean
 }
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {

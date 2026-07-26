@@ -30,6 +30,7 @@ export function useGeneratePaperForm(
 
   const [sample, setSample] = React.useState<SampleBlueprintSummary | null>(null)
   const [teacherInstructions, setTeacherInstructions] = React.useState("")
+  const [formatReference, setFormatReference] = React.useState<File | null>(null)
   const [blueprint, setBlueprint] = React.useState<QuestionPaperBlueprint>(() =>
     emptyBlueprint({
       school_name: schoolName,
@@ -196,6 +197,7 @@ export function useGeneratePaperForm(
         subject: blueprint.subject,
         grade: blueprint.grade,
         teacher_instructions: teacherInstructions.trim() || null,
+        format_reference: formatReference,
       })
       return true
     } catch {
@@ -215,6 +217,8 @@ export function useGeneratePaperForm(
     patchBlueprint,
     teacherInstructions,
     setTeacherInstructions,
+    formatReference,
+    setFormatReference,
     updateSection,
     updateAllocation,
     addChapter,
