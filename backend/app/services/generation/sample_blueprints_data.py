@@ -1,7 +1,9 @@
-"""Canonical 40 Marks sample blueprint (SVIS-style Class 10 Mathematics).
+"""Canonical generic 40 Marks sample blueprint for CBSE Mathematics.
 
 Flattened from Bloom's × type × lesson matrix into question-type sections.
 CBQ uses CASE_STUDY with marks_each=4 per Question Type / Weightage.
+The grade and chapter allocations are placeholders rematched to the notebook
+when a teacher applies the blueprint.
 """
 
 from __future__ import annotations

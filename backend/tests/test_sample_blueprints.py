@@ -1,6 +1,10 @@
+from unittest.mock import AsyncMock
+
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from app.db.models.user import User
 from app.services.documents import (
     DEFAULT_FORMAT_REFERENCE_URI,
     resolve_document,
@@ -14,6 +18,27 @@ from app.services.generation.format_reference import (
 from app.services.generation.generate import _build_batch_messages
 from app.services.generation.plan import build_slots
 from app.services.generation.sample_blueprints_data import FORTY_MARKS_BLUEPRINT
+from tests.conftest import mock_execute_result
+
+
+@pytest.mark.parametrize("grade", ["Class 8", "Class 9", "Class 10", "Class 11", "Class 12"])
+def test_sample_blueprint_filter_ignores_grade(
+    grade: str,
+    client: TestClient,
+    mock_db: AsyncMock,
+    mock_user: User,
+) -> None:
+    del mock_user
+    mock_db.execute = AsyncMock(return_value=mock_execute_result([]))
+
+    response = client.get(
+        "/api/v1/sample-blueprints",
+        params={"board": "CBSE", "subject": "Mathematics", "grade": grade},
+    )
+
+    assert response.status_code == 200
+    query = mock_db.execute.await_args.args[0]
+    assert "grade" not in str(query.whereclause).lower()
 
 
 def test_forty_marks_blueprint_expands_to_forty_marks():

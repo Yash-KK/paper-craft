@@ -3,22 +3,20 @@ import { toast } from "sonner"
 
 import { fetchSampleBlueprints, generateQuestionPaper } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
-import type { Board, ClassGrade, Subject } from "@/lib/types/notebook"
+import type { Board, Subject } from "@/lib/types/notebook"
 
 export function useSampleBlueprints(filters?: {
   board?: Board | null
   subject?: Subject | null
-  grade?: ClassGrade | null
   enabled?: boolean
 }) {
   const board = filters?.board ?? null
   const subject = filters?.subject ?? null
-  const grade = filters?.grade ?? null
   const enabled = filters?.enabled ?? true
 
   return useQuery({
-    queryKey: queryKeys.sampleBlueprints(board, subject, grade),
-    queryFn: () => fetchSampleBlueprints({ board, subject, grade }),
+    queryKey: queryKeys.sampleBlueprints(board, subject),
+    queryFn: () => fetchSampleBlueprints({ board, subject }),
     enabled: enabled && Boolean(board && subject),
   })
 }

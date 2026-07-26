@@ -260,12 +260,10 @@ export async function fetchChapters(
 export async function fetchSampleBlueprints(filters?: {
   board?: Board | null
   subject?: Subject | null
-  grade?: ClassGrade | null
 }): Promise<SampleBlueprintSummary[]> {
   const params = new URLSearchParams()
   if (filters?.board) params.set("board", filters.board)
   if (filters?.subject) params.set("subject", filters.subject)
-  if (filters?.grade) params.set("grade", filters.grade)
   const query = params.toString()
   const response = await authFetch(
     `/api/v1/sample-blueprints${query ? `?${query}` : ""}`
