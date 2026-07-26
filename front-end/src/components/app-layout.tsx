@@ -1,8 +1,8 @@
 import { useState } from "react"
 import {
   ArrowLeft,
-  BookOpenText,
   LogOut,
+  NotebookText,
   PanelLeft,
   PanelLeftClose,
   UserPen,
@@ -67,7 +67,7 @@ export function AppLayout() {
                   tabIndex={sidebarOpen ? undefined : -1}
                 >
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
-                    <BookOpenText className="size-5" />
+                    <NotebookText className="size-5" />
                   </span>
                   <span className="truncate">PaperCraft</span>
                 </Link>
@@ -172,18 +172,6 @@ export function AppLayout() {
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {!authenticated && (
-            <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3 sm:px-6">
-              <Link
-                to="/"
-                className="font-heading text-base font-semibold sm:text-lg"
-              >
-                PaperCraft
-              </Link>
-              <ModeToggle />
-            </header>
-          )}
-
           {authenticated && !sidebarOpen && !notebookMatch && (
             <div className="flex h-12 shrink-0 items-center border-b px-3">
               <Button
