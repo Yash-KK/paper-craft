@@ -48,7 +48,7 @@ export function LandingIntro({ className }: LandingIntroProps) {
           <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
             <BookOpenText className="size-5" aria-hidden />
           </span>
-          <p className="font-heading text-2xl font-semibold tracking-tight">
+          <p className="font-chicle text-4xl tracking-wide text-violet-600 dark:text-violet-400">
             PaperCraft
           </p>
         </div>

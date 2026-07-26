@@ -24,7 +24,7 @@ export function HomePage() {
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
             <BookOpenText className="size-5" aria-hidden />
           </span>
-          <p className="font-heading text-lg font-semibold tracking-tight">
+          <p className="font-chicle text-2xl tracking-wide text-violet-600 dark:text-violet-400">
             PaperCraft
           </p>
         </div>
