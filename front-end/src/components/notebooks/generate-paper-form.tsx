@@ -1,5 +1,12 @@
 import type { ReactNode } from "react"
-import { FileText, ListChecks, Loader2, Plus, Sparkles } from "lucide-react"
+import {
+  ArrowLeft,
+  FileText,
+  ListChecks,
+  Loader2,
+  Plus,
+  Sparkles,
+} from "lucide-react"
 
 import { MarkingSchemeSection } from "@/components/notebooks/marking-scheme-section"
 import { Badge } from "@/components/ui/badge"
@@ -76,17 +83,31 @@ export function GeneratePaperForm({
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="space-y-1">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Question paper
-        </p>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Generate Paper
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Choose a sample blueprint, review the scheme, then generate. Chapters
-          are limited to this notebook&apos;s selection.
-        </p>
+      <div className="flex items-start gap-3">
+        {onCancel ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="mt-1 shrink-0 text-muted-foreground"
+            aria-label="Back"
+            onClick={onCancel}
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+        ) : null}
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Question paper
+          </p>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Generate Paper
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Choose a sample blueprint, review the scheme, then generate.
+            Chapters are limited to this notebook&apos;s selection.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-2 rounded-2xl border bg-card p-4 sm:p-5">
@@ -298,7 +319,11 @@ export function GeneratePaperForm({
             form.generating ||
             form.chapters.length === 0
           }
-          onClick={() => alert("Generate Paper")}
+          // onClick={() =>
+          //   void form.generate().then((ok) => {
+          //     if (ok) onGenerated?.()
+          //   })
+          // }
         >
           {form.generating ? (
             <Loader2 className="size-4 animate-spin" />
