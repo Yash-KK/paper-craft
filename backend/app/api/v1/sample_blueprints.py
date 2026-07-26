@@ -64,6 +64,7 @@ async def get_sample_blueprint(
             "id": row.id,
             "slug": row.slug,
             "label": row.label,
+            "kind": row.kind,
             "total_marks": row.total_marks,
             "board": row.board,
             "subject": row.subject,

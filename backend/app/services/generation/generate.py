@@ -11,24 +11,24 @@ ASSERTION_REASON_OPTIONS = [
     "Assertion (A) is false but Reason (R) is true.",
 ]
 
-GENERATION_SYSTEM_INSTRUCTIONS = """You are an expert examination question setter. For each spec (marked `=== slot_id: <id> ===`) produce exactly one GeneratedQuestion whose slot_id matches. Never omit, merge, duplicate, reorder, or invent slot_ids. Treat each slot independently.
+GENERATION_SYSTEM_INSTRUCTIONS = """You are an expert mathematics educator writing questions for school worksheets and examinations. For each spec (marked `=== slot_id: <id> ===`) produce exactly one GeneratedQuestion whose slot_id matches. Never omit, merge, duplicate, reorder, or invent slot_ids. Treat each slot independently.
 
 GROUNDING
 - The supplied textbook source text is the source of truth for concepts, definitions, terminology, methods, theorems, values, examples, and exercises.
 - It is OCR/chunked and may be incomplete. Use your own subject knowledge ONLY to: repair OCR/chunk gaps, complete standard notation/terminology, finish a partially shown method, write plausible distractors, and build rubrics.
 - Never introduce chapter-specific facts/formulas/values not supported by the source or by universally standard subject knowledge. If source and your knowledge conflict, trust the source.
 
-EACH QUESTION must be academically correct, unambiguous, fully solvable, exam-appropriate, concise, and must match the spec's marks and question type — without revealing its answer.
+EACH QUESTION must be academically correct, unambiguous, fully solvable, concise, and must match the spec's question type — without revealing its answer. When marks are provided, match them; when marks are null/absent, treat the item as ungraded practice and keep marking_rubric empty or brief answer notes only.
 
 TYPE SPECIFICS
 - MCQ: exactly 4 plausible, not-trivially-eliminable options; correct_option ∈ {a,b,c,d}. Prefer adapting a textbook exercise when one fits.
 - ASSERTION_REASON: question_text holds ONLY the Assertion (A) and Reason (R) (no options — appended later), both grounded in the source; correct_option ∈ {a,b,c,d} where a=both true & R explains A, b=both true & R doesn't explain A, c=A true R false, d=A false R true.
-- CASE_STUDY (sub_parts present): one shared scenario, then each sub-part in order, labeled (i),(ii),(iii)… with its own marks.
+- CASE_STUDY (sub_parts present): one shared scenario, then each sub-part in order, labeled (i),(ii),(iii)…; include marks only when the sub-part specifies them.
 - SA/LA/VSA: grounded in source examples/theory; change numbers/context so the question is not a verbatim copy when adapting examples.
 
 INTERNAL CHOICE (has_internal_choice=true): fill alternate_question_text and alternate_answer — a full alternate for a normal question, but only the specified sub-part's alternate for a case study. Otherwise leave both null.
 
-MARKING RUBRIC: steps summing EXACTLY to the required marks, rewarding meaningful intermediate steps.
+MARKING RUBRIC: when marks are set, steps must sum EXACTLY to the required marks. When marks are null/absent, leave marking_rubric empty.
 
 source_chunk_ids: list only chunk_ids that actually contributed; never fabricate.
 
@@ -50,18 +50,22 @@ def _render_slot_block(slot: dict) -> str:
 
     sub_parts_text = ""
     if slot.get("sub_parts"):
-        lines = [
-            f"  - ({sp['label']}) {sp['marks']} marks"
-            + (" [internal choice here]" if sp.get("has_internal_choice") else "")
-            for sp in slot["sub_parts"]
-        ]
+        lines = []
+        for sp in slot["sub_parts"]:
+            marks = sp.get("marks")
+            marks_bit = f" {marks} marks" if marks is not None else ""
+            choice_bit = " [internal choice here]" if sp.get("has_internal_choice") else ""
+            lines.append(f"  - ({sp['label']}){marks_bit}{choice_bit}")
         sub_parts_text = "\nSub-parts required:\n" + "\n".join(lines)
+
+    marks = slot.get("marks")
+    marks_line = f"Marks: {marks}" if marks is not None else "Marks: (ungraded practice)"
 
     return f"""\
 === slot_id: {slot['slot_id']} ===
 Section: {slot['section_name']}
 Question type: {slot['question_type']}
-Marks: {slot['marks']}
+{marks_line}
 Chapter: {slot['chapter_number']} ({slot['chapter_name']})
 has_internal_choice: {slot['has_internal_choice']}{sub_parts_text}
 Source text:
@@ -71,9 +75,13 @@ Source text:
 
 def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
     errors = []
-    rubric_sum = sum(step.marks for step in gq.marking_rubric)
-    if abs(rubric_sum - slot["marks"]) > 0.01:
-        errors.append(f"marking_rubric sums to {rubric_sum}, expected {slot['marks']}")
+    required_marks = slot.get("marks")
+    if required_marks is not None:
+        rubric_sum = sum(step.marks for step in gq.marking_rubric)
+        if abs(rubric_sum - required_marks) > 0.01:
+            errors.append(
+                f"marking_rubric sums to {rubric_sum}, expected {required_marks}"
+            )
 
     if slot["question_type"] == QuestionType.MCQ.value:
         if not gq.options or len(gq.options) != 4:
@@ -97,6 +105,7 @@ def _build_batch_messages(
     slots: list[dict],
     *,
     general_instructions: list[str] | None = None,
+    generation_rules: list[str] | None = None,
     teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> list[tuple]:
@@ -141,11 +150,25 @@ def _build_batch_messages(
             f"{rendered}\n"
         )
 
+    generation_rules_block = ""
+    cleaned_rules = [
+        rule.strip() for rule in (generation_rules or []) if rule.strip()
+    ]
+    if cleaned_rules:
+        rendered_rules = "\n".join(
+            f"- {rule}" for rule in cleaned_rules
+        )
+        generation_rules_block = (
+            "\n\nBLUEPRINT GENERATION RULES:\n"
+            f"{rendered_rules}\n"
+        )
+
     return [
         ("system", GENERATION_SYSTEM_INSTRUCTIONS),
         (
             "human",
-            f"{header}{general_instructions_block}{teacher_block}\n\n{blocks}",
+            f"{header}{general_instructions_block}{generation_rules_block}"
+            f"{teacher_block}\n\n{blocks}",
         ),
     ]
 
@@ -154,6 +177,7 @@ def _run_batches_parallel(
     batches: list[list[dict]],
     *,
     general_instructions: list[str] | None = None,
+    generation_rules: list[str] | None = None,
     teacher_instructions: str | None = None,
     feedback_by_slot: dict[str, str] | None = None,
 ) -> dict[str, GeneratedQuestion]:
@@ -169,6 +193,7 @@ def _run_batches_parallel(
         _build_batch_messages(
             batch,
             general_instructions=general_instructions,
+            generation_rules=generation_rules,
             teacher_instructions=teacher_instructions,
             feedback_by_slot=feedback_by_slot,
         )
@@ -193,7 +218,9 @@ def _run_batches_parallel(
 def generate_paper_node(state: dict) -> dict:
     slots = state["slots"]
     slots_by_id = {s["slot_id"]: s for s in slots}
-    general_instructions = state["question_paper"].get("general_instructions") or []
+    question_paper = state["question_paper"]
+    general_instructions = question_paper.get("general_instructions") or []
+    generation_rules = question_paper.get("generation_rules") or []
     teacher_instructions = (state.get("teacher_instructions") or "").strip() or None
 
     items_by_slot: dict[str, GeneratedQuestion] = {}
@@ -211,6 +238,7 @@ def generate_paper_node(state: dict) -> dict:
     items_by_slot = _run_batches_parallel(
         initial_batches,
         general_instructions=general_instructions,
+        generation_rules=generation_rules,
         teacher_instructions=teacher_instructions,
     )
     errors_by_slot = validate_all()
@@ -222,6 +250,7 @@ def generate_paper_node(state: dict) -> dict:
             _run_batches_parallel(
                 retry_batches,
                 general_instructions=general_instructions,
+                generation_rules=generation_rules,
                 teacher_instructions=teacher_instructions,
                 feedback_by_slot=errors_by_slot,
             )

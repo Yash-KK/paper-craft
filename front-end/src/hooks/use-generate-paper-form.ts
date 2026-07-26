@@ -10,9 +10,11 @@ import { fetchSampleBlueprint } from "@/lib/api"
 import type { NotebookListItem, SelectedChapter } from "@/lib/types/notebook"
 import {
   blueprintAllocatedMarks,
+  blueprintQuestionCount,
   classGradeToNumber,
   emptyBlueprint,
   hasForeignChapterAllocations,
+  isMarkBasedBlueprint,
   rematchBlueprintChapters,
   sectionLetter,
   updateGroupedQuestionCount,
@@ -171,9 +173,10 @@ export function useGeneratePaperForm(
       {
         section_name: `Section ${sectionLetter(sections.length)}`,
         question_type: "MCQ",
-        marks_each: 1,
+        marks_each: isMarkBasedBlueprint(blueprint) ? 1 : null,
         chapter_allocations: [],
         section_instructions: null,
+        sub_parts: [],
       },
     ])
   }
@@ -192,19 +195,28 @@ export function useGeneratePaperForm(
       return false
     }
     if (blueprint.sections.length === 0) {
-      toast.error("Add at least one section to the marking scheme.")
+      toast.error("Add at least one section to the blueprint.")
       return false
     }
-    const allocatedMarks = blueprintAllocatedMarks(blueprint)
-    if (allocatedMarks !== blueprint.total_marks) {
-      toast.error(
-        `Marking scheme totals ${allocatedMarks} marks, but the paper total is ${blueprint.total_marks}.`
-      )
+    if (isMarkBasedBlueprint(blueprint)) {
+      const allocatedMarks = blueprintAllocatedMarks(blueprint)
+      if (
+        allocatedMarks == null ||
+        blueprint.total_marks == null ||
+        allocatedMarks !== blueprint.total_marks
+      ) {
+        toast.error(
+          `Marking scheme totals ${allocatedMarks ?? "?"} marks, but the paper total is ${blueprint.total_marks}.`
+        )
+        return false
+      }
+    } else if (blueprintQuestionCount(blueprint) < 1) {
+      toast.error("Add at least one question to the revision sheet.")
       return false
     }
     if (hasForeignChapterAllocations(blueprint, chapters)) {
       toast.error(
-        "Marking scheme includes chapters outside this notebook. Remove them or rematch."
+        "Blueprint includes chapters outside this notebook. Remove them or rematch."
       )
       return false
     }
@@ -214,6 +226,12 @@ export function useGeneratePaperForm(
         ...blueprint,
         general_instructions: blueprint.general_instructions
           .map((instruction) => instruction.trim())
+          .filter(Boolean),
+        learning_outcomes: blueprint.learning_outcomes
+          .map((outcome) => outcome.trim())
+          .filter(Boolean),
+        generation_rules: blueprint.generation_rules
+          .map((rule) => rule.trim())
           .filter(Boolean),
       }
       await generateMutation.mutateAsync({

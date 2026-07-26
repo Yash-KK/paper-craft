@@ -20,11 +20,13 @@ import {
   type BlueprintSection,
   type QuestionType,
 } from "@/lib/types/generation"
+import { cn } from "@/lib/utils"
 
 type MarkingSchemeSectionProps = {
   index: number
   section: BlueprintSection
   chapters: SelectedChapter[]
+  showMarks?: boolean
   onChange: (patch: Partial<BlueprintSection>) => void
   onUpdateChapterQuestionCount: (
     allocationIndexes: number[],
@@ -39,6 +41,7 @@ export function MarkingSchemeSection({
   index,
   section,
   chapters,
+  showMarks = true,
   onChange,
   onUpdateChapterQuestionCount,
   onAddChapter,
@@ -46,6 +49,10 @@ export function MarkingSchemeSection({
   onRemove,
 }: MarkingSchemeSectionProps) {
   const total = sectionAllocatedMarks(section)
+  const questionCount = section.chapter_allocations.reduce(
+    (sum, alloc) => sum + alloc.question_count,
+    0
+  )
   const chapterGroups = groupChapterAllocations(section.chapter_allocations)
   const availableToAdd = chapters.filter(
     (chapter) =>
@@ -73,7 +80,12 @@ export function MarkingSchemeSection({
           <span className="mt-6 flex size-8 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-semibold text-white">
             {sectionLetter(index)}
           </span>
-          <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-3">
+          <div
+            className={cn(
+              "grid min-w-0 flex-1 gap-3",
+              showMarks ? "sm:grid-cols-3" : "sm:grid-cols-2"
+            )}
+          >
             <div className="grid gap-2">
               <Label>Section Name</Label>
               <Input
@@ -91,18 +103,25 @@ export function MarkingSchemeSection({
               }))}
               onChange={handleTypeChange}
             />
-            <div className="grid gap-2">
-              <Label>Marks Each</Label>
-              <Input
-                type="number"
-                min={0.5}
-                step={0.5}
-                value={section.marks_each}
-                onChange={(e) =>
-                  onChange({ marks_each: Number(e.target.value) || 0 })
-                }
-              />
-            </div>
+            {showMarks ? (
+              <div className="grid gap-2">
+                <Label>Marks Each</Label>
+                <Input
+                  type="number"
+                  min={0.5}
+                  step={0.5}
+                  value={section.marks_each ?? ""}
+                  onChange={(e) =>
+                    onChange({
+                      marks_each:
+                        e.target.value === ""
+                          ? null
+                          : Number(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+            ) : null}
           </div>
         </div>
         <Button
@@ -116,6 +135,12 @@ export function MarkingSchemeSection({
           <Trash2 className="size-4" />
         </Button>
       </div>
+
+      {section.section_instructions ? (
+        <p className="pl-0 text-xs text-muted-foreground sm:pl-11">
+          {section.section_instructions}
+        </p>
+      ) : null}
 
       <div className="space-y-2 pl-0 sm:pl-11">
         <Label>Chapter Distribution</Label>
@@ -194,7 +219,9 @@ export function MarkingSchemeSection({
 
       <div className="flex justify-end">
         <span className="rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-          {total} marks
+          {showMarks && total != null
+            ? `${total} marks`
+            : `${questionCount} questions`}
         </span>
       </div>
     </div>

@@ -1,22 +1,21 @@
-"""Canonical generic 40 Marks sample blueprint for CBSE Mathematics.
+"""Canonical sample blueprints for CBSE Mathematics.
 
-Flattened from Bloom's × type × lesson matrix into question-type sections.
-CBQ uses CASE_STUDY with marks_each=4 per Question Type / Weightage.
-The grade and chapter allocations are placeholders rematched to the notebook
-when a teacher applies the blueprint.
+Each blueprint is a self-contained template: kind, sections, instructions,
+learning outcomes, and generation rules. Grade/chapter placeholders are
+rematched to the teacher's notebook when the blueprint is applied.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-# Chapter catalog numbers for Class 10 Mathematics (jemh1)
 CH_REAL = {"chapter_number": 1, "chapter_name": "Real Numbers"}
 CH_POLY = {"chapter_number": 2, "chapter_name": "Polynomials"}
 CH_LINEAR = {
     "chapter_number": 3,
     "chapter_name": "Pair of Linear Equations in Two Variables",
 }
+CH_SELECTED = {"chapter_number": None, "chapter_name": "Selected Chapter"}
 
 FORTY_MARKS_GENERAL_INSTRUCTIONS = [
     "This question paper contains 19 questions. All questions are compulsory.",
@@ -49,12 +48,42 @@ FORTY_MARKS_GENERAL_INSTRUCTIONS = [
     "Use of a calculator is not allowed.",
 ]
 
+REVISION_SHEET_GENERAL_INSTRUCTIONS = [
+    "This revision sheet is for practice and concept reinforcement.",
+    "Attempt all sections. Show working wherever required.",
+    "SECTION I contains Multiple Choice Questions covering key concepts.",
+    "SECTION II contains Short Answer / Practice Questions.",
+    "SECTION III contains Case Study based questions with sub-parts.",
+    "SECTION IV contains Assertion & Reasoning questions.",
+    "Use of a calculator is not allowed unless instructed otherwise.",
+]
+
+REVISION_SHEET_LEARNING_OUTCOMES = [
+    "Conceptual Understanding",
+    "Formula / Identity Recall",
+    "Application",
+    "Analysis",
+    "Real-life Context",
+    "Reasoning",
+    "Higher Order Thinking",
+]
+
+REVISION_SHEET_GENERATION_RULES = [
+    "Generate a revision/practice sheet, not a timed examination paper.",
+    "Prefer one chapter focus when a single chapter is selected; otherwise cover the selected chapters evenly.",
+    "MCQs should mix concept checks, application, identity/property recognition, and real-life situations.",
+    "Short-answer practice should include simplification, expansion, factorisation, finding values, identity-based problems, word problems, and higher-order items.",
+    "Each Case Study must share one scenario with parts (i), (ii), and (iii).",
+    "Assertion & Reasoning items must use the standard four options (a)–(d).",
+    "Do not invent examination-style mark totals; focus on clear practice questions and worked answers.",
+]
+
 
 def _alloc(
     chapter: dict[str, Any],
     count: int,
     *,
-    blooms: str,
+    blooms: str | None = None,
     ic: bool = False,
     ar: bool = False,
     marks: float | None = None,
@@ -71,6 +100,7 @@ def _alloc(
 
 
 FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
+    "kind": "EXAM",
     "school_name": None,
     "exam_title": "PRE-MID TERM EXAMINATION",
     "subject": "Mathematics",
@@ -79,6 +109,11 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
     "duration_minutes": 90,
     "exam_date": None,
     "general_instructions": FORTY_MARKS_GENERAL_INSTRUCTIONS,
+    "learning_outcomes": [],
+    "generation_rules": [
+        "Generate an examination-style question paper matching the marking scheme.",
+        "Respect marks, internal choices, and Assertion–Reason nesting under Section A.",
+    ],
     "blooms_targets": {
         "REMEMBERING": 10,
         "UNDERSTANDING": 12,
@@ -87,12 +122,14 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
         "EVALUATING": 2,
         "CREATING": 1,
     },
+    "metadata": {},
     "sections": [
         {
             "section_name": "MCQ",
             "question_type": "MCQ",
             "marks_each": 1,
             "section_instructions": None,
+            "sub_parts": [],
             "chapter_allocations": [
                 _alloc(CH_REAL, 1, blooms="REMEMBERING"),
                 _alloc(CH_LINEAR, 1, blooms="REMEMBERING"),
@@ -111,6 +148,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             "question_type": "VSA",
             "marks_each": 2,
             "section_instructions": None,
+            "sub_parts": [],
             "chapter_allocations": [
                 _alloc(CH_LINEAR, 1, blooms="REMEMBERING"),
                 _alloc(CH_REAL, 1, blooms="UNDERSTANDING", ic=True),
@@ -121,6 +159,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             "question_type": "SA",
             "marks_each": 3,
             "section_instructions": None,
+            "sub_parts": [],
             "chapter_allocations": [
                 _alloc(CH_POLY, 1, blooms="REMEMBERING", ic=True),
                 _alloc(CH_LINEAR, 1, blooms="UNDERSTANDING"),
@@ -132,6 +171,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             "question_type": "LA",
             "marks_each": 5,
             "section_instructions": None,
+            "sub_parts": [],
             "chapter_allocations": [
                 _alloc(CH_POLY, 1, blooms="UNDERSTANDING"),
                 _alloc(CH_LINEAR, 1, blooms="APPLYING", ic=True),
@@ -142,9 +182,87 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             "question_type": "CASE_STUDY",
             "marks_each": 4,
             "section_instructions": None,
+            "sub_parts": [],
             "chapter_allocations": [
                 _alloc(CH_REAL, 1, blooms="ANALYSING", marks=4, ic=True),
                 _alloc(CH_REAL, 1, blooms="REMEMBERING", marks=3),
+            ],
+        },
+    ],
+}
+
+
+REVISION_SHEET_BLUEPRINT: dict[str, Any] = {
+    "kind": "REVISION_SHEET",
+    "school_name": None,
+    "exam_title": "REVISION SHEET",
+    "subject": "Mathematics",
+    "grade": 10,
+    "total_marks": None,
+    "duration_minutes": None,
+    "exam_date": None,
+    "general_instructions": REVISION_SHEET_GENERAL_INSTRUCTIONS,
+    "learning_outcomes": REVISION_SHEET_LEARNING_OUTCOMES,
+    "generation_rules": REVISION_SHEET_GENERATION_RULES,
+    "blooms_targets": None,
+    "metadata": {
+        "typical_scope": "per_chapter",
+        "assertion_reason_range": {"min": 2, "max": 5},
+    },
+    "sections": [
+        {
+            "section_name": "SECTION I : Multiple Choice Questions (MCQs)",
+            "question_type": "MCQ",
+            "marks_each": None,
+            "section_instructions": (
+                "10 Questions covering important concepts, including application-based "
+                "MCQs, identity/property recognition, and real-life situations."
+            ),
+            "sub_parts": [],
+            "chapter_allocations": [
+                _alloc(CH_SELECTED, 10, blooms="UNDERSTANDING"),
+            ],
+        },
+        {
+            "section_name": "SECTION II : Short Answer / Practice Questions",
+            "question_type": "SA",
+            "marks_each": None,
+            "section_instructions": (
+                "10 Questions including simplification, expansion, factorisation, "
+                "finding values, identity-based problems, word problems, and "
+                "higher-order questions."
+            ),
+            "sub_parts": [],
+            "chapter_allocations": [
+                _alloc(CH_SELECTED, 10, blooms="APPLYING"),
+            ],
+        },
+        {
+            "section_name": "SECTION III : Case Study",
+            "question_type": "CASE_STUDY",
+            "marks_each": None,
+            "section_instructions": (
+                "Two case studies. Each case study has parts (i), (ii), and (iii)."
+            ),
+            "sub_parts": [
+                {"label": "i", "marks": None},
+                {"label": "ii", "marks": None},
+                {"label": "iii", "marks": None},
+            ],
+            "chapter_allocations": [
+                _alloc(CH_SELECTED, 2, blooms="ANALYSING"),
+            ],
+        },
+        {
+            "section_name": "SECTION IV : Assertion & Reasoning",
+            "question_type": "ASSERTION_REASON",
+            "marks_each": None,
+            "section_instructions": (
+                "2–5 Assertion & Reasoning questions with options (a), (b), (c), (d)."
+            ),
+            "sub_parts": [],
+            "chapter_allocations": [
+                _alloc(CH_SELECTED, 3, blooms="EVALUATING"),
             ],
         },
     ],
