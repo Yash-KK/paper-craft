@@ -8,6 +8,7 @@ import { ChatEmptyState } from "@/features/chat/components/chat-empty-state"
 import { ChatMessageBubble } from "@/features/chat/components/chat-message"
 import { ScrollToBottomButton } from "@/features/chat/components/scroll-to-bottom-button"
 import { useChatStream } from "@/features/chat/hooks/use-chat-stream"
+import type { PersistedMessage } from "@/features/chat/types/chat"
 import { useNotebookChatMessages } from "@/hooks/use-notebook-chat-messages"
 
 const NEAR_BOTTOM_PX = 96
@@ -45,8 +46,57 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
   } = useNotebookChatMessages(notebookId)
 
   const initialMessages = useMemo(() => data?.pages[0]?.items ?? [], [data])
-  const historyReady = !isPending && !isError
 
+  if (isPending) {
+    return (
+      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" />
+        Fetching…
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
+        <p className="text-sm font-medium">Unable to load messages</p>
+        <p className="text-xs text-muted-foreground">
+          {error instanceof Error ? error.message : "Please try again."}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <ChatPanelReady
+      key={notebookId}
+      notebookId={notebookId}
+      notebookName={notebookName}
+      initialMessages={initialMessages}
+      hasNextPage={Boolean(hasNextPage)}
+      isFetchingNextPage={isFetchingNextPage}
+      fetchNextPage={fetchNextPage}
+    />
+  )
+}
+
+type ChatPanelReadyProps = {
+  notebookId: string
+  notebookName: string
+  initialMessages: PersistedMessage[]
+  hasNextPage: boolean
+  isFetchingNextPage: boolean
+  fetchNextPage: ReturnType<typeof useNotebookChatMessages>["fetchNextPage"]
+}
+
+function ChatPanelReady({
+  notebookId,
+  notebookName,
+  initialMessages,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+}: ChatPanelReadyProps) {
   const {
     messages,
     isStreaming,
@@ -55,15 +105,13 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
     sendMessage,
     stopStream,
     prependOlderMessages,
-  } = useChatStream(notebookId, [])
+  } = useChatStream(notebookId, initialMessages)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
   const loadingOlderRef = useRef(false)
-  const initialScrollStartedRef = useRef(false)
-  const [historyPrimed, setHistoryPrimed] = useState(false)
   const [initialScrollDone, setInitialScrollDone] = useState(false)
   const [isFetchingOlder, setIsFetchingOlder] = useState(false)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
@@ -73,14 +121,6 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
     setShowScrollToBottom(false)
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [])
-
-  useEffect(() => {
-    if (!historyReady || historyPrimed) return
-    if (initialMessages.length) {
-      prependOlderMessages(initialMessages)
-    }
-    setHistoryPrimed(true)
-  }, [historyReady, historyPrimed, initialMessages, prependOlderMessages])
 
   const loadOlder = useCallback(async () => {
     if (!hasNextPage || isFetchingNextPage || loadingOlderRef.current) return
@@ -111,35 +151,49 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
   }, [fetchNextPage, hasNextPage, isFetchingNextPage, prependOlderMessages])
 
   // Animate down to the latest messages when the notebook first opens.
+  // Gate on state (not a ref) so React Strict Mode cleanup → re-run still finishes.
   useEffect(() => {
-    if (!historyReady || !historyPrimed || initialScrollStartedRef.current) {
-      return
-    }
+    if (initialScrollDone) return
 
     const viewport = scrollRef.current
     if (!viewport) return
 
-    initialScrollStartedRef.current = true
-    stickToBottomRef.current = true
-    setShowScrollToBottom(false)
+    let cancelled = false
+    let fallback = 0
 
-    if (viewport.scrollHeight <= viewport.clientHeight) {
-      setInitialScrollDone(true)
-      return
+    const finish = () => {
+      if (!cancelled) setInitialScrollDone(true)
     }
 
-    viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" })
+    const run = () => {
+      if (cancelled) return
 
-    // `scrollend` is not in every browser yet, so cap the wait with a timer.
-    const finish = () => setInitialScrollDone(true)
-    viewport.addEventListener("scrollend", finish, { once: true })
-    const fallback = window.setTimeout(finish, 800)
+      stickToBottomRef.current = true
+      setShowScrollToBottom(false)
+
+      if (viewport.scrollHeight <= viewport.clientHeight) {
+        finish()
+        return
+      }
+
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" })
+      // `scrollend` is not in every browser yet, so cap the wait with a timer.
+      viewport.addEventListener("scrollend", finish, { once: true })
+      fallback = window.setTimeout(finish, 800)
+    }
+
+    // Double rAF: wait until ScrollArea has laid out message content.
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(run)
+    })
 
     return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
       viewport.removeEventListener("scrollend", finish)
       window.clearTimeout(fallback)
     }
-  }, [historyReady, historyPrimed, messages])
+  }, [messages, initialScrollDone])
 
   useEffect(() => {
     if (!initialScrollDone || !stickToBottomRef.current) return
@@ -149,7 +203,7 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
   useEffect(() => {
     const viewport = scrollRef.current
     const sentinel = topSentinelRef.current
-    if (!viewport || !sentinel || !historyReady || !initialScrollDone) {
+    if (!viewport || !sentinel || !initialScrollDone) {
       return
     }
 
@@ -183,27 +237,7 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
       viewport.removeEventListener("scroll", onScroll)
       observer.disconnect()
     }
-  }, [historyReady, initialScrollDone, loadOlder])
-
-  if (isPending) {
-    return (
-      <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Fetching…
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
-        <p className="text-sm font-medium">Unable to load messages</p>
-        <p className="text-xs text-muted-foreground">
-          {error instanceof Error ? error.message : "Please try again."}
-        </p>
-      </div>
-    )
-  }
+  }, [initialScrollDone, loadOlder])
 
   const showFetchingOlder = isFetchingOlder || isFetchingNextPage
 

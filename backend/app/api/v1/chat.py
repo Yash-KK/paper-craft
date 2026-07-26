@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
@@ -40,7 +41,7 @@ async def list_notebook_chat_messages(
     session = await chat_service.get_or_create_owned_session(notebook_id, current_user)
     query = chat_service.messages_cursor_query(session.id)
 
-    def to_chronological(items: list) -> list[ChatMessageResponse]:
+    def to_chronological(items: Sequence[Any]) -> Sequence[ChatMessageResponse]:
         return [
             ChatMessageResponse.model_validate(item)
             for item in reversed(items)
