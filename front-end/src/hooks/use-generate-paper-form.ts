@@ -188,15 +188,15 @@ export function useGeneratePaperForm(
   async function generate() {
     if (!sample) {
       toast.error("Select a sample blueprint first.")
-      return false
+      return null
     }
     if (chapters.length === 0) {
       toast.error("Select at least one chapter on the notebook first.")
-      return false
+      return null
     }
     if (blueprint.sections.length === 0) {
       toast.error("Add at least one section to the blueprint.")
-      return false
+      return null
     }
     if (isMarkBasedBlueprint(blueprint)) {
       const allocatedMarks = blueprintAllocatedMarks(blueprint)
@@ -208,17 +208,17 @@ export function useGeneratePaperForm(
         toast.error(
           `Marking scheme totals ${allocatedMarks ?? "?"} marks, but the paper total is ${blueprint.total_marks}.`
         )
-        return false
+        return null
       }
     } else if (blueprintQuestionCount(blueprint) < 1) {
       toast.error("Add at least one question to the revision sheet.")
-      return false
+      return null
     }
     if (hasForeignChapterAllocations(blueprint, chapters)) {
       toast.error(
         "Blueprint includes chapters outside this notebook. Remove them or rematch."
       )
-      return false
+      return null
     }
 
     try {
@@ -234,19 +234,19 @@ export function useGeneratePaperForm(
           .map((rule) => rule.trim())
           .filter(Boolean),
       }
-      await generateMutation.mutateAsync({
+      return await generateMutation.mutateAsync({
         notebook_id: notebook.id,
         blueprint: submissionBlueprint,
         selected_chapters: chapters,
         subject: submissionBlueprint.subject,
         grade: submissionBlueprint.grade,
+        title: submissionBlueprint.exam_title,
         teacher_instructions: teacherInstructions.trim() || null,
         format_reference_uri: sample.format_reference_uri,
         format_reference: formatReference,
       })
-      return true
     } catch {
-      return false
+      return null
     }
   }
 

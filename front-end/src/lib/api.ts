@@ -10,8 +10,12 @@ import type {
   Subject,
 } from "@/lib/types/notebook"
 import type {
+  GenerateNewVersionPayload,
   GeneratePaperPayload,
   GenerationResult,
+  QuestionPaperDetail,
+  QuestionPaperSummary,
+  QuestionPaperVersionDetail,
   SampleBlueprintDetail,
   SampleBlueprintSummary,
 } from "@/lib/types/generation"
@@ -296,4 +300,97 @@ export async function generateQuestionPaper(
   })
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as GenerationResult
+}
+
+export async function fetchNotebookPapers(
+  notebookId: string
+): Promise<QuestionPaperSummary[]> {
+  const response = await authFetch(
+    `/api/v1/generation/notebooks/${notebookId}/papers`
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as QuestionPaperSummary[]
+}
+
+export async function fetchPaperDetail(
+  paperId: string
+): Promise<QuestionPaperDetail> {
+  const response = await authFetch(`/api/v1/generation/papers/${paperId}`)
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as QuestionPaperDetail
+}
+
+export async function fetchPaperVersion(
+  paperId: string,
+  versionNumber: number
+): Promise<QuestionPaperVersionDetail> {
+  const response = await authFetch(
+    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}`
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as QuestionPaperVersionDetail
+}
+
+export async function createPaperVersion(
+  paperId: string,
+  payload: GenerateNewVersionPayload
+): Promise<GenerationResult> {
+  const response = await authFetch(
+    `/api/v1/generation/papers/${paperId}/versions`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as GenerationResult
+}
+
+export type ExportVariant = "paper" | "answer_key"
+
+function filenameFromContentDisposition(
+  header: string | null,
+  fallback: string
+): string {
+  if (!header) return fallback
+  const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(header)
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].trim())
+    } catch {
+      return utfMatch[1].trim()
+    }
+  }
+  const plainMatch = /filename="?([^";]+)"?/i.exec(header)
+  return plainMatch?.[1]?.trim() || fallback
+}
+
+export async function downloadVersionExport(
+  paperId: string,
+  versionNumber: number,
+  variant: ExportVariant = "paper"
+): Promise<void> {
+  const params = new URLSearchParams({ variant })
+  const response = await authFetch(
+    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}/export?${params}`
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+
+  const blob = await response.blob()
+  const fallback =
+    variant === "answer_key"
+      ? `question-paper-v${versionNumber}-answer-key.docx`
+      : `question-paper-v${versionNumber}.docx`
+  const filename = filenameFromContentDisposition(
+    response.headers.get("Content-Disposition"),
+    fallback
+  )
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }

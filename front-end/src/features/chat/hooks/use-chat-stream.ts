@@ -1,5 +1,6 @@
 // chat/hooks/use-chat-stream.ts
 import { useCallback, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { fetchEventSource } from "@microsoft/fetch-event-source"
 
 import {
@@ -14,11 +15,13 @@ import type {
   PersistedMessage,
 } from "@/features/chat/types/chat"
 import { API_URL, getToken } from "@/lib/api"
+import { queryKeys } from "@/lib/query-keys"
 
 export function useChatStream(
   notebookId: string,
   initialMessages: PersistedMessage[] = []
 ) {
+  const queryClient = useQueryClient()
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     initialMessages.flatMap((message) => {
       const ui = fromPersisted(message)
@@ -37,6 +40,12 @@ export function useChatStream(
       return next
     })
   }, [])
+
+  const invalidatePersistedMessages = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.notebookChatMessages(notebookId),
+    })
+  }, [notebookId, queryClient])
 
   const sendMessage = useCallback(
     async (question: string) => {
@@ -89,6 +98,9 @@ export function useChatStream(
               if (event.type === "done" || event.type === "error") {
                 finished = true
                 controller.abort()
+                if (event.type === "done") {
+                  invalidatePersistedMessages()
+                }
               }
             },
             onclose() {
@@ -112,7 +124,13 @@ export function useChatStream(
         setIsStreaming(false)
       }
     },
-    [enabledTools, isStreaming, notebookId, patchLast]
+    [
+      enabledTools,
+      invalidatePersistedMessages,
+      isStreaming,
+      notebookId,
+      patchLast,
+    ]
   )
 
   const stopStream = useCallback(() => {

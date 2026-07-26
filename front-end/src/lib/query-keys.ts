@@ -14,4 +14,9 @@ export const queryKeys = {
     ["chapters", "list", board, grade, subject] as const,
   sampleBlueprints: (board: Board | null, subject: Subject | null) =>
     ["sample-blueprints", board, subject] as const,
+  notebookPapers: (notebookId: string) =>
+    ["notebooks", notebookId, "papers"] as const,
+  paper: (paperId: string) => ["papers", paperId] as const,
+  paperVersion: (paperId: string, versionNumber: number) =>
+    ["papers", paperId, "versions", versionNumber] as const,
 }

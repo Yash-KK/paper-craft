@@ -1,7 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { useQuery } from "@tanstack/react-query"
 
-import { fetchSampleBlueprints, generateQuestionPaper } from "@/lib/api"
+import { useGenerateQuestionPaper } from "@/features/question-papers/hooks/use-create-paper-version"
+import { fetchSampleBlueprints } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import type { Board, Subject } from "@/lib/types/notebook"
 
@@ -21,14 +21,4 @@ export function useSampleBlueprints(filters?: {
   })
 }
 
-export function useGenerateQuestionPaper() {
-  return useMutation({
-    mutationFn: generateQuestionPaper,
-    onSuccess: () => toast.success("Question paper generated."),
-    onError: (err) => {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to generate question paper"
-      )
-    },
-  })
-}
+export { useGenerateQuestionPaper }

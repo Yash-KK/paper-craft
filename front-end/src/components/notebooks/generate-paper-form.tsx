@@ -17,6 +17,7 @@ import { MenuSelect } from "@/components/ui/menu-select"
 import { Textarea } from "@/components/ui/textarea"
 import { useGeneratePaperForm } from "@/hooks/use-generate-paper-form"
 import type { NotebookListItem } from "@/lib/types/notebook"
+import type { GenerationResult } from "@/lib/types/generation"
 import {
   blueprintAllocatedMarks,
   blueprintQuestionCount,
@@ -28,7 +29,7 @@ import { cn } from "@/lib/utils"
 type GeneratePaperFormProps = {
   notebook: NotebookListItem
   schoolName: string | null
-  onGenerated?: () => void
+  onGenerated?: (result: GenerationResult) => void
   onCancel?: () => void
 }
 
@@ -445,8 +446,8 @@ export function GeneratePaperForm({
             !sampleSelected || form.generating || form.chapters.length === 0
           }
           onClick={() =>
-            void form.generate().then((ok) => {
-              if (ok) onGenerated?.()
+            void form.generate().then((result) => {
+              if (result) onGenerated?.(result)
             })
           }
         >
