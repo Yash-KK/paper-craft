@@ -122,7 +122,7 @@ export function MarkingSchemeSection({
           {section.chapter_allocations.map((alloc, allocIndex) => (
             <div
               key={`${alloc.chapter_name}-${allocIndex}`}
-              className="flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1.5 text-xs text-violet-800 dark:text-violet-200"
+              className="flex items-center gap-1 rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1.5 text-xs text-violet-800 dark:text-violet-200"
             >
               <span className="font-medium">
                 {alloc.chapter_number != null
@@ -133,7 +133,7 @@ export function MarkingSchemeSection({
               <Input
                 type="number"
                 min={1}
-                className="h-6 w-12 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+                className="h-6 w-7 border-0 bg-transparent p-0 text-center text-xs shadow-none focus-visible:ring-0"
                 value={alloc.question_count}
                 onChange={(e) =>
                   onUpdateAllocation(allocIndex, {

@@ -117,7 +117,10 @@ export function GeneratePaperForm({
           {form.chapters.length === 0
             ? "Add chapters to this notebook before selecting a blueprint."
             : `Available chapters: ${form.chapters
-                .map((chapter) => `Ch ${chapter.chapter_number}`)
+                .map(
+                  (chapter) =>
+                    `Ch ${chapter.chapter_number} (${chapter.chapter_name})`
+                )
                 .join(", ")}`}
         </p>
       </div>

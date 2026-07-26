@@ -58,21 +58,20 @@ export function useGeneratePaperForm(
       const detail = await fetchSampleBlueprint(next.id)
       return {
         sample: next,
-        blueprint: {
-          ...rematchBlueprintChapters(
-            structuredClone(detail.blueprint),
-            chapters
-          ),
-          school_name: schoolName ?? detail.blueprint.school_name,
-          subject: notebook.subject ?? detail.blueprint.subject,
-          grade:
-            classGradeToNumber(notebook.class_grade) || detail.blueprint.grade,
-        },
+        blueprint: rematchBlueprintChapters(
+          structuredClone(detail.blueprint),
+          chapters
+        ),
       }
     },
     onSuccess: ({ sample: next, blueprint: nextBlueprint }) => {
       setSample(next)
-      setBlueprint(nextBlueprint)
+      setBlueprint((prev) => ({
+        ...nextBlueprint,
+        school_name: prev.school_name ?? schoolName,
+        subject: notebook.subject ?? nextBlueprint.subject,
+        grade: classGradeToNumber(notebook.class_grade) || nextBlueprint.grade,
+      }))
       setTeacherInstructions("")
     },
     onError: (err) => {

@@ -38,7 +38,7 @@ def _alloc(
 
 
 FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
-    "school_name": "SADHU VASWANI INTERNATIONAL SCHOOL",
+    "school_name": None,
     "exam_title": "PRE-MID TERM EXAMINATION",
     "subject": "Mathematics",
     "grade": 10,
