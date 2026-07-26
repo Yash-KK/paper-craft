@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import or_, select
 
 from app.api.deps import CurrentUser, SessionDep
-from app.db.models.notebook import Board, ClassGrade, Subject
+from app.db.models.notebook import Board, Subject
 from app.db.models.sample_blueprint import SampleBlueprint
 from app.schemas.generation import (
     GeneratePaperRequest,
@@ -28,7 +28,6 @@ async def list_sample_blueprints(
     db: SessionDep,
     board: Board | None = None,
     subject: Subject | None = None,
-    grade: ClassGrade | None = None,
 ) -> list[SampleBlueprint]:
     del current_user  # auth gate only
     query = select(SampleBlueprint).where(SampleBlueprint.is_active.is_(True))
@@ -41,11 +40,6 @@ async def list_sample_blueprints(
         query = query.where(
             or_(SampleBlueprint.subject.is_(None), SampleBlueprint.subject == subject)
         )
-    if grade is not None:
-        query = query.where(
-            or_(SampleBlueprint.grade.is_(None), SampleBlueprint.grade == grade)
-        )
-
     result = await db.execute(
         query.order_by(SampleBlueprint.sort_order.asc(), SampleBlueprint.label.asc())
     )
@@ -70,6 +64,7 @@ async def get_sample_blueprint(
             "id": row.id,
             "slug": row.slug,
             "label": row.label,
+            "kind": row.kind,
             "total_marks": row.total_marks,
             "board": row.board,
             "subject": row.subject,

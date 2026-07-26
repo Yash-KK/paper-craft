@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.db.models.notebook import Board, ClassGrade, Subject
+from app.schemas.generation import BlueprintKind
 
 
 class SampleBlueprint(Base):
@@ -27,7 +28,12 @@ class SampleBlueprint(Base):
     )
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
-    total_marks: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[BlueprintKind] = mapped_column(
+        Enum(BlueprintKind, name="sample_blueprint_kind", native_enum=False, length=40),
+        nullable=False,
+        default=BlueprintKind.EXAM,
+    )
+    total_marks: Mapped[int | None] = mapped_column(Integer, nullable=True)
     board: Mapped[Board | None] = mapped_column(
         Enum(Board, name="sample_blueprint_board", native_enum=False, length=20),
         nullable=True,

@@ -14,6 +14,7 @@ from app.schemas.chat import (
 from app.schemas.document import ChunkType, IngestRequest, IngestResponse
 from app.schemas.generation import (
     BloomsLevel,
+    BlueprintKind,
     GeneratePaperRequest,
     GenerationResult,
     QuestionPaperBlueprint,
@@ -46,6 +47,7 @@ __all__ = [
     "ChatStreamToolStartEvent",
     "ChatTurnRequest",
     "BloomsLevel",
+    "BlueprintKind",
     "ChunkType",
     "GeneratePaperRequest",
     "GenerationResult",

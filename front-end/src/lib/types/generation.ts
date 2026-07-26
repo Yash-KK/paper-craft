@@ -5,6 +5,8 @@ import type {
   Subject,
 } from "@/lib/types/notebook"
 
+export type BlueprintKind = "EXAM" | "REVISION_SHEET"
+
 export type QuestionType =
   | "MCQ"
   | "ASSERTION_REASON"
@@ -34,34 +36,47 @@ export type ChapterAllocation = {
   marks?: number | null
 }
 
+export type BlueprintSubPart = {
+  label: string
+  marks?: number | null
+}
+
 export type BlueprintSection = {
   section_name: string
   question_type: QuestionType
-  marks_each: number
+  marks_each: number | null
   chapter_allocations: ChapterAllocation[]
   section_instructions: string | null
-  section_total_marks?: number
+  sub_parts?: BlueprintSubPart[]
+  section_total_marks?: number | null
+  question_count?: number
 }
 
 export type QuestionPaperBlueprint = {
+  kind: BlueprintKind
   school_name: string | null
   exam_title: string | null
   subject: string
   grade: number
-  total_marks: number
+  total_marks: number | null
   duration_minutes: number | null
   exam_date: string | null
   general_instructions: string[]
+  learning_outcomes: string[]
+  generation_rules: string[]
   sections: BlueprintSection[]
   blooms_targets: Partial<Record<BloomsLevel, number>> | null
-  allocated_marks?: number
+  metadata?: Record<string, unknown>
+  allocated_marks?: number | null
+  is_mark_based?: boolean
 }
 
 export type SampleBlueprintSummary = {
   id: string
   slug: string
   label: string
-  total_marks: number
+  kind: BlueprintKind
+  total_marks: number | null
   board: Board | null
   subject: Subject | null
   grade: ClassGrade | null
@@ -105,6 +120,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
 
 export const SECTION_QUESTION_TYPES: QuestionType[] = [
   "MCQ",
+  "ASSERTION_REASON",
   "VSA",
   "SA",
   "LA",
@@ -119,19 +135,51 @@ export const DURATION_OPTIONS: { label: string; minutes: number }[] = [
   { label: "3 Hours", minutes: 180 },
 ]
 
-export function sectionAllocatedMarks(section: BlueprintSection): number {
+export function isMarkBasedBlueprint(
+  blueprint: Pick<QuestionPaperBlueprint, "kind" | "total_marks">
+): boolean {
+  return blueprint.kind === "EXAM" || blueprint.total_marks != null
+}
+
+export function sectionAllocatedMarks(
+  section: BlueprintSection
+): number | null {
+  if (
+    section.marks_each == null &&
+    section.chapter_allocations.every((alloc) => alloc.marks == null)
+  ) {
+    return null
+  }
+
+  let total = 0
+  for (const alloc of section.chapter_allocations) {
+    const perQuestion = alloc.marks ?? section.marks_each
+    if (perQuestion == null) return null
+    total += alloc.question_count * perQuestion
+  }
+  return total
+}
+
+export function sectionQuestionCount(section: BlueprintSection): number {
   return section.chapter_allocations.reduce(
-    (sum, alloc) =>
-      sum + alloc.question_count * (alloc.marks ?? section.marks_each),
+    (sum, alloc) => sum + alloc.question_count,
     0
   )
 }
 
 export function blueprintAllocatedMarks(
   blueprint: QuestionPaperBlueprint
+): number | null {
+  const totals = blueprint.sections.map(sectionAllocatedMarks)
+  if (totals.some((total) => total == null)) return null
+  return totals.reduce<number>((sum, total) => sum + (total ?? 0), 0)
+}
+
+export function blueprintQuestionCount(
+  blueprint: QuestionPaperBlueprint
 ): number {
   return blueprint.sections.reduce(
-    (sum, section) => sum + sectionAllocatedMarks(section),
+    (sum, section) => sum + sectionQuestionCount(section),
     0
   )
 }
@@ -154,6 +202,7 @@ function matchSelectedChapter(
   selected: SelectedChapter[]
 ): SelectedChapter | null {
   const needle = normalizeName(alloc.chapter_name)
+  if (!needle || needle === "selected chapter") return null
   return (
     selected.find((ch) => {
       const name = normalizeName(ch.chapter_name)
@@ -163,9 +212,10 @@ function matchSelectedChapter(
 }
 
 /**
- * Preserve the sample's complete marking scheme while assigning every question
+ * Preserve the sample's complete scheme while assigning every question
  * to a chapter selected on the notebook. Exact chapter-name matches are kept;
- * otherwise allocations go to the currently least-loaded selected chapter.
+ * otherwise allocations go to the currently least-loaded selected chapter
+ * (by marks when mark-based, otherwise by question count).
  */
 export function rematchBlueprintChapters(
   blueprint: QuestionPaperBlueprint,
@@ -173,7 +223,8 @@ export function rematchBlueprintChapters(
 ): QuestionPaperBlueprint {
   if (selectedChapters.length === 0) return blueprint
 
-  const assignedMarks = new Map(selectedChapters.map((chapter) => [chapter, 0]))
+  const assignedLoad = new Map(selectedChapters.map((chapter) => [chapter, 0]))
+  const useMarks = isMarkBasedBlueprint(blueprint)
 
   return {
     ...blueprint,
@@ -183,17 +234,18 @@ export function rematchBlueprintChapters(
         const matched =
           matchSelectedChapter(alloc, selectedChapters) ??
           selectedChapters.reduce((leastLoaded, chapter) =>
-            (assignedMarks.get(chapter) ?? 0) <
-            (assignedMarks.get(leastLoaded) ?? 0)
+            (assignedLoad.get(chapter) ?? 0) <
+            (assignedLoad.get(leastLoaded) ?? 0)
               ? chapter
               : leastLoaded
           )
-        const allocationMarks =
-          alloc.question_count * (alloc.marks ?? section.marks_each)
+        const allocationLoad = useMarks
+          ? alloc.question_count * (alloc.marks ?? section.marks_each ?? 0)
+          : alloc.question_count
 
-        assignedMarks.set(
+        assignedLoad.set(
           matched,
-          (assignedMarks.get(matched) ?? 0) + allocationMarks
+          (assignedLoad.get(matched) ?? 0) + allocationLoad
         )
 
         return {
@@ -287,6 +339,7 @@ export function emptyBlueprint(
   partial?: Partial<QuestionPaperBlueprint>
 ): QuestionPaperBlueprint {
   return {
+    kind: "EXAM",
     school_name: null,
     exam_title: null,
     subject: "Mathematics",
@@ -295,8 +348,11 @@ export function emptyBlueprint(
     duration_minutes: 90,
     exam_date: null,
     general_instructions: [],
+    learning_outcomes: [],
+    generation_rules: [],
     sections: [],
     blooms_targets: null,
+    metadata: {},
     ...partial,
   }
 }

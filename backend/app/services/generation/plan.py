@@ -2,6 +2,7 @@ from app.schemas.generation import (
     QuestionPaperBlueprint,
     QuestionType,
     Slot,
+    SlotSubPart,
 )
 
 TYPE_CONTENT_TYPES: dict[QuestionType, list[str]] = {
@@ -62,6 +63,10 @@ def build_slots(
     question_number = 0
 
     for section in question_paper.sections:
+        section_sub_parts = [
+            SlotSubPart(label=part.label, marks=part.marks)
+            for part in section.sub_parts
+        ]
         for allocation in section.chapter_allocations:
             chapter = _resolve_chapter(
                 allocation.chapter_number,
@@ -97,7 +102,7 @@ def build_slots(
                         book_code=chapter.get("book_code"),
                         content_types=TYPE_CONTENT_TYPES[q_type],
                         has_internal_choice=allocation.has_internal_choice,
-                        sub_parts=[],
+                        sub_parts=list(section_sub_parts),
                     )
                 )
 

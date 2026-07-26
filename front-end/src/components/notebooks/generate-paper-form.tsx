@@ -19,7 +19,9 @@ import { useGeneratePaperForm } from "@/hooks/use-generate-paper-form"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import {
   blueprintAllocatedMarks,
+  blueprintQuestionCount,
   DURATION_OPTIONS,
+  isMarkBasedBlueprint,
 } from "@/lib/types/generation"
 import { cn } from "@/lib/utils"
 
@@ -78,9 +80,21 @@ export function GeneratePaperForm({
 }: GeneratePaperFormProps) {
   const form = useGeneratePaperForm(notebook, schoolName)
   const sampleSelected = Boolean(form.sample)
+  const markBased = isMarkBasedBlueprint(form.blueprint)
   const allocated = blueprintAllocatedMarks(form.blueprint)
-  const marksMismatch = allocated !== form.blueprint.total_marks
+  const questionCount = blueprintQuestionCount(form.blueprint)
+  const marksMismatch =
+    markBased &&
+    (allocated == null ||
+      form.blueprint.total_marks == null ||
+      allocated !== form.blueprint.total_marks)
   const classSubject = `${notebook.class_grade ?? "Class"} — ${notebook.subject ?? "Subject"}`
+  const titleLabel = markBased ? "Exam Title" : "Sheet Title"
+  const schemeTitle = markBased ? "Marking Scheme" : "Question Scheme"
+  const schemeDescription = markBased
+    ? "Sections, question types, and chapter distribution."
+    : "Sections, question types, and chapter distribution for practice."
+  const generateLabel = markBased ? "Generate Paper" : "Generate Revision Sheet"
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -188,7 +202,7 @@ export function GeneratePaperForm({
           </div>
 
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="exam-title">Exam Title</Label>
+            <Label htmlFor="exam-title">{titleLabel}</Label>
             <Input
               id="exam-title"
               value={form.blueprint.exam_title ?? ""}
@@ -199,48 +213,52 @@ export function GeneratePaperForm({
             />
           </div>
 
-          <MenuSelect
-            label="Duration"
-            value={form.blueprint.duration_minutes ?? ""}
-            placeholder="Select duration"
-            disabled={!sampleSelected}
-            options={DURATION_OPTIONS.map((option) => ({
-              value: option.minutes,
-              label: option.label,
-            }))}
-            onChange={(duration_minutes) =>
-              form.patchBlueprint({ duration_minutes })
-            }
-          />
+          {markBased ? (
+            <>
+              <MenuSelect
+                label="Duration"
+                value={form.blueprint.duration_minutes ?? ""}
+                placeholder="Select duration"
+                disabled={!sampleSelected}
+                options={DURATION_OPTIONS.map((option) => ({
+                  value: option.minutes,
+                  label: option.label,
+                }))}
+                onChange={(duration_minutes) =>
+                  form.patchBlueprint({ duration_minutes })
+                }
+              />
 
-          <div className="grid gap-2">
-            <Label htmlFor="total-marks">Total Marks</Label>
-            <Input
-              id="total-marks"
-              type="number"
-              min={1}
-              value={form.blueprint.total_marks}
-              disabled={!sampleSelected}
-              onChange={(e) =>
-                form.patchBlueprint({
-                  total_marks: Number(e.target.value) || 0,
-                })
-              }
-            />
-          </div>
+              <div className="grid gap-2">
+                <Label htmlFor="total-marks">Total Marks</Label>
+                <Input
+                  id="total-marks"
+                  type="number"
+                  min={1}
+                  value={form.blueprint.total_marks ?? ""}
+                  disabled={!sampleSelected}
+                  onChange={(e) =>
+                    form.patchBlueprint({
+                      total_marks: Number(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
 
-          <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="exam-date">Exam Date</Label>
-            <Input
-              id="exam-date"
-              type="date"
-              value={form.blueprint.exam_date ?? ""}
-              disabled={!sampleSelected}
-              onChange={(e) =>
-                form.patchBlueprint({ exam_date: e.target.value || null })
-              }
-            />
-          </div>
+              <div className="grid gap-2 sm:col-span-2">
+                <Label htmlFor="exam-date">Exam Date</Label>
+                <Input
+                  id="exam-date"
+                  type="date"
+                  value={form.blueprint.exam_date ?? ""}
+                  disabled={!sampleSelected}
+                  onChange={(e) =>
+                    form.patchBlueprint({ exam_date: e.target.value || null })
+                  }
+                />
+              </div>
+            </>
+          ) : null}
         </div>
       </FormPanel>
 
@@ -276,18 +294,22 @@ export function GeneratePaperForm({
                 <ListChecks className="size-4" />
               </PanelIcon>
             }
-            title="Marking Scheme"
-            description="Sections, question types, and chapter distribution."
+            title={schemeTitle}
+            description={schemeDescription}
             trailing={
               <span
                 className={cn(
                   "shrink-0 text-sm font-semibold",
-                  marksMismatch
-                    ? "text-destructive"
-                    : "text-emerald-600 dark:text-emerald-400"
+                  markBased
+                    ? marksMismatch
+                      ? "text-destructive"
+                      : "text-emerald-600 dark:text-emerald-400"
+                    : "text-muted-foreground"
                 )}
               >
-                Total: {allocated}/{form.blueprint.total_marks}
+                {markBased
+                  ? `Total: ${allocated ?? "?"}/${form.blueprint.total_marks ?? "?"}`
+                  : `${questionCount} questions`}
               </span>
             }
           >
@@ -298,6 +320,7 @@ export function GeneratePaperForm({
                   index={index}
                   section={section}
                   chapters={form.chapters}
+                  showMarks={markBased}
                   onChange={(patch) => form.updateSection(index, patch)}
                   onUpdateChapterQuestionCount={(
                     allocationIndexes,
@@ -328,6 +351,31 @@ export function GeneratePaperForm({
               </Button>
             </div>
           </FormPanel>
+
+          {form.blueprint.learning_outcomes.length > 0 ? (
+            <FormPanel
+              title="Learning Outcomes"
+              description="Outcomes this blueprint aims to cover."
+            >
+              <div className="grid gap-2">
+                <Label htmlFor="learning-outcomes">
+                  Outcomes (one per line)
+                </Label>
+                <Textarea
+                  id="learning-outcomes"
+                  value={form.blueprint.learning_outcomes.join("\n")}
+                  onChange={(e) =>
+                    form.patchBlueprint({
+                      learning_outcomes: e.target.value
+                        ? e.target.value.split("\n")
+                        : [],
+                    })
+                  }
+                  className="min-h-40"
+                />
+              </div>
+            </FormPanel>
+          ) : null}
 
           <FormPanel
             title="Teacher Instructions"
@@ -385,7 +433,7 @@ export function GeneratePaperForm({
       ) : (
         <div className="rounded-2xl border border-dashed px-4 py-16 text-center text-sm text-muted-foreground">
           Select a sample blueprint above to auto-fill paper details and the
-          marking scheme. All fields stay editable afterward.
+          question scheme. All fields stay editable afterward.
         </div>
       )}
 
@@ -407,7 +455,7 @@ export function GeneratePaperForm({
           ) : (
             <Sparkles className="size-4" />
           )}
-          Generate Paper
+          {generateLabel}
         </Button>
         {onCancel ? (
           <Button
