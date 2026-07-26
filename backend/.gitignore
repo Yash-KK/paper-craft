@@ -34,5 +34,8 @@ project_structure.py
 !samples/
 !samples/*.docx
 
+# Teacher-uploaded format references (runtime)
+data/format_references/
+
 ndmo_standards/
 whitepaper

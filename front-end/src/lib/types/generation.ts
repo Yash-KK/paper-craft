@@ -88,22 +88,110 @@ export type SampleBlueprintDetail = SampleBlueprintSummary & {
 }
 
 export type GeneratePaperPayload = {
+  notebook_id: string
   blueprint: QuestionPaperBlueprint
   selected_chapters: SelectedChapter[]
   subject: string
   grade: number
+  title?: string | null
   teacher_instructions?: string | null
   format_reference_uri?: string | null
   format_reference?: File | null
 }
 
+export type GenerateNewVersionPayload = {
+  selected_message_ids: string[]
+  teacher_instructions?: string | null
+}
+
+export type QuestionPaperStatus = "pending" | "running" | "ready" | "failed"
+
+export type SelectedChatMessageSnapshot = {
+  id: string
+  role: string
+  content: string
+  metadata: Record<string, unknown>
+  created_at: string | null
+}
+
 export type GenerationResult = {
+  paper_id: string
+  version_id: string
+  notebook_id: string
+  title: string
+  version_number: number
+  status: QuestionPaperStatus
   blueprint: QuestionPaperBlueprint
   final_paper: Record<string, unknown>
   final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
   format_reference_uri: string
   format_reference_is_default: boolean
+  paper_markdown: string
+  answer_key_markdown: string
+  selected_chat_messages?: SelectedChatMessageSnapshot[]
+  error?: string | null
+}
+
+export type QuestionPaperVersionSummary = {
+  id: string
+  version_number: number
+  status: QuestionPaperStatus
+  subject: string
+  grade: number
+  format_reference_uri: string
+  format_reference_is_default: boolean
+  created_at: string
+  updated_at: string
+  error?: string | null
+  base_version_id?: string | null
+}
+
+export type QuestionPaperSummary = {
+  id: string
+  notebook_id: string
+  title: string
+  created_at: string
+  updated_at: string
+  versions: QuestionPaperVersionSummary[]
+  latest_version: QuestionPaperVersionSummary | null
+}
+
+export type QuestionPaperVersionDetail = QuestionPaperVersionSummary & {
+  question_paper_id: string
+  notebook_id: string
+  title: string
+  blueprint: QuestionPaperBlueprint
+  final_paper: Record<string, unknown>
+  final_answer_key: Record<string, unknown>
+  generated_items: Record<string, unknown>[]
+  selected_chapters: SelectedChapter[]
+  selected_chat_messages: SelectedChatMessageSnapshot[]
+  teacher_instructions?: string | null
+  generation_context: Record<string, unknown>
+  generation_metadata: Record<string, unknown>
+  paper_markdown: string
+  answer_key_markdown: string
+}
+
+export const QUESTION_PAPER_STATUS_LABELS: Record<QuestionPaperStatus, string> =
+  {
+    pending: "Queued",
+    running: "Generating",
+    ready: "Ready",
+    failed: "Failed",
+  }
+
+export function isActiveGenerationStatus(status: QuestionPaperStatus): boolean {
+  return status === "pending" || status === "running"
+}
+
+export function paperHasActiveGeneration(
+  paper: QuestionPaperSummary
+): boolean {
+  return paper.versions.some((version) =>
+    isActiveGenerationStatus(version.status)
+  )
 }
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {

@@ -6,6 +6,7 @@ import { AuthStatus, useAuth } from "@/components/auth-provider"
 import { GeneratePaperForm } from "@/components/notebooks/generate-paper-form"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { versionHref } from "@/features/question-papers"
 import { useNotebooks } from "@/hooks/use-notebooks"
 
 export function GeneratePaperPage() {
@@ -56,7 +57,11 @@ export function GeneratePaperPage() {
       notebook={notebook}
       schoolName={user?.school_name ?? null}
       onCancel={() => navigate(notebookPath)}
-      onGenerated={() => navigate(notebookPath)}
+      onGenerated={(result) =>
+        navigate(
+          versionHref(notebook.id, result.paper_id, result.version_number)
+        )
+      }
     />
   )
 }

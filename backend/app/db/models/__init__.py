@@ -1,6 +1,11 @@
 from app.db.models.chapter_catalog import ChapterCatalog
 from app.db.models.chat import ChatMessage, ChatMessageRole, ChatSession
 from app.db.models.notebook import Board, ClassGrade, Notebook, Subject
+from app.db.models.question_paper import (
+    QuestionPaper,
+    QuestionPaperStatus,
+    QuestionPaperVersion,
+)
 from app.db.models.sample_blueprint import SampleBlueprint
 from app.db.models.user import AuthProvider, User, UserProfile, UserRole
 
@@ -13,6 +18,9 @@ __all__ = [
     "ChatSession",
     "ClassGrade",
     "Notebook",
+    "QuestionPaper",
+    "QuestionPaperStatus",
+    "QuestionPaperVersion",
     "SampleBlueprint",
     "Subject",
     "User",

@@ -8,26 +8,11 @@ import { ChatEmptyState } from "@/features/chat/components/chat-empty-state"
 import { ChatMessageBubble } from "@/features/chat/components/chat-message"
 import { ScrollToBottomButton } from "@/features/chat/components/scroll-to-bottom-button"
 import { useChatStream } from "@/features/chat/hooks/use-chat-stream"
+import { MATHJAX_CONFIG } from "@/features/chat/lib/mathjax-config"
 import type { PersistedMessage } from "@/features/chat/types/chat"
 import { useNotebookChatMessages } from "@/hooks/use-notebook-chat-messages"
 
 const NEAR_BOTTOM_PX = 96
-
-const mathJaxConfig = {
-  loader: { load: ["input/tex", "output/chtml"] },
-  tex: {
-    inlineMath: [
-      ["$", "$"],
-      ["\\(", "\\)"],
-    ],
-    displayMath: [
-      ["$$", "$$"],
-      ["\\[", "\\]"],
-    ],
-    processEscapes: true,
-    packages: { "[+]": ["ams"] },
-  },
-}
 
 type ChatPanelProps = {
   notebookId: string
@@ -242,7 +227,7 @@ function ChatPanelReady({
   const showFetchingOlder = isFetchingOlder || isFetchingNextPage
 
   return (
-    <MathJaxContext config={mathJaxConfig}>
+    <MathJaxContext config={MATHJAX_CONFIG}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
         <div className="relative min-h-0 flex-1">
           <ScrollArea className="h-full" viewportRef={scrollRef}>

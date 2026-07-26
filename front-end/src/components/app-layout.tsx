@@ -40,6 +40,10 @@ export function AppLayout() {
   const { notebooks } = useNotebooks(authenticated)
 
   const notebookMatch =
+    matchPath(
+      "/notebooks/:notebookId/papers/:paperId/versions/:versionNumber",
+      location.pathname
+    ) ??
     matchPath("/notebooks/:notebookId/generate", location.pathname) ??
     matchPath("/notebooks/:notebookId", location.pathname)
   const activeNotebook = notebookMatch
