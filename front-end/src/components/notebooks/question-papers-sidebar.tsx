@@ -1,7 +1,6 @@
-import { useState } from "react"
 import { FileText, Plus, Sparkles } from "lucide-react"
+import { Link } from "react-router-dom"
 
-import { GeneratePaperDialog } from "@/components/notebooks/generate-paper-dialog"
 import {
   MOCK_QUESTION_PAPERS,
   type MockQuestionPaper,
@@ -15,19 +14,17 @@ import { cn } from "@/lib/utils"
 
 type QuestionPapersSidebarProps = {
   notebook: NotebookListItem
-  schoolName?: string | null
   className?: string
   papers?: MockQuestionPaper[]
 }
 
 export function QuestionPapersSidebar({
   notebook,
-  schoolName = null,
   className,
   papers = MOCK_QUESTION_PAPERS,
 }: QuestionPapersSidebarProps) {
-  const [generateOpen, setGenerateOpen] = useState(false)
   const canGenerate = notebook.selected_chapters.length > 0
+  const generateHref = `/notebooks/${notebook.id}/generate`
 
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
@@ -42,21 +39,21 @@ export function QuestionPapersSidebar({
         </div>
         <Button
           type="button"
-          className="w-full gap-2 bg-violet-600 text-white hover:bg-violet-600/90"
+          className="w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
           disabled={!canGenerate}
           title={
             canGenerate
-              ? "Configure and generate a question paper"
+              ? "Open question paper generation"
               : "Select chapters on this notebook first"
           }
-          onClick={() => setGenerateOpen(true)}
+          render={canGenerate ? <Link to={generateHref} /> : undefined}
         >
           <Sparkles className="size-4" />
           Generate Question Paper
         </Button>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           {canGenerate
-            ? "Choose a sample blueprint, edit the scheme, then generate."
+            ? "Opens the paper builder with sample blueprints and marking scheme."
             : "Add chapters to this notebook before generating a paper."}
         </p>
       </div>
@@ -111,13 +108,6 @@ export function QuestionPapersSidebar({
           )}
         </div>
       </ScrollArea>
-
-      <GeneratePaperDialog
-        open={generateOpen}
-        onOpenChange={setGenerateOpen}
-        notebook={notebook}
-        schoolName={schoolName}
-      />
     </div>
   )
 }

@@ -71,8 +71,6 @@ export type GeneratePaperPayload = {
   subject: string
   grade: number
   teacher_instructions?: string | null
-  use_sample_as_context?: boolean
-  sample_text?: string | null
 }
 
 export type GenerationResult = {
@@ -80,7 +78,6 @@ export type GenerationResult = {
   final_paper: Record<string, unknown>
   final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
-  sample_text_used: boolean
 }
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
@@ -140,33 +137,60 @@ export function rematchBlueprintChapters(
   const byName = new Map(
     selectedChapters.map((ch) => [normalizeName(ch.chapter_name), ch])
   )
+  const selectedNumbers = new Set(
+    selectedChapters.map((ch) => ch.chapter_number)
+  )
+
+  function resolveChapter(alloc: ChapterAllocation) {
+    if (
+      alloc.chapter_number != null &&
+      selectedNumbers.has(alloc.chapter_number)
+    ) {
+      const byNumber = selectedChapters.find(
+        (ch) => ch.chapter_number === alloc.chapter_number
+      )
+      if (byNumber) {
+        return {
+          ...alloc,
+          chapter_number: byNumber.chapter_number,
+          chapter_name: byNumber.chapter_name,
+        }
+      }
+    }
+
+    const exact = byName.get(normalizeName(alloc.chapter_name))
+    if (exact) {
+      return {
+        ...alloc,
+        chapter_number: exact.chapter_number,
+        chapter_name: exact.chapter_name,
+      }
+    }
+
+    const needle = normalizeName(alloc.chapter_name)
+    const fuzzy = selectedChapters.find((ch) => {
+      const catalog = normalizeName(ch.chapter_name)
+      return catalog.includes(needle) || needle.includes(catalog)
+    })
+    if (fuzzy) {
+      return {
+        ...alloc,
+        chapter_number: fuzzy.chapter_number,
+        chapter_name: fuzzy.chapter_name,
+      }
+    }
+
+    return null
+  }
 
   return {
     ...blueprint,
     sections: blueprint.sections.map((section) => ({
       ...section,
-      chapter_allocations: section.chapter_allocations.map((alloc) => {
-        const exact = byName.get(normalizeName(alloc.chapter_name))
-        if (exact) {
-          return {
-            ...alloc,
-            chapter_number: exact.chapter_number,
-            chapter_name: exact.chapter_name,
-          }
-        }
-        const needle = normalizeName(alloc.chapter_name)
-        const fuzzy = selectedChapters.find((ch) => {
-          const catalog = normalizeName(ch.chapter_name)
-          return catalog.includes(needle) || needle.includes(catalog)
-        })
-        if (fuzzy) {
-          return {
-            ...alloc,
-            chapter_number: fuzzy.chapter_number,
-            chapter_name: fuzzy.chapter_name,
-          }
-        }
-        return { ...alloc, chapter_number: null }
+      // Drop allocations that are not in the notebook's selected chapters.
+      chapter_allocations: section.chapter_allocations.flatMap((alloc) => {
+        const matched = resolveChapter(alloc)
+        return matched ? [matched] : []
       }),
     })),
   }

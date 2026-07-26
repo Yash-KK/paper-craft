@@ -39,7 +39,9 @@ export function AppLayout() {
   const authenticated = status === AuthStatus.Authenticated && Boolean(user)
   const { notebooks } = useNotebooks(authenticated)
 
-  const notebookMatch = matchPath("/notebooks/:notebookId", location.pathname)
+  const notebookMatch =
+    matchPath("/notebooks/:notebookId/generate", location.pathname) ??
+    matchPath("/notebooks/:notebookId", location.pathname)
   const activeNotebook = notebookMatch
     ? notebooks.find((n) => n.id === notebookMatch.params.notebookId)
     : undefined
@@ -100,7 +102,6 @@ export function AppLayout() {
                     <Separator />
                     <QuestionPapersSidebar
                       notebook={activeNotebook}
-                      schoolName={user.school_name}
                       className="min-h-0 flex-1"
                     />
                   </div>
