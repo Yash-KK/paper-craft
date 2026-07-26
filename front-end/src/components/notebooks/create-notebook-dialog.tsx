@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronDown, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -13,14 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MenuSelect } from "@/components/ui/menu-select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   useChapters,
@@ -59,60 +54,6 @@ const EMPTY_FORM: FormState = {
   classGrade: "",
   subject: "",
   chapters: [],
-}
-
-type SelectFieldProps<T extends string> = {
-  label: string
-  value: T | ""
-  placeholder: string
-  disabled?: boolean
-  loading?: boolean
-  options: T[]
-  onChange: (value: T) => void
-}
-
-function SelectField<T extends string>({
-  label,
-  value,
-  placeholder,
-  disabled,
-  loading,
-  options,
-  onChange,
-}: SelectFieldProps<T>) {
-  return (
-    <div className="grid gap-2">
-      <Label>{label}</Label>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          disabled={disabled || loading}
-          render={
-            <Button
-              variant="outline"
-              className="h-10 w-full justify-between font-normal"
-            />
-          }
-        >
-          <span className="truncate">
-            {loading ? "Loading…" : value || placeholder}
-          </span>
-          <ChevronDown className="size-4 shrink-0 opacity-50" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="z-100 max-h-60 w-(--anchor-width)">
-          {options.length === 0 ? (
-            <DropdownMenuItem disabled>No options available</DropdownMenuItem>
-          ) : (
-            options.map((option) => (
-              <DropdownMenuItem key={option} onClick={() => onChange(option)}>
-                {option}
-                {value === option ? <Check className="ml-auto size-4" /> : null}
-              </DropdownMenuItem>
-            ))
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  )
 }
 
 export function CreateNotebookDialog({
@@ -255,22 +196,28 @@ export function CreateNotebookDialog({
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <SelectField
+                <MenuSelect
                   label="Select Class"
                   value={form.classGrade}
                   placeholder="Select class"
                   loading={gradesQuery.isFetching}
                   disabled={!board || gradesQuery.isFetching}
-                  options={grades}
+                  options={grades.map((grade) => ({
+                    value: grade,
+                    label: grade,
+                  }))}
                   onChange={handleClassChange}
                 />
-                <SelectField
+                <MenuSelect
                   label="Subject"
                   value={form.subject}
                   placeholder="Select subject"
                   loading={subjectsQuery.isFetching}
                   disabled={!form.classGrade || subjectsQuery.isFetching}
-                  options={subjects}
+                  options={subjects.map((subject) => ({
+                    value: subject,
+                    label: subject,
+                  }))}
                   onChange={handleSubjectChange}
                 />
               </div>

@@ -61,13 +61,15 @@ export type SampleBlueprintDetail = SampleBlueprintSummary & {
   blueprint: QuestionPaperBlueprint
 }
 
+export type SelectedChapterRef = {
+  book_code: string
+  chapter_number: number
+  chapter_name: string
+}
+
 export type GeneratePaperPayload = {
   blueprint: QuestionPaperBlueprint
-  selected_chapters: {
-    book_code: string
-    chapter_number: number
-    chapter_name: string
-  }[]
+  selected_chapters: SelectedChapterRef[]
   subject: string
   grade: number
   teacher_instructions?: string | null
@@ -92,6 +94,14 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   OTHER: "Other",
 }
 
+export const SECTION_QUESTION_TYPES: QuestionType[] = [
+  "MCQ",
+  "VSA",
+  "SA",
+  "LA",
+  "CASE_STUDY",
+]
+
 export const DURATION_OPTIONS: { label: string; minutes: number }[] = [
   { label: "1 Hour", minutes: 60 },
   { label: "1.5 Hours", minutes: 90 },
@@ -101,15 +111,13 @@ export const DURATION_OPTIONS: { label: string; minutes: number }[] = [
 ]
 
 export function sectionAllocatedMarks(section: BlueprintSection): number {
-  return section.chapter_allocations.reduce((sum, a) => {
-    const marks = a.marks ?? section.marks_each
-    return sum + a.question_count * marks
-  }, 0)
+  return section.chapter_allocations.reduce(
+    (sum, alloc) => sum + alloc.question_count * (alloc.marks ?? section.marks_each),
+    0
+  )
 }
 
-export function blueprintAllocatedMarks(
-  blueprint: QuestionPaperBlueprint
-): number {
+export function blueprintAllocatedMarks(blueprint: QuestionPaperBlueprint): number {
   return blueprint.sections.reduce(
     (sum, section) => sum + sectionAllocatedMarks(section),
     0
@@ -117,81 +125,85 @@ export function blueprintAllocatedMarks(
 }
 
 export function classGradeToNumber(classGrade: string | null): number {
-  if (!classGrade) return 10
-  const match = classGrade.match(/\d+/)
+  const match = classGrade?.match(/\d+/)
   return match ? Number(match[0]) : 10
+}
+
+export function sectionLetter(index: number): string {
+  return String.fromCharCode(65 + (index % 26))
 }
 
 function normalizeName(name: string): string {
   return name.toLowerCase().replace(/\s+/g, " ").trim()
 }
 
-export function rematchBlueprintChapters(
-  blueprint: QuestionPaperBlueprint,
-  selectedChapters: {
-    book_code: string
-    chapter_number: number
-    chapter_name: string
-  }[]
-): QuestionPaperBlueprint {
-  const byName = new Map(
-    selectedChapters.map((ch) => [normalizeName(ch.chapter_name), ch])
-  )
-  const selectedNumbers = new Set(
-    selectedChapters.map((ch) => ch.chapter_number)
-  )
-
-  function resolveChapter(alloc: ChapterAllocation) {
-    if (
-      alloc.chapter_number != null &&
-      selectedNumbers.has(alloc.chapter_number)
-    ) {
-      const byNumber = selectedChapters.find(
-        (ch) => ch.chapter_number === alloc.chapter_number
-      )
-      if (byNumber) {
-        return {
-          ...alloc,
-          chapter_number: byNumber.chapter_number,
-          chapter_name: byNumber.chapter_name,
-        }
-      }
-    }
-
-    const exact = byName.get(normalizeName(alloc.chapter_name))
-    if (exact) {
-      return {
-        ...alloc,
-        chapter_number: exact.chapter_number,
-        chapter_name: exact.chapter_name,
-      }
-    }
-
-    const needle = normalizeName(alloc.chapter_name)
-    const fuzzy = selectedChapters.find((ch) => {
-      const catalog = normalizeName(ch.chapter_name)
-      return catalog.includes(needle) || needle.includes(catalog)
-    })
-    if (fuzzy) {
-      return {
-        ...alloc,
-        chapter_number: fuzzy.chapter_number,
-        chapter_name: fuzzy.chapter_name,
-      }
-    }
-
-    return null
+function matchSelectedChapter(
+  alloc: ChapterAllocation,
+  selected: SelectedChapterRef[]
+): SelectedChapterRef | null {
+  if (alloc.chapter_number != null) {
+    const byNumber = selected.find((ch) => ch.chapter_number === alloc.chapter_number)
+    if (byNumber) return byNumber
   }
 
+  const needle = normalizeName(alloc.chapter_name)
+  return (
+    selected.find((ch) => {
+      const name = normalizeName(ch.chapter_name)
+      return name === needle || name.includes(needle) || needle.includes(name)
+    }) ?? null
+  )
+}
+
+/** Keep only allocations that map onto the notebook's selected chapters. */
+export function rematchBlueprintChapters(
+  blueprint: QuestionPaperBlueprint,
+  selectedChapters: SelectedChapterRef[]
+): QuestionPaperBlueprint {
   return {
     ...blueprint,
     sections: blueprint.sections.map((section) => ({
       ...section,
-      // Drop allocations that are not in the notebook's selected chapters.
       chapter_allocations: section.chapter_allocations.flatMap((alloc) => {
-        const matched = resolveChapter(alloc)
-        return matched ? [matched] : []
+        const matched = matchSelectedChapter(alloc, selectedChapters)
+        if (!matched) return []
+        return [
+          {
+            ...alloc,
+            chapter_number: matched.chapter_number,
+            chapter_name: matched.chapter_name,
+          },
+        ]
       }),
     })),
+  }
+}
+
+export function hasForeignChapterAllocations(
+  blueprint: QuestionPaperBlueprint,
+  selectedChapters: SelectedChapterRef[]
+): boolean {
+  const allowed = new Set(selectedChapters.map((ch) => ch.chapter_number))
+  return blueprint.sections.some((section) =>
+    section.chapter_allocations.some(
+      (alloc) =>
+        alloc.chapter_number == null || !allowed.has(alloc.chapter_number)
+    )
+  )
+}
+
+export function emptyBlueprint(partial?: Partial<QuestionPaperBlueprint>): QuestionPaperBlueprint {
+  return {
+    school_name: null,
+    exam_title: null,
+    subject: "Mathematics",
+    grade: 10,
+    total_marks: 40,
+    duration_minutes: 90,
+    exam_date: null,
+    general_instructions: [],
+    sections: [],
+    blooms_targets: null,
+    ...partial,
   }
 }
