@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { MathJaxContext } from "better-react-mathjax"
 import { Loader2 } from "lucide-react"
 
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChatComposer } from "@/features/chat/components/chat-composer"
 import { ChatEmptyState } from "@/features/chat/components/chat-empty-state"
 import { ChatMessageBubble } from "@/features/chat/components/chat-message"
+import { ScrollToBottomButton } from "@/features/chat/components/scroll-to-bottom-button"
 import { useChatStream } from "@/features/chat/hooks/use-chat-stream"
 import { useNotebookChatMessages } from "@/hooks/use-notebook-chat-messages"
+
+const NEAR_BOTTOM_PX = 96
 
 const mathJaxConfig = {
   loader: { load: ["input/tex", "output/chtml"] },
@@ -60,6 +64,13 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
   const loadingOlderRef = useRef(false)
   const primedRef = useRef(false)
   const [isFetchingOlder, setIsFetchingOlder] = useState(false)
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
+  const scrollToBottom = useCallback(() => {
+    stickToBottomRef.current = true
+    setShowScrollToBottom(false)
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [])
 
   useEffect(() => {
     if (!historyReady || primedRef.current) return
@@ -111,7 +122,12 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
     const onScroll = () => {
       const distanceFromBottom =
         viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight
-      stickToBottomRef.current = distanceFromBottom < 96
+      const nearBottom = distanceFromBottom < NEAR_BOTTOM_PX
+      stickToBottomRef.current = nearBottom
+      setShowScrollToBottom((prev) => {
+        const next = !nearBottom
+        return prev === next ? prev : next
+      })
     }
 
     const observer = new IntersectionObserver(
@@ -160,38 +176,45 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
   return (
     <MathJaxContext config={mathJaxConfig}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="min-h-full space-y-4 px-4 py-4">
-            <div ref={topSentinelRef} className="h-px w-full" aria-hidden />
+        <div className="relative min-h-0 flex-1">
+          <ScrollArea className="h-full" viewportRef={scrollRef}>
+            <div className="min-h-full space-y-4 px-4 py-4">
+              <div ref={topSentinelRef} className="h-px w-full" aria-hidden />
 
-            {showFetchingOlder ? (
-              <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
-                <Loader2 className="size-3.5 animate-spin" />
-                Fetching…
-              </div>
-            ) : hasNextPage ? (
-              <p className="py-1 text-center text-[11px] text-muted-foreground/80">
-                Scroll up for older messages
-              </p>
-            ) : messages.length > 0 ? (
-              <p className="py-1 text-center text-[11px] text-muted-foreground/80">
-                Beginning of conversation
-              </p>
-            ) : null}
+              {showFetchingOlder ? (
+                <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Fetching…
+                </div>
+              ) : hasNextPage ? (
+                <p className="py-1 text-center text-[11px] text-muted-foreground/80">
+                  Scroll up for older messages
+                </p>
+              ) : messages.length > 0 ? (
+                <p className="py-1 text-center text-[11px] text-muted-foreground/80">
+                  Beginning of conversation
+                </p>
+              ) : null}
 
-            {messages.length === 0 && (
-              <ChatEmptyState
-                notebookName={notebookName}
-                onSend={(prompt) => void sendMessage(prompt)}
-              />
-            )}
+              {messages.length === 0 && (
+                <ChatEmptyState
+                  notebookName={notebookName}
+                  onSend={(prompt) => void sendMessage(prompt)}
+                />
+              )}
 
-            {messages.map((message) => (
-              <ChatMessageBubble key={message.id} message={message} />
-            ))}
+              {messages.map((message) => (
+                <ChatMessageBubble key={message.id} message={message} />
+              ))}
 
-            <div ref={bottomRef} />
-          </div>
+              <div ref={bottomRef} />
+            </div>
+          </ScrollArea>
+
+          <ScrollToBottomButton
+            visible={showScrollToBottom}
+            onClick={scrollToBottom}
+          />
         </div>
 
         <ChatComposer
