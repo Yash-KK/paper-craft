@@ -62,7 +62,9 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
   const loadingOlderRef = useRef(false)
-  const primedRef = useRef(false)
+  const initialScrollStartedRef = useRef(false)
+  const [historyPrimed, setHistoryPrimed] = useState(false)
+  const [initialScrollDone, setInitialScrollDone] = useState(false)
   const [isFetchingOlder, setIsFetchingOlder] = useState(false)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
 
@@ -73,12 +75,12 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
   }, [])
 
   useEffect(() => {
-    if (!historyReady || primedRef.current) return
+    if (!historyReady || historyPrimed) return
     if (initialMessages.length) {
       prependOlderMessages(initialMessages)
     }
-    primedRef.current = true
-  }, [historyReady, initialMessages, prependOlderMessages])
+    setHistoryPrimed(true)
+  }, [historyReady, historyPrimed, initialMessages, prependOlderMessages])
 
   const loadOlder = useCallback(async () => {
     if (!hasNextPage || isFetchingNextPage || loadingOlderRef.current) return
@@ -108,16 +110,48 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage, prependOlderMessages])
 
+  // Animate down to the latest messages when the notebook first opens.
   useEffect(() => {
-    if (stickToBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (!historyReady || !historyPrimed || initialScrollStartedRef.current) {
+      return
     }
-  }, [messages, isStreaming])
+
+    const viewport = scrollRef.current
+    if (!viewport) return
+
+    initialScrollStartedRef.current = true
+    stickToBottomRef.current = true
+    setShowScrollToBottom(false)
+
+    if (viewport.scrollHeight <= viewport.clientHeight) {
+      setInitialScrollDone(true)
+      return
+    }
+
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" })
+
+    // `scrollend` is not in every browser yet, so cap the wait with a timer.
+    const finish = () => setInitialScrollDone(true)
+    viewport.addEventListener("scrollend", finish, { once: true })
+    const fallback = window.setTimeout(finish, 800)
+
+    return () => {
+      viewport.removeEventListener("scrollend", finish)
+      window.clearTimeout(fallback)
+    }
+  }, [historyReady, historyPrimed, messages])
+
+  useEffect(() => {
+    if (!initialScrollDone || !stickToBottomRef.current) return
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages, isStreaming, initialScrollDone])
 
   useEffect(() => {
     const viewport = scrollRef.current
     const sentinel = topSentinelRef.current
-    if (!viewport || !sentinel || !historyReady) return
+    if (!viewport || !sentinel || !historyReady || !initialScrollDone) {
+      return
+    }
 
     const onScroll = () => {
       const distanceFromBottom =
@@ -149,7 +183,7 @@ export function ChatPanel({ notebookId, notebookName }: ChatPanelProps) {
       viewport.removeEventListener("scroll", onScroll)
       observer.disconnect()
     }
-  }, [historyReady, loadOlder])
+  }, [historyReady, initialScrollDone, loadOlder])
 
   if (isPending) {
     return (
