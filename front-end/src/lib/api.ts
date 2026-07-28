@@ -14,6 +14,7 @@ import type {
   GeneratePaperPayload,
   GenerationResult,
   QuestionPaperSummary,
+  QuestionPaperVersionDetail,
   SampleBlueprintDetail,
   SampleBlueprintSummary,
 } from "@/lib/types/generation"
@@ -323,6 +324,17 @@ export async function createPaperVersion(
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as GenerationResult
+}
+
+export async function fetchPaperVersion(
+  paperId: string,
+  versionNumber: number
+): Promise<QuestionPaperVersionDetail> {
+  const response = await authFetch(
+    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}`
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as QuestionPaperVersionDetail
 }
 
 export type ExportVariant = "paper" | "answer_key"
