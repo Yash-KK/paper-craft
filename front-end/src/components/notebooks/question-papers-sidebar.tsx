@@ -33,19 +33,13 @@ export function QuestionPapersSidebar({
   const canGenerate = notebook.selected_chapters.length > 0
   const generateHref = `/notebooks/${notebook.id}/generate`
 
-  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set())
+  const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
+    () => new Set()
+  )
   const [selected, setSelected] = React.useState<SelectedVersion | null>(null)
 
-  React.useEffect(() => {
-    if (papers.length === 0) return
-    setExpandedIds((prev) => {
-      if (prev.size > 0) return prev
-      return new Set(papers.map((paper) => paper.id))
-    })
-  }, [papers])
-
   function togglePaper(paperId: string) {
-    setExpandedIds((prev) => {
+    setCollapsedIds((prev) => {
       const next = new Set(prev)
       if (next.has(paperId)) next.delete(paperId)
       else next.add(paperId)
@@ -125,7 +119,7 @@ export function QuestionPapersSidebar({
             </div>
           ) : (
             papers.map((paper) => {
-              const expanded = expandedIds.has(paper.id)
+              const expanded = !collapsedIds.has(paper.id)
               const versions = [...paper.versions].reverse()
 
               return (
