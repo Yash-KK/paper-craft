@@ -174,14 +174,6 @@ export type QuestionPaperVersionDetail = QuestionPaperVersionSummary & {
   answer_key_markdown: string
 }
 
-export const QUESTION_PAPER_STATUS_LABELS: Record<QuestionPaperStatus, string> =
-  {
-    pending: "Queued",
-    running: "Generating",
-    ready: "Ready",
-    failed: "Failed",
-  }
-
 export function isActiveGenerationStatus(status: QuestionPaperStatus): boolean {
   return status === "pending" || status === "running"
 }

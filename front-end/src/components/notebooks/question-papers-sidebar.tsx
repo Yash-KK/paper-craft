@@ -1,18 +1,15 @@
-import { AlertCircle, FileText, Loader2, Plus, Sparkles } from "lucide-react"
-import { Link, useLocation } from "react-router-dom"
+import * as React from "react"
+import { AlertCircle, ChevronDown, Plus, Sparkles } from "lucide-react"
+import { Link } from "react-router-dom"
 
-import { VersionStatusBadge } from "@/features/question-papers/components/version-status-badge"
+import { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
-import {
-  formatRelativeTime,
-  isActiveGenerationStatus,
-  paperHref,
-  versionHref,
-} from "@/features/question-papers/lib/question-paper-utils"
+import { isActiveGenerationStatus } from "@/features/question-papers/lib/question-paper-utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
+import type { QuestionPaperSummary } from "@/lib/types/generation"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
@@ -21,15 +18,48 @@ type QuestionPapersSidebarProps = {
   className?: string
 }
 
+type SelectedVersion = {
+  paperId: string
+  paperTitle: string
+  versionNumber: number
+}
+
 export function QuestionPapersSidebar({
   notebook,
   className,
 }: QuestionPapersSidebarProps) {
-  const location = useLocation()
   const papersQuery = useNotebookPapers(notebook.id)
   const papers = papersQuery.data ?? []
   const canGenerate = notebook.selected_chapters.length > 0
   const generateHref = `/notebooks/${notebook.id}/generate`
+
+  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set())
+  const [selected, setSelected] = React.useState<SelectedVersion | null>(null)
+
+  React.useEffect(() => {
+    if (papers.length === 0) return
+    setExpandedIds((prev) => {
+      if (prev.size > 0) return prev
+      return new Set(papers.map((paper) => paper.id))
+    })
+  }, [papers])
+
+  function togglePaper(paperId: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(paperId)) next.delete(paperId)
+      else next.add(paperId)
+      return next
+    })
+  }
+
+  function openVersion(paper: QuestionPaperSummary, versionNumber: number) {
+    setSelected({
+      paperId: paper.id,
+      paperTitle: paper.title,
+      versionNumber,
+    })
+  }
 
   return (
     <div className={cn("flex h-full min-h-0 w-full flex-col", className)}>
@@ -56,11 +86,6 @@ export function QuestionPapersSidebar({
           <Sparkles className="size-4" aria-hidden />
           Generate Question Paper
         </Button>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {canGenerate
-            ? "Opens the paper builder with sample blueprints and marking scheme."
-            : "Add chapters to this notebook before generating a paper."}
-        </p>
       </div>
 
       <div className="flex items-center justify-between px-4 py-3">
@@ -71,10 +96,10 @@ export function QuestionPapersSidebar({
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-2 px-3 pb-4">
+        <div className="flex flex-col gap-1 px-2 pb-4">
           {papersQuery.isPending ? (
             Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-20 w-full rounded-xl" />
+              <Skeleton key={index} className="h-10 w-full rounded-lg" />
             ))
           ) : papersQuery.isError ? (
             <div className="flex flex-col items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-4">
@@ -82,11 +107,6 @@ export function QuestionPapersSidebar({
                 <AlertCircle className="size-4 shrink-0" aria-hidden />
                 <p className="text-sm font-medium">Couldn&apos;t load papers</p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {papersQuery.error instanceof Error
-                  ? papersQuery.error.message
-                  : "Please try again."}
-              </p>
               <Button
                 type="button"
                 variant="secondary"
@@ -102,93 +122,66 @@ export function QuestionPapersSidebar({
               <p className="text-xs text-muted-foreground">
                 No papers yet. Generate one to get started.
               </p>
-              {canGenerate ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  render={<Link to={generateHref} />}
-                >
-                  Generate paper
-                </Button>
-              ) : null}
             </div>
           ) : (
             papers.map((paper) => {
-              const href = paperHref(notebook.id, paper)
-              const latest = paper.latest_version
-              const isPaperActive =
-                href != null && location.pathname.startsWith(
-                  `/notebooks/${notebook.id}/papers/${paper.id}/`
-                )
+              const expanded = expandedIds.has(paper.id)
+              const versions = [...paper.versions].reverse()
 
               return (
-                <div
-                  key={paper.id}
-                  className={cn(
-                    "rounded-xl border bg-card transition-colors",
-                    isPaperActive && "border-violet-500/40 bg-violet-500/5"
-                  )}
-                >
-                  {href ? (
-                    <Link
-                      to={href}
-                      className="flex w-full items-start gap-3 px-3 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    >
-                      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                        <FileText className="size-4" aria-hidden />
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <p className="truncate text-sm font-medium">
-                          {paper.title}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                          {latest ? (
-                            <VersionStatusBadge status={latest.status} />
-                          ) : null}
-                          {latest ? (
-                            <span>v{latest.version_number}</span>
-                          ) : null}
-                          <span>{formatRelativeTime(paper.updated_at)}</span>
-                          {latest && isActiveGenerationStatus(latest.status) ? (
-                            <Loader2
-                              className="size-3 animate-spin text-sky-600"
-                              aria-label="Generating"
-                            />
-                          ) : null}
-                        </div>
-                      </div>
-                    </Link>
-                  ) : (
-                    <div className="px-3 py-3 text-sm text-muted-foreground">
-                      {paper.title}
-                    </div>
-                  )}
+                <div key={paper.id} className="rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => togglePaper(paper.id)}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium hover:bg-muted/60"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground transition-transform",
+                        !expanded && "-rotate-90"
+                      )}
+                      aria-hidden
+                    />
+                    <span className="truncate">{paper.title}</span>
+                  </button>
 
-                  {paper.versions.length > 1 ? (
-                    <div className="space-y-1 border-t px-3 py-2">
-                      {[...paper.versions].reverse().map((version) => {
-                        const versionPath = versionHref(
-                          notebook.id,
-                          paper.id,
-                          version.version_number
+                  {expanded ? (
+                    <ul className="ml-4 space-y-0.5 border-l border-border/70 py-1 pl-3">
+                      {versions.map((version) => {
+                        const processing = isActiveGenerationStatus(
+                          version.status
                         )
-                        const active = location.pathname === versionPath
+                        const ready = version.status === "ready"
+                        const label = processing
+                          ? `Version ${version.version_number} (Processing...)`
+                          : `Version ${version.version_number}`
+
+                        if (!ready) {
+                          return (
+                            <li
+                              key={version.id}
+                              className="px-2 py-1.5 text-xs text-muted-foreground"
+                            >
+                              {label}
+                            </li>
+                          )
+                        }
+
                         return (
-                          <Link
-                            key={version.id}
-                            to={versionPath}
-                            className={cn(
-                              "flex min-h-10 items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring",
-                              active && "bg-muted font-medium"
-                            )}
-                          >
-                            <span>Version {version.version_number}</span>
-                            <VersionStatusBadge status={version.status} />
-                          </Link>
+                          <li key={version.id}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openVersion(paper, version.version_number)
+                              }
+                              className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/60"
+                            >
+                              {label}
+                            </button>
+                          </li>
                         )
                       })}
-                    </div>
+                    </ul>
                   ) : null}
                 </div>
               )
@@ -196,6 +189,18 @@ export function QuestionPapersSidebar({
           )}
         </div>
       </ScrollArea>
+
+      {selected ? (
+        <PaperVersionDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSelected(null)
+          }}
+          paperId={selected.paperId}
+          paperTitle={selected.paperTitle}
+          versionNumber={selected.versionNumber}
+        />
+      ) : null}
     </div>
   )
 }

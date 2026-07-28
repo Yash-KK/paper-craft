@@ -5,7 +5,6 @@ import { DashboardPage } from "@/pages/dashboard"
 import { GeneratePaperPage } from "@/pages/generate-paper"
 import { HomePage } from "@/pages/home"
 import { NotebookPage } from "@/pages/notebook"
-import { PaperVersionPage } from "@/pages/paper-version"
 import { ProfileUpdatePage } from "@/pages/profile-update"
 
 export function App() {
@@ -18,10 +17,6 @@ export function App() {
         <Route
           path="notebooks/:notebookId/generate"
           element={<GeneratePaperPage />}
-        />
-        <Route
-          path="notebooks/:notebookId/papers/:paperId/versions/:versionNumber"
-          element={<PaperVersionPage />}
         />
         <Route path="profile-update" element={<ProfileUpdatePage />} />
       </Route>

@@ -1,12 +1,10 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
-import { useNavigate } from "react-router-dom"
 
 import { useCreatePaperVersion } from "@/features/question-papers/hooks/use-create-paper-version"
 import {
   canCreateNewVersion,
   isActiveGenerationStatus,
-  versionHref,
 } from "@/features/question-papers/lib/question-paper-utils"
 import type { QuestionPaperSummary } from "@/lib/types/generation"
 import type { PersistedMessage } from "@/features/chat/types/chat"
@@ -47,7 +45,6 @@ export function NewVersionDialog({
   hasMoreMessages = false,
   loadingMoreMessages = false,
 }: NewVersionDialogProps) {
-  const navigate = useNavigate()
   const [teacherInstructions, setTeacherInstructions] = React.useState("")
   const createVersion = useCreatePaperVersion(paper?.id ?? "", notebookId)
 
@@ -69,16 +66,13 @@ export function NewVersionDialog({
 
   async function handleCreate() {
     if (!paper || !canCreateNewVersion(paper)) return
-    const result = await createVersion.mutateAsync({
+    await createVersion.mutateAsync({
       selected_message_ids: selectedMessageIds,
       teacher_instructions: teacherInstructions.trim() || null,
     })
     onOpenChange(false)
     setTeacherInstructions("")
     onSelectedMessageIdsChange([])
-    navigate(
-      versionHref(notebookId, result.paper_id, result.version_number)
-    )
   }
 
   const disabled =

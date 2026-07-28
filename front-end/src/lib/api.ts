@@ -14,7 +14,6 @@ import type {
   GeneratePaperPayload,
   GenerationResult,
   QuestionPaperSummary,
-  QuestionPaperVersionDetail,
   SampleBlueprintDetail,
   SampleBlueprintSummary,
 } from "@/lib/types/generation"
@@ -311,17 +310,6 @@ export async function fetchNotebookPapers(
   return (await response.json()) as QuestionPaperSummary[]
 }
 
-export async function fetchPaperVersion(
-  paperId: string,
-  versionNumber: number
-): Promise<QuestionPaperVersionDetail> {
-  const response = await authFetch(
-    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}`
-  )
-  if (!response.ok) throw new Error(await parseApiError(response))
-  return (await response.json()) as QuestionPaperVersionDetail
-}
-
 export async function createPaperVersion(
   paperId: string,
   payload: GenerateNewVersionPayload
@@ -356,11 +344,11 @@ function filenameFromContentDisposition(
   return plainMatch?.[1]?.trim() || fallback
 }
 
-export async function downloadVersionExport(
+export async function fetchVersionExport(
   paperId: string,
   versionNumber: number,
   variant: ExportVariant = "paper"
-): Promise<void> {
+): Promise<{ blob: Blob; filename: string }> {
   const params = new URLSearchParams({ variant })
   const response = await authFetch(
     `/api/v1/generation/papers/${paperId}/versions/${versionNumber}/export?${params}`
@@ -375,6 +363,19 @@ export async function downloadVersionExport(
   const filename = filenameFromContentDisposition(
     response.headers.get("Content-Disposition"),
     fallback
+  )
+  return { blob, filename }
+}
+
+export async function downloadVersionExport(
+  paperId: string,
+  versionNumber: number,
+  variant: ExportVariant = "paper"
+): Promise<void> {
+  const { blob, filename } = await fetchVersionExport(
+    paperId,
+    versionNumber,
+    variant
   )
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement("a")
