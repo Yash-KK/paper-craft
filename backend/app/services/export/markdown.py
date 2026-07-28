@@ -62,7 +62,10 @@ def render_paper_markdown(
     instructions_by_section = _section_instructions_map(question_paper)
     sections = final_paper.get("sections") or {}
 
-    for section_name, questions in sections.items():
+    for section_name in _ordered_section_names(question_paper, sections):
+        questions = sections.get(section_name) or []
+        if not questions:
+            continue
         lines.append(f"## {section_name}")
         section_instr = instructions_by_section.get(section_name)
         if section_instr and str(section_instr).strip():
@@ -108,7 +111,10 @@ def render_answer_key_markdown(
     lines.append(f"# {exam} — Answer Key")
 
     sections = final_answer_key.get("sections") or {}
-    for section_name, items in sections.items():
+    for section_name in _ordered_section_names(question_paper, sections):
+        items = sections.get(section_name) or []
+        if not items:
+            continue
         lines.append(f"## {section_name}")
         for item in items:
             label = f"Q{item.get('question_number', '')}"
@@ -158,6 +164,23 @@ def _section_instructions_map(question_paper: Any) -> dict[str, str | None]:
         if name:
             result[str(name)] = instr
     return result
+
+
+def _ordered_section_names(
+    question_paper: Any, assembled_sections: dict[str, Any]
+) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for section in _get(question_paper, "sections") or []:
+        name = _get(section, "section_name")
+        if name and str(name) not in seen:
+            ordered.append(str(name))
+            seen.add(str(name))
+    for name in assembled_sections:
+        if name not in seen:
+            ordered.append(name)
+            seen.add(name)
+    return ordered
 
 
 def _section_scheme(questions: list[dict[str, Any]]) -> str | None:

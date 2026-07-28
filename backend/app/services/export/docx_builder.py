@@ -1,7 +1,8 @@
 """Build styled question-paper / answer-key DOCX files from generation JSON.
 
-Ported from ``notebooks/export_to_docx.py``. Requires ``pandoc`` on PATH for
-LaTeX → native Word equation conversion.
+The reference DOCX (e.g. ``samples/40_marks_sample.docx``) is used only for
+page layout / styles. All visible content comes from Paper Details and the
+generated paper JSON. Requires ``pandoc`` on PATH for LaTeX → Word equations.
 """
 
 from __future__ import annotations
@@ -150,6 +151,7 @@ def add_rich_block(doc, text, **kwargs):
 
 
 def load_template(reference_docx: str | Path) -> Document:
+    """Keep styles / page setup from the reference; strip all body content."""
     doc = docx.Document(str(reference_docx))
     body = doc.element.body
     sect_pr = body.find(qn("w:sectPr"))
@@ -157,25 +159,6 @@ def load_template(reference_docx: str | Path) -> Document:
         if child is not sect_pr:
             body.remove(child)
     return doc
-
-
-def _insert_before_sectpr(doc, element):
-    sect_pr = doc.element.body.find(qn("w:sectPr"))
-    sect_pr.addprevious(element)
-
-
-def clone_paragraphs(reference_docx: str | Path, doc, start: int, end: int):
-    source_doc = docx.Document(str(reference_docx))
-    for paragraph in source_doc.paragraphs[start:end]:
-        _insert_before_sectpr(doc, copy.deepcopy(paragraph._p))
-
-
-def find_paragraph_index(reference_docx: str | Path, predicate) -> int | None:
-    source_doc = docx.Document(str(reference_docx))
-    for i, paragraph in enumerate(source_doc.paragraphs):
-        if predicate(paragraph.text):
-            return i
-    return None
 
 
 def add_bottom_border(paragraph, size=12, color="000000"):
@@ -205,88 +188,106 @@ def format_option_label(raw_option: str, index: int) -> str:
     return f"({letter}) {stripped}"
 
 
+def _get_paper_field(question_paper: Any, key: str, default: Any = None) -> Any:
+    if isinstance(question_paper, dict):
+        return question_paper.get(key, default)
+    return getattr(question_paper, key, default)
+
+
 def header_from_question_paper(question_paper: Any) -> dict[str, Any]:
-    if hasattr(question_paper, "subject"):
-        get = lambda key: getattr(question_paper, key)
-    else:
-        get = lambda key: question_paper.get(key)
+    exam_date = _get_paper_field(question_paper, "exam_date")
+    if exam_date is not None and hasattr(exam_date, "isoformat"):
+        exam_date = exam_date.isoformat()
     return {
-        "school_name": get("school_name"),
-        "exam_title": get("exam_title"),
-        "subject": get("subject"),
-        "grade": get("grade"),
-        "total_marks": get("total_marks"),
-        "duration_minutes": get("duration_minutes"),
-        "general_instructions": get("general_instructions") or [],
+        "school_name": _get_paper_field(question_paper, "school_name"),
+        "exam_title": _get_paper_field(question_paper, "exam_title"),
+        "subject": _get_paper_field(question_paper, "subject"),
+        "grade": _get_paper_field(question_paper, "grade"),
+        "total_marks": _get_paper_field(question_paper, "total_marks"),
+        "duration_minutes": _get_paper_field(question_paper, "duration_minutes"),
+        "exam_date": exam_date,
+        "general_instructions": _get_paper_field(
+            question_paper, "general_instructions"
+        )
+        or [],
     }
+
+
+def _format_duration(duration_minutes: Any) -> str:
+    if not duration_minutes:
+        return ""
+    hours = float(duration_minutes) / 60
+    return f"DURATION: {hours:g} HOUR(S)"
 
 
 def add_header_block(
     doc,
     header: dict,
-    reference_docx: str | Path,
     title_suffix: str | None = None,
 ):
-    name_line_idx = find_paragraph_index(
-        reference_docx, lambda t: t.strip().upper().startswith("NAME:")
-    )
-    if name_line_idx is not None:
-        clone_paragraphs(reference_docx, doc, 0, name_line_idx)
-        if title_suffix:
-            add_rich_paragraph(
-                doc,
-                title_suffix,
-                bold=True,
-                size_pt=SIZE_EXAM_TITLE,
-                alignment=WD_ALIGN_PARAGRAPH.CENTER,
-            )
-    else:
-        if header.get("school_name"):
-            add_rich_paragraph(
-                doc,
-                header["school_name"],
-                bold=True,
-                size_pt=SIZE_SCHOOL_NAME,
-                alignment=WD_ALIGN_PARAGRAPH.CENTER,
-            )
-        title = header.get("exam_title") or ""
-        if title_suffix:
-            title = f"{title} - {title_suffix}" if title else title_suffix
-        if title:
-            add_rich_paragraph(
-                doc,
-                title,
-                bold=True,
-                size_pt=SIZE_EXAM_TITLE,
-                alignment=WD_ALIGN_PARAGRAPH.CENTER,
-            )
+    """Write paper-details header only — never copy text from the sample DOCX."""
+    school_name = (header.get("school_name") or "").strip()
+    if school_name:
+        add_rich_paragraph(
+            doc,
+            school_name,
+            bold=True,
+            size_pt=SIZE_SCHOOL_NAME,
+            alignment=WD_ALIGN_PARAGRAPH.CENTER,
+        )
 
-    grade_line = (
-        f"NAME: {'…' * 18}   ROLL NO: {'…' * 6}   GRADE: {header.get('grade', '')}"
-    )
-    add_rich_paragraph(doc, grade_line, bold=True, size_pt=SIZE_BODY)
+    title = (header.get("exam_title") or "").strip()
+    if title_suffix:
+        title = f"{title} - {title_suffix}" if title else title_suffix
+    if title:
+        add_rich_paragraph(
+            doc,
+            title,
+            bold=True,
+            size_pt=SIZE_EXAM_TITLE,
+            alignment=WD_ALIGN_PARAGRAPH.CENTER,
+        )
 
+    grade = header.get("grade")
+    grade_txt = "" if grade is None else str(grade)
+    add_rich_paragraph(
+        doc,
+        f"NAME: {'…' * 18}   ROLL NO: {'…' * 6}   GRADE: {grade_txt}",
+        bold=True,
+        size_pt=SIZE_BODY,
+    )
+
+    subject = (header.get("subject") or "").strip()
+    exam_date = (header.get("exam_date") or "").strip()
+    subject_bits = [f"SUBJECT: {subject}" if subject else "SUBJECT:"]
+    if exam_date:
+        subject_bits.append(f"DATE: {exam_date}")
     subject_line = add_rich_paragraph(
         doc,
-        f"SUBJECT: {header.get('subject', '')}",
+        "          ".join(subject_bits),
         bold=True,
         size_pt=SIZE_BODY,
     )
     add_bottom_border(subject_line)
 
-    duration_txt = ""
-    if header.get("duration_minutes"):
-        hours = header["duration_minutes"] / 60
-        duration_txt = f"DURATION: {hours:g} HOUR(S)"
+    duration_txt = _format_duration(header.get("duration_minutes"))
+    total_marks = header.get("total_marks")
+    marks_txt = "" if total_marks is None else str(total_marks)
+    marks_bits = [bit for bit in [duration_txt, f"MAX MARKS: {marks_txt}"] if bit]
     marks_line = add_rich_paragraph(
         doc,
-        f"{duration_txt}          MAX MARKS: {header.get('total_marks', '')}",
+        "          ".join(marks_bits),
         bold=True,
         size_pt=SIZE_BODY,
     )
     add_bottom_border(marks_line)
 
-    if header.get("general_instructions"):
+    instructions = [
+        str(instr).strip()
+        for instr in (header.get("general_instructions") or [])
+        if str(instr).strip()
+    ]
+    if instructions:
         add_rich_paragraph(doc, "General Instructions:", bold=True, size_pt=SIZE_BODY)
         add_rich_paragraph(
             doc,
@@ -294,7 +295,7 @@ def add_header_block(
             bold=True,
             size_pt=SIZE_BODY,
         )
-        for instr in header["general_instructions"]:
+        for instr in instructions:
             paragraph = add_rich_paragraph(doc, instr, size_pt=SIZE_BODY)
             set_list_numbering(doc, paragraph, num_id=1)
         add_blank_line(doc)
@@ -383,11 +384,9 @@ def add_question(doc, q: dict, case_study_number: int | None = None):
 
 
 def section_instructions_map(question_paper: Any) -> dict[str, str | None]:
-    sections = getattr(question_paper, "sections", None)
-    if sections is None and isinstance(question_paper, dict):
-        sections = question_paper.get("sections", [])
+    sections = _get_paper_field(question_paper, "sections") or []
     result: dict[str, str | None] = {}
-    for section in sections or []:
+    for section in sections:
         if isinstance(section, dict):
             name, instr = section.get("section_name"), section.get(
                 "section_instructions"
@@ -400,16 +399,41 @@ def section_instructions_map(question_paper: Any) -> dict[str, str | None]:
     return result
 
 
+def ordered_section_names(question_paper: Any, assembled_sections: dict) -> list[str]:
+    """Prefer Paper Details / marking-scheme order; append any extras last."""
+    blueprint_sections = _get_paper_field(question_paper, "sections") or []
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for section in blueprint_sections:
+        name = (
+            section.get("section_name")
+            if isinstance(section, dict)
+            else getattr(section, "section_name", None)
+        )
+        if name and name not in seen:
+            ordered.append(name)
+            seen.add(name)
+    for name in assembled_sections:
+        if name not in seen:
+            ordered.append(name)
+            seen.add(name)
+    return ordered
+
+
 def _build_question_paper_document(
     question_paper: Any,
     final_paper: dict,
     reference_docx: str | Path,
 ) -> Document:
     doc = load_template(reference_docx)
-    add_header_block(doc, header_from_question_paper(question_paper), reference_docx)
+    add_header_block(doc, header_from_question_paper(question_paper))
 
+    sections = final_paper.get("sections") or {}
     instructions_by_section = section_instructions_map(question_paper)
-    for section_name, questions in final_paper["sections"].items():
+    for section_name in ordered_section_names(question_paper, sections):
+        questions = sections.get(section_name) or []
+        if not questions:
+            continue
         add_section_header(
             doc,
             section_name,
@@ -435,11 +459,14 @@ def _build_answer_key_document(
     add_header_block(
         doc,
         header_from_question_paper(question_paper),
-        reference_docx,
         title_suffix="Answer Key",
     )
 
-    for section_name, items in final_answer_key["sections"].items():
+    sections = final_answer_key.get("sections") or {}
+    for section_name in ordered_section_names(question_paper, sections):
+        items = sections.get(section_name) or []
+        if not items:
+            continue
         add_blank_line(doc)
         add_rich_paragraph(
             doc,
