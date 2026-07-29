@@ -317,7 +317,7 @@ export function GeneratePaperForm({
             <div className="space-y-4">
               {form.blueprint.sections.map((section, index) => (
                 <MarkingSchemeSection
-                  key={`${section.section_name}-${index}`}
+                  key={index}
                   index={index}
                   section={section}
                   chapters={form.chapters}

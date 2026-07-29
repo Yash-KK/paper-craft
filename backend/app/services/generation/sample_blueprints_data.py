@@ -125,7 +125,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
     "metadata": {},
     "sections": [
         {
-            "section_name": "MCQ",
+            "section_name": "Section A",
             "question_type": "MCQ",
             "marks_each": 1,
             "section_instructions": None,
@@ -144,7 +144,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             ],
         },
         {
-            "section_name": "VSA",
+            "section_name": "Section B",
             "question_type": "VSA",
             "marks_each": 2,
             "section_instructions": None,
@@ -155,7 +155,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             ],
         },
         {
-            "section_name": "SA",
+            "section_name": "Section C",
             "question_type": "SA",
             "marks_each": 3,
             "section_instructions": None,
@@ -167,7 +167,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             ],
         },
         {
-            "section_name": "LA",
+            "section_name": "Section D",
             "question_type": "LA",
             "marks_each": 5,
             "section_instructions": None,
@@ -178,7 +178,7 @@ FORTY_MARKS_BLUEPRINT: dict[str, Any] = {
             ],
         },
         {
-            "section_name": "CBQ",
+            "section_name": "Section E",
             "question_type": "CASE_STUDY",
             "marks_each": 4,
             "section_instructions": None,

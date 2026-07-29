@@ -63,6 +63,7 @@ def build_slots(
     question_number = 0
 
     for section in question_paper.sections:
+        section_slots: list[Slot] = []
         section_sub_parts = [
             SlotSubPart(label=part.label, marks=part.marks)
             for part in section.sub_parts
@@ -88,7 +89,7 @@ def build_slots(
                     if allocation.marks is not None
                     else section.marks_each
                 )
-                slots.append(
+                section_slots.append(
                     Slot(
                         slot_id=f"Q{question_number}",
                         section_name=section.section_name,
@@ -105,6 +106,24 @@ def build_slots(
                         sub_parts=list(section_sub_parts),
                     )
                 )
+
+        if (
+            section.question_type == QuestionType.MCQ
+            and len(section_slots) >= 2
+        ):
+            for i in range(-2, 0):
+                slot = section_slots[i]
+                if slot.question_type != QuestionType.ASSERTION_REASON:
+                    section_slots[i] = slot.model_copy(
+                        update={
+                            "question_type": QuestionType.ASSERTION_REASON,
+                            "content_types": TYPE_CONTENT_TYPES[
+                                QuestionType.ASSERTION_REASON
+                            ],
+                        }
+                    )
+
+        slots.extend(section_slots)
 
     return slots
 

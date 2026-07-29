@@ -73,7 +73,13 @@ def test_forty_marks_blueprint_expands_to_forty_marks():
     slots = build_slots(blueprint, chapters)
     assert len(slots) == 19
     assert sum(s.marks or 0 for s in slots) == 40
-    assert {s.section_name for s in slots} == {"MCQ", "VSA", "SA", "LA", "CBQ"}
+    assert {s.section_name for s in slots} == {
+        "Section A",
+        "Section B",
+        "Section C",
+        "Section D",
+        "Section E",
+    }
     assert [s.question_number for s in slots if s.question_type.value == "ASSERTION_REASON"] == [
         9,
         10,
@@ -107,7 +113,13 @@ def test_revision_sheet_blueprint_has_no_marks():
     assert len(case_slots) == 2
     assert [part.label for part in case_slots[0].sub_parts] == ["i", "ii", "iii"]
     ar_slots = [s for s in slots if s.question_type.value == "ASSERTION_REASON"]
-    assert len(ar_slots) == 3
+    # Dedicated AR section (3) plus last two of the MCQ section.
+    assert len(ar_slots) == 5
+    mcq_section = [s for s in slots if s.section_name.startswith("SECTION I")]
+    assert [s.question_type.value for s in mcq_section[-2:]] == [
+        "ASSERTION_REASON",
+        "ASSERTION_REASON",
+    ]
 
 
 def test_blueprint_rejects_total_that_differs_from_sections():
