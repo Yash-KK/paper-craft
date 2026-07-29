@@ -73,7 +73,7 @@ class BlueprintSubPart(BaseModel):
 
 class BlueprintSection(BaseModel):
     section_name: str = Field(
-        description="Display name for the section, e.g. 'MCQ', 'VSA', 'CBQ'."
+        description="Display name for the section, e.g. 'Section A', 'Section B'."
     )
     question_type: QuestionType = Field(
         description="Question type for this section (CBQ maps to CASE_STUDY)."

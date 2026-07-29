@@ -25,6 +25,16 @@ from docx.shared import Pt
 from docx.text.run import Run
 
 from app.services.export.latex import normalize_newlines, prepare_markdown_for_pandoc
+from app.services.export.section_copy import (
+    format_option_label,
+    format_options_line,
+    format_section_heading,
+    infer_section_question_type,
+    options_should_be_single_line,
+    section_description,
+    section_marks_summary,
+    strip_embedded_options,
+)
 
 FONT_NAME = "Bookman Old Style"
 SIZE_SCHOOL_NAME = 16
@@ -182,12 +192,6 @@ def set_list_numbering(doc, paragraph, num_id: int, ilvl: int = 0):
     p_pr.append(num_pr)
 
 
-def format_option_label(raw_option: str, index: int) -> str:
-    letter = "abcd"[index] if index < 4 else chr(ord("a") + index)
-    stripped = re.sub(r"^\s*\(?[a-dA-D]\)?[.\)]\s*", "", raw_option).strip()
-    return f"({letter}) {stripped}"
-
-
 def _get_paper_field(question_paper: Any, key: str, default: Any = None) -> Any:
     if isinstance(question_paper, dict):
         return question_paper.get(key, default)
@@ -306,46 +310,39 @@ def add_section_header(
     section_name: str,
     section_questions: list[dict],
     section_instructions: str | None = None,
+    question_type: str | None = None,
 ):
     add_blank_line(doc)
-    match = re.match(
-        r"^Section\s+([A-Za-z0-9]+)$", section_name.strip(), flags=re.IGNORECASE
-    )
-    display_name = (
-        f"SECTION \u2013 {match.group(1).upper()}" if match else section_name.upper()
-    )
     add_rich_paragraph(
         doc,
-        display_name,
+        format_section_heading(section_name),
         bold=True,
         size_pt=SIZE_BODY,
         alignment=WD_ALIGN_PARAGRAPH.CENTER,
     )
     add_blank_line(doc)
 
+    count, marks_each, total = section_marks_summary(section_questions)
     if section_instructions and section_instructions.strip():
-        add_rich_paragraph(
-            doc,
-            section_instructions.strip(),
-            bold=True,
-            size_pt=SIZE_BODY,
-            alignment=WD_ALIGN_PARAGRAPH.CENTER,
-        )
-        return
-
-    total = sum(q["marks"] for q in section_questions)
-    marks_values = {q["marks"] for q in section_questions}
-    if len(marks_values) == 1:
-        each = marks_values.pop()
-        scheme = f"{len(section_questions)}X{each:g}={total:g}M"
+        description = section_instructions.strip()
+        if marks_each is not None and "×" not in description:
+            description = (
+                f"{description}      {count} × {marks_each:g} = {total:g}M"
+            )
     else:
-        scheme = f"{len(section_questions)} questions, {total:g}M total"
+        description = section_description(
+            question_type=question_type
+            or infer_section_question_type(section_questions),
+            question_count=count,
+            marks_each=marks_each,
+            total_marks=total,
+        )
     add_rich_paragraph(
         doc,
-        scheme,
+        description,
         bold=True,
         size_pt=SIZE_BODY,
-        alignment=WD_ALIGN_PARAGRAPH.CENTER,
+        alignment=WD_ALIGN_PARAGRAPH.LEFT,
     )
 
 
@@ -359,16 +356,27 @@ def add_question(doc, q: dict, case_study_number: int | None = None):
             alignment=WD_ALIGN_PARAGRAPH.CENTER,
         )
 
+    question_text = q.get("question_text") or ""
+    options = q.get("options") or []
+    if options:
+        question_text = strip_embedded_options(question_text)
+
     add_rich_block(
-        doc, f"{q['question_number']}. {q['question_text']}", size_pt=SIZE_BODY
+        doc, f"{q['question_number']}. {question_text}", size_pt=SIZE_BODY
     )
 
-    if q.get("options"):
-        formatted = [
-            format_option_label(opt, i) for i, opt in enumerate(q["options"])
-        ]
-        options_line = "      ".join(formatted)
-        add_rich_paragraph(doc, options_line, size_pt=SIZE_BODY, indent_cm=0.5)
+    if options:
+        if options_should_be_single_line(q.get("question_type")):
+            options_line = format_options_line(options, single_line=True)
+            add_rich_paragraph(doc, options_line, size_pt=SIZE_BODY, indent_cm=0.5)
+        else:
+            for i, opt in enumerate(options):
+                add_rich_paragraph(
+                    doc,
+                    format_option_label(opt, i),
+                    size_pt=SIZE_BODY,
+                    indent_cm=0.5,
+                )
 
     if q.get("alternate_question_text"):
         add_rich_paragraph(
@@ -378,7 +386,10 @@ def add_question(doc, q: dict, case_study_number: int | None = None):
             size_pt=SIZE_BODY,
             alignment=WD_ALIGN_PARAGRAPH.CENTER,
         )
-        add_rich_block(doc, q["alternate_question_text"], size_pt=SIZE_BODY)
+        alt = q["alternate_question_text"]
+        if options:
+            alt = strip_embedded_options(alt)
+        add_rich_block(doc, alt, size_pt=SIZE_BODY)
 
     add_blank_line(doc)
 
@@ -396,6 +407,23 @@ def section_instructions_map(question_paper: Any) -> dict[str, str | None]:
             instr = getattr(section, "section_instructions", None)
         if name:
             result[name] = instr
+    return result
+
+
+def section_question_type_map(question_paper: Any) -> dict[str, str | None]:
+    sections = _get_paper_field(question_paper, "sections") or []
+    result: dict[str, str | None] = {}
+    for section in sections:
+        if isinstance(section, dict):
+            name = section.get("section_name")
+            qtype = section.get("question_type")
+        else:
+            name = getattr(section, "section_name", None)
+            qtype = getattr(section, "question_type", None)
+        if name:
+            if qtype is not None and hasattr(qtype, "value"):
+                qtype = qtype.value
+            result[str(name)] = str(qtype) if qtype else None
     return result
 
 
@@ -430,6 +458,7 @@ def _build_question_paper_document(
 
     sections = final_paper.get("sections") or {}
     instructions_by_section = section_instructions_map(question_paper)
+    type_by_section = section_question_type_map(question_paper)
     for section_name in ordered_section_names(question_paper, sections):
         questions = sections.get(section_name) or []
         if not questions:
@@ -439,6 +468,7 @@ def _build_question_paper_document(
             section_name,
             questions,
             instructions_by_section.get(section_name),
+            question_type=type_by_section.get(section_name),
         )
         case_study_counter = 0
         for question in questions:

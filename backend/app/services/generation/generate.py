@@ -27,8 +27,8 @@ GROUNDING
 EACH QUESTION must be academically correct, unambiguous, fully solvable, concise, and must match the spec's question type — without revealing its answer. When marks are provided, match them; when marks are null/absent, treat the item as ungraded practice and keep marking_rubric empty or brief answer notes only.
 
 TYPE SPECIFICS
-- MCQ: exactly 4 plausible, not-trivially-eliminable options; correct_option ∈ {a,b,c,d}. Prefer adapting a textbook exercise when one fits.
-- ASSERTION_REASON: question_text holds ONLY the Assertion (A) and Reason (R) (no options — appended later), both grounded in the source; correct_option ∈ {a,b,c,d} where a=both true & R explains A, b=both true & R doesn't explain A, c=A true R false, d=A false R true.
+- MCQ: exactly 4 plausible, not-trivially-eliminable options in the options array only; correct_option ∈ {a,b,c,d}. Never list A)/B)/C)/D) or (a)/(b)/(c)/(d) inside question_text — options are rendered separately. Prefer adapting a textbook exercise when one fits.
+- ASSERTION_REASON: question_text holds ONLY the Assertion (A) and Reason (R) (no options — standard AR choices are appended later), both grounded in the source; correct_option ∈ {a,b,c,d} where a=both true & R explains A, b=both true & R doesn't explain A, c=A true R false, d=A false R true.
 - CASE_STUDY (sub_parts present): one shared scenario, then each sub-part in order, labeled (i),(ii),(iii)…; include marks only when the sub-part specifies them.
 - SA/LA/VSA: grounded in source examples/theory; change numbers/context so the question is not a verbatim copy when adapting examples.
 
