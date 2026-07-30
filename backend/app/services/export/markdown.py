@@ -8,6 +8,7 @@ from app.services.export.latex import normalize_newlines
 from app.services.export.section_copy import (
     format_option_label,
     format_options_line,
+    format_question_markdown_lines,
     format_section_heading,
     infer_section_question_type,
     options_should_be_single_line,
@@ -94,12 +95,12 @@ def render_paper_markdown(
                 case_study_counter += 1
                 lines.append(f"### Case Study - {case_study_counter}")
 
-            q_num = q.get("question_number", "")
+            q_num = q.get("question_number")
             q_text = normalize_newlines(q.get("question_text") or "").strip()
             options = q.get("options") or []
             if options:
                 q_text = strip_embedded_options(q_text)
-            lines.append(f"**{q_num}.** {q_text}")
+            lines.extend(format_question_markdown_lines(q_num, q_text))
 
             if options:
                 if options_should_be_single_line(q.get("question_type")):

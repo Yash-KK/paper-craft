@@ -21,16 +21,16 @@ from docx.document import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml
 from docx.oxml.ns import qn
-from docx.shared import Pt
+from docx.shared import Cm, Pt
 from docx.text.run import Run
 
 from app.services.export.latex import normalize_newlines, prepare_markdown_for_pandoc
 from app.services.export.section_copy import (
     format_option_label,
-    format_options_line,
     format_section_heading,
     infer_section_question_type,
     options_should_be_single_line,
+    question_body_lines,
     section_description,
     section_marks_summary,
     strip_embedded_options,
@@ -41,6 +41,9 @@ SIZE_SCHOOL_NAME = 16
 SIZE_EXAM_TITLE = 14
 SIZE_BODY = 12
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+INLINE_OPTION_TAB_STOPS_CM = (3.8, 7.2, 10.6)
+QUESTION_BODY_INDENT_CM = 0.5
+QUESTION_CONTINUATION_INDENT_CM = 0.75
 
 DOCX_MEDIA_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -346,6 +349,42 @@ def add_section_header(
     )
 
 
+def add_plain_paragraph(
+    doc,
+    text,
+    *,
+    size_pt=SIZE_BODY,
+    font_name=FONT_NAME,
+    indent_cm=None,
+):
+    paragraph = doc.add_paragraph()
+    _tighten_spacing(paragraph)
+    if indent_cm is not None:
+        paragraph.paragraph_format.left_indent = Cm(indent_cm)
+    run = paragraph.add_run(text)
+    run.font.name = font_name
+    run.font.size = Pt(size_pt)
+    return paragraph
+
+
+def add_inline_options_paragraph(doc, options: list[str], *, indent_cm=QUESTION_BODY_INDENT_CM):
+    """Render MCQ options on one line with tab stops (pandoc collapses spaces)."""
+    paragraph = doc.add_paragraph()
+    _tighten_spacing(paragraph)
+    paragraph.paragraph_format.left_indent = Cm(indent_cm)
+    tab_stops = paragraph.paragraph_format.tab_stops
+    for position in INLINE_OPTION_TAB_STOPS_CM:
+        tab_stops.add_tab_stop(Cm(position))
+
+    for index, option in enumerate(options):
+        if index > 0:
+            paragraph.add_run("\t")
+        run = paragraph.add_run(format_option_label(option, index))
+        run.font.name = FONT_NAME
+        run.font.size = Pt(SIZE_BODY)
+    return paragraph
+
+
 def add_question(doc, q: dict, case_study_number: int | None = None):
     if case_study_number is not None:
         add_rich_paragraph(
@@ -361,21 +400,24 @@ def add_question(doc, q: dict, case_study_number: int | None = None):
     if options:
         question_text = strip_embedded_options(question_text)
 
-    add_rich_block(
-        doc, f"{q['question_number']}. {question_text}", size_pt=SIZE_BODY
-    )
+    body_lines = question_body_lines(q.get("question_number"), question_text)
+    for index, line in enumerate(body_lines):
+        indent_cm = (
+            QUESTION_BODY_INDENT_CM
+            if index == 0
+            else QUESTION_CONTINUATION_INDENT_CM
+        )
+        add_rich_paragraph(doc, line, size_pt=SIZE_BODY, indent_cm=indent_cm)
 
     if options:
         if options_should_be_single_line(q.get("question_type")):
-            options_line = format_options_line(options, single_line=True)
-            add_rich_paragraph(doc, options_line, size_pt=SIZE_BODY, indent_cm=0.5)
+            add_inline_options_paragraph(doc, options)
         else:
             for i, opt in enumerate(options):
-                add_rich_paragraph(
+                add_plain_paragraph(
                     doc,
                     format_option_label(opt, i),
-                    size_pt=SIZE_BODY,
-                    indent_cm=0.5,
+                    indent_cm=QUESTION_BODY_INDENT_CM,
                 )
 
     if q.get("alternate_question_text"):
