@@ -1,10 +1,7 @@
-import json
-import tempfile
-from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import or_, select
 
@@ -84,86 +81,27 @@ async def get_sample_blueprint(
     return SampleBlueprintDetail.model_validate(row)
 
 
-async def _save_format_reference(upload: UploadFile) -> Path:
-    filename = (upload.filename or "").lower()
-    if not filename.endswith(".docx"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Format reference must be a .docx file",
-        )
-
-    content = await upload.read()
-    if not content:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded format reference is empty",
-        )
-
-    tmp_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
-            tmp_path = Path(tmp.name)
-            tmp.write(content)
-        return tmp_path.resolve()
-    except Exception as exc:
-        if tmp_path is not None:
-            tmp_path.unlink(missing_ok=True)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid format reference: {exc}",
-        ) from exc
-
-
 @generation_router.post(
     "/papers",
     response_model=GenerationResult,
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def create_question_paper(
+    body: GeneratePaperRequest,
     current_user: CurrentUser,
     db: SessionDep,
-    payload: Annotated[
-        str, Form(description="JSON GeneratePaperRequest body")
-    ],
-    format_reference: Annotated[
-        UploadFile | None,
-        File(
-            description="Optional DOCX used as the formatting template for the final paper",
-        ),
-    ] = None,
 ) -> GenerationResult:
     try:
-        body = GeneratePaperRequest.model_validate(json.loads(payload))
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid payload JSON: {exc}",
-        ) from exc
-
-    uploaded_path: Path | None = None
-    try:
-        if format_reference is not None and format_reference.filename:
-            uploaded_path = await _save_format_reference(format_reference)
-
         return await enqueue_paper_generation(
             db,
             user=current_user,
             body=body,
-            format_reference_upload=uploaded_path,
         )
     except PermissionError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except (FileNotFoundError, ValueError, NotImplementedError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-    finally:
-        if uploaded_path is not None:
-            uploaded_path.unlink(missing_ok=True)
 
 
 @generation_router.post(
@@ -283,7 +221,7 @@ async def export_question_paper_version(
         )
 
     try:
-        reference = resolve_document(version.format_reference_uri)
+        template = resolve_document()
     except (FileNotFoundError, ValueError, NotImplementedError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -295,7 +233,7 @@ async def export_question_paper_version(
             content = render_answer_key_docx_bytes(
                 version.blueprint,
                 version.final_answer_key,
-                reference,
+                template,
             )
             filename = (
                 f"{_safe_filename(paper.title)}-v{version.version_number}"
@@ -305,7 +243,7 @@ async def export_question_paper_version(
             content = render_question_paper_docx_bytes(
                 version.blueprint,
                 version.final_paper,
-                reference,
+                template,
             )
             filename = (
                 f"{_safe_filename(paper.title)}-v{version.version_number}.docx"

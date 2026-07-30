@@ -286,16 +286,9 @@ export async function fetchSampleBlueprint(
 export async function generateQuestionPaper(
   payload: GeneratePaperPayload
 ): Promise<GenerationResult> {
-  const { format_reference, ...request } = payload
-  const body = new FormData()
-  body.append("payload", JSON.stringify(request))
-  if (format_reference) {
-    body.append("format_reference", format_reference)
-  }
-
   const response = await authFetch("/api/v1/generation/papers", {
     method: "POST",
-    body,
+    body: JSON.stringify(payload),
   })
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as GenerationResult

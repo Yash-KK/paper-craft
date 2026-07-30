@@ -1,6 +1,6 @@
 """Build styled question-paper / answer-key DOCX files from generation JSON.
 
-The reference DOCX (e.g. ``samples/40_marks_sample.docx``) is used only for
+The built-in sample DOCX (``samples/40_marks_sample.docx``) is used only for
 page layout / styles. All visible content comes from Paper Details and the
 generated paper JSON. Requires ``pandoc`` on PATH for LaTeX → Word equations.
 """
@@ -160,9 +160,9 @@ def add_rich_block(doc, text, **kwargs):
             add_rich_paragraph(doc, line, **kwargs)
 
 
-def load_template(reference_docx: str | Path) -> Document:
-    """Keep styles / page setup from the reference; strip all body content."""
-    doc = docx.Document(str(reference_docx))
+def load_template(template_docx: str | Path) -> Document:
+    """Keep styles / page setup from the template; strip all body content."""
+    doc = docx.Document(str(template_docx))
     body = doc.element.body
     sect_pr = body.find(qn("w:sectPr"))
     for child in list(body):
@@ -451,9 +451,9 @@ def ordered_section_names(question_paper: Any, assembled_sections: dict) -> list
 def _build_question_paper_document(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> Document:
-    doc = load_template(reference_docx)
+    doc = load_template(template_docx)
     add_header_block(doc, header_from_question_paper(question_paper))
 
     sections = final_paper.get("sections") or {}
@@ -483,9 +483,9 @@ def _build_question_paper_document(
 def _build_answer_key_document(
     question_paper: Any,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> Document:
-    doc = load_template(reference_docx)
+    doc = load_template(template_docx)
     add_header_block(
         doc,
         header_from_question_paper(question_paper),
@@ -571,10 +571,10 @@ def _document_to_bytes(doc: Document) -> bytes:
 def build_question_paper_docx(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     out_path: str | Path | None = None,
 ) -> Path | bytes:
-    doc = _build_question_paper_document(question_paper, final_paper, reference_docx)
+    doc = _build_question_paper_document(question_paper, final_paper, template_docx)
     if out_path is None:
         return _document_to_bytes(doc)
     path = Path(out_path)
@@ -585,11 +585,11 @@ def build_question_paper_docx(
 def build_answer_key_docx(
     question_paper: Any,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     out_path: str | Path | None = None,
 ) -> Path | bytes:
     doc = _build_answer_key_document(
-        question_paper, final_answer_key, reference_docx
+        question_paper, final_answer_key, template_docx
     )
     if out_path is None:
         return _document_to_bytes(doc)
@@ -601,21 +601,21 @@ def build_answer_key_docx(
 def render_question_paper_docx_bytes(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> bytes:
     return _document_to_bytes(
-        _build_question_paper_document(question_paper, final_paper, reference_docx)
+        _build_question_paper_document(question_paper, final_paper, template_docx)
     )
 
 
 def render_answer_key_docx_bytes(
     question_paper: Any,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> bytes:
     return _document_to_bytes(
         _build_answer_key_document(
-            question_paper, final_answer_key, reference_docx
+            question_paper, final_answer_key, template_docx
         )
     )
 
@@ -623,11 +623,11 @@ def render_answer_key_docx_bytes(
 def export_question_paper_only(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     paper_out: str | Path = "generated_question_paper.docx",
 ) -> Path:
     result = build_question_paper_docx(
-        question_paper, final_paper, reference_docx, paper_out
+        question_paper, final_paper, template_docx, paper_out
     )
     assert isinstance(result, Path)
     return result
@@ -637,12 +637,12 @@ def export_question_paper_and_answer_key(
     question_paper: Any,
     final_paper: dict,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     paper_out: str | Path = "generated_question_paper.docx",
     answer_key_out: str | Path = "generated_answer_key.docx",
 ) -> tuple[str, str]:
-    build_question_paper_docx(question_paper, final_paper, reference_docx, paper_out)
+    build_question_paper_docx(question_paper, final_paper, template_docx, paper_out)
     build_answer_key_docx(
-        question_paper, final_answer_key, reference_docx, answer_key_out
+        question_paper, final_answer_key, template_docx, answer_key_out
     )
     return str(paper_out), str(answer_key_out)

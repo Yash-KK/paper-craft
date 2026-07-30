@@ -80,7 +80,6 @@ export type SampleBlueprintSummary = {
   board: Board | null
   subject: Subject | null
   grade: ClassGrade | null
-  format_reference_uri: string | null
 }
 
 export type SampleBlueprintDetail = SampleBlueprintSummary & {
@@ -95,8 +94,6 @@ export type GeneratePaperPayload = {
   grade: number
   title?: string | null
   teacher_instructions?: string | null
-  format_reference_uri?: string | null
-  format_reference?: File | null
 }
 
 export type GenerateNewVersionPayload = {
@@ -125,8 +122,6 @@ export type GenerationResult = {
   final_paper: Record<string, unknown>
   final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
-  format_reference_uri: string
-  format_reference_is_default: boolean
   paper_markdown: string
   answer_key_markdown: string
   selected_chat_messages?: SelectedChatMessageSnapshot[]
@@ -139,8 +134,6 @@ export type QuestionPaperVersionSummary = {
   status: QuestionPaperStatus
   subject: string
   grade: number
-  format_reference_uri: string
-  format_reference_is_default: boolean
   created_at: string
   updated_at: string
   error?: string | null

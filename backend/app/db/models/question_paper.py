@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
-    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -145,13 +144,6 @@ class QuestionPaperVersion(Base):
         nullable=False,
         default=dict,
         server_default=text("'{}'::jsonb"),
-    )
-    format_reference_uri: Mapped[str] = mapped_column(String(1024), nullable=False)
-    format_reference_is_default: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        default=True,
-        server_default=text("true"),
     )
     base_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
