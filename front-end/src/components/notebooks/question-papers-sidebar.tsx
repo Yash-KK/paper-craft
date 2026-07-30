@@ -174,7 +174,7 @@ export function QuestionPapersSidebar({
                       <Button
                         type="button"
                         variant="ghost"
-                        className="h-auto w-full justify-start gap-2 px-2 py-2 text-left text-sm font-medium"
+                        className="text-md h-auto w-full justify-start gap-2 p-2 text-sm font-medium"
                       />
                     }
                   >
@@ -215,7 +215,7 @@ export function QuestionPapersSidebar({
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  className="h-auto min-w-0 flex-1 cursor-pointer justify-start gap-2 px-2 py-2 text-sm font-medium text-emerald-600 hover:bg-transparent hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+                                  className="h-auto min-w-0 flex-1 cursor-pointer justify-start gap-2 px-3 py-1 text-xs font-medium text-emerald-600 hover:bg-transparent hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
                                   onClick={() =>
                                     openVersion(paper, version.version_number)
                                   }
