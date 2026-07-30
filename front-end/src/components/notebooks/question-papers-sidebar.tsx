@@ -1,6 +1,16 @@
 import * as React from "react"
-import { AlertCircle, ChevronDown, Plus, Sparkles } from "lucide-react"
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Download,
+  Eye,
+  Loader2,
+  Plus,
+  Sparkles,
+} from "lucide-react"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
 
 import { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
@@ -9,7 +19,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { QuestionPaperSummary } from "@/lib/types/generation"
+import { downloadVersionExport } from "@/lib/api"
+import type {
+  QuestionPaperSummary,
+  QuestionPaperVersionSummary,
+} from "@/lib/types/generation"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
@@ -37,6 +51,7 @@ export function QuestionPapersSidebar({
     () => new Set()
   )
   const [selected, setSelected] = React.useState<SelectedVersion | null>(null)
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null)
 
   function togglePaper(paperId: string) {
     setCollapsedIds((prev) => {
@@ -53,6 +68,21 @@ export function QuestionPapersSidebar({
       paperTitle: paper.title,
       versionNumber,
     })
+  }
+
+  async function downloadVersion(
+    paper: QuestionPaperSummary,
+    version: QuestionPaperVersionSummary
+  ) {
+    setDownloadingId(version.id)
+    try {
+      await downloadVersionExport(paper.id, version.version_number, "paper")
+      toast.success("Question paper downloaded.")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed")
+    } finally {
+      setDownloadingId(null)
+    }
   }
 
   return (
@@ -90,7 +120,7 @@ export function QuestionPapersSidebar({
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-1 px-2 pb-4">
+        <div className="flex flex-col gap-2 px-2 pb-4">
           {papersQuery.isPending ? (
             Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-10 w-full rounded-lg" />
@@ -127,7 +157,7 @@ export function QuestionPapersSidebar({
                   <button
                     type="button"
                     onClick={() => togglePaper(paper.id)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium hover:bg-muted/60"
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium hover:bg-muted/60"
                   >
                     <ChevronDown
                       className={cn(
@@ -140,38 +170,121 @@ export function QuestionPapersSidebar({
                   </button>
 
                   {expanded ? (
-                    <ul className="ml-4 space-y-0.5 border-l border-border/70 py-1 pl-3">
+                    <ul className="space-y-0.5 px-1 pb-1">
                       {versions.map((version) => {
                         const processing = isActiveGenerationStatus(
                           version.status
                         )
                         const ready = version.status === "ready"
+                        const failed = version.status === "failed"
+                        const downloading = downloadingId === version.id
                         const label = processing
                           ? `Version ${version.version_number} (Processing...)`
                           : `Version ${version.version_number}`
 
-                        if (!ready) {
-                          return (
-                            <li
-                              key={version.id}
-                              className="px-2 py-1.5 text-xs text-muted-foreground"
-                            >
-                              {label}
-                            </li>
-                          )
-                        }
-
                         return (
                           <li key={version.id}>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openVersion(paper, version.version_number)
+                            <div
+                              role={ready ? "button" : undefined}
+                              tabIndex={ready ? 0 : undefined}
+                              onClick={
+                                ready
+                                  ? () =>
+                                      openVersion(paper, version.version_number)
+                                  : undefined
                               }
-                              className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/60"
+                              onKeyDown={
+                                ready
+                                  ? (event) => {
+                                      if (
+                                        event.key === "Enter" ||
+                                        event.key === " "
+                                      ) {
+                                        event.preventDefault()
+                                        openVersion(
+                                          paper,
+                                          version.version_number
+                                        )
+                                      }
+                                    }
+                                  : undefined
+                              }
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-2 py-2 text-sm",
+                                ready &&
+                                  "cursor-pointer hover:bg-emerald-500/10",
+                                processing && "text-muted-foreground",
+                                failed && "text-destructive/80"
+                              )}
                             >
-                              {label}
-                            </button>
+                              <span className="flex size-4 shrink-0 items-center justify-center">
+                                {processing ? (
+                                  <Loader2
+                                    className="size-3.5 animate-spin"
+                                    aria-hidden
+                                  />
+                                ) : ready ? (
+                                  <Check
+                                    className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                                    aria-hidden
+                                  />
+                                ) : (
+                                  <AlertCircle
+                                    className="size-3.5"
+                                    aria-hidden
+                                  />
+                                )}
+                              </span>
+
+                              <span
+                                className={cn(
+                                  "min-w-0 flex-1 truncate",
+                                  ready &&
+                                    "font-medium text-emerald-600 dark:text-emerald-400"
+                                )}
+                              >
+                                {label}
+                              </span>
+
+                              {ready ? (
+                                <span className="flex shrink-0 items-center gap-0.5">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-xs"
+                                    className="text-muted-foreground hover:text-foreground"
+                                    aria-label={`Preview version ${version.version_number}`}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      openVersion(
+                                        paper,
+                                        version.version_number
+                                      )
+                                    }}
+                                  >
+                                    <Eye className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-xs"
+                                    className="text-muted-foreground hover:text-foreground"
+                                    disabled={downloading}
+                                    aria-label={`Download version ${version.version_number}`}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      void downloadVersion(paper, version)
+                                    }}
+                                  >
+                                    {downloading ? (
+                                      <Loader2 className="size-3.5 animate-spin" />
+                                    ) : (
+                                      <Download className="size-3.5" />
+                                    )}
+                                  </Button>
+                                </span>
+                              ) : null}
+                            </div>
                           </li>
                         )
                       })}
