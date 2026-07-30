@@ -3,12 +3,13 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import CurrentUser, SessionDep
 from app.db.models.chapter_catalog import ChapterCatalog
 from app.db.models.notebook import Board, ClassGrade, Notebook, Subject
+from app.db.models.question_paper import QuestionPaper
 from app.schemas.notebook import NotebookCreate, NotebookListItem, NotebookUpdate
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
@@ -75,7 +76,10 @@ async def list_notebooks(
 ) -> list[Notebook]:
     result = await db.execute(
         select(Notebook)
-        .where(Notebook.user_id == current_user.id)
+        .where(
+            Notebook.user_id == current_user.id,
+            Notebook.is_active.is_(True),
+        )
         .order_by(Notebook.created_at.desc())
     )
     return list(result.scalars().all())
@@ -92,6 +96,7 @@ async def create_notebook(
     existing_id = await db.scalar(
         select(Notebook.id).where(
             Notebook.user_id == current_user.id,
+            Notebook.is_active.is_(True),
             func.lower(func.btrim(Notebook.name)) == body.name.lower(),
         )
     )
@@ -140,7 +145,11 @@ async def update_notebook(
     db: SessionDep,
 ) -> Notebook:
     notebook = await db.get(Notebook, notebook_id)
-    if notebook is None or notebook.user_id != current_user.id:
+    if (
+        notebook is None
+        or notebook.user_id != current_user.id
+        or notebook.is_active is False
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Notebook not found",
@@ -157,6 +166,7 @@ async def update_notebook(
             select(Notebook.id).where(
                 Notebook.user_id == current_user.id,
                 Notebook.id != notebook_id,
+                Notebook.is_active.is_(True),
                 func.lower(func.btrim(Notebook.name)) == name.lower(),
             )
         )
@@ -212,10 +222,22 @@ async def delete_notebook(
     db: SessionDep,
 ) -> None:
     notebook = await db.get(Notebook, notebook_id)
-    if notebook is None or notebook.user_id != current_user.id:
+    if (
+        notebook is None
+        or notebook.user_id != current_user.id
+        or notebook.is_active is False
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Notebook not found",
         )
-    await db.delete(notebook)
+    notebook.is_active = False
+    await db.execute(
+        update(QuestionPaper)
+        .where(
+            QuestionPaper.notebook_id == notebook.id,
+            QuestionPaper.is_active.is_(True),
+        )
+        .values(is_active=False)
+    )
     await db.commit()

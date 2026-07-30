@@ -23,7 +23,7 @@ class ChatRepository:
         user: User,
     ) -> Notebook | None:
         notebook = await self._db.get(Notebook, notebook_id)
-        if notebook is None or notebook.user_id != user.id:
+        if notebook is None or notebook.user_id != user.id or notebook.is_active is False:
             return None
         return notebook
 

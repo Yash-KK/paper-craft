@@ -50,11 +50,13 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
         }
       }}
       className={cn(
-        "group relative cursor-pointer gap-0 rounded-2xl py-0 ring-border/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group relative cursor-pointer gap-0 rounded-2xl py-0 ring-border/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         theme.glow
       )}
     >
-      <div className={cn("relative z-10 h-1.5 w-full shrink-0", theme.stripe)} />
+      <div
+        className={cn("relative z-10 h-1.5 w-full shrink-0", theme.stripe)}
+      />
 
       <CardHeader className="relative z-10 gap-3 pt-5">
         <div className="flex items-start justify-between gap-3">
@@ -79,7 +81,7 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
             >
               <ConfirmDialog
                 title="Delete notebook?"
-                description={`This will permanently delete “${notebook.name}”.`}
+                description={`This will delete “${notebook.name}”.`}
                 confirmLabel="Delete"
                 confirmVariant="destructive"
                 onConfirm={onDelete}
@@ -129,7 +131,7 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
 
 export function CreateNotebookCard({ onClick }: { onClick?: () => void }) {
   return (
-    <Card className="group min-h-[280px] justify-center rounded-2xl border-2 border-dashed bg-muted/20 py-0 ring-border/80 transition-all hover:border-violet-500/40 hover:bg-violet-500/5">
+    <Card className="group min-h-70 justify-center rounded-2xl border-2 border-dashed bg-muted/20 py-0 ring-border/80 transition-all hover:border-violet-500/40 hover:bg-violet-500/5">
       <CardContent
         onClick={onClick}
         className="flex cursor-pointer flex-col items-center justify-center gap-4 py-10 text-center"

@@ -168,7 +168,7 @@ async def get_owned_notebook(
     user: User,
 ) -> Notebook | None:
     notebook = await db.get(Notebook, notebook_id)
-    if notebook is None or notebook.user_id != user.id:
+    if notebook is None or notebook.user_id != user.id or notebook.is_active is False:
         return None
     return notebook
 
@@ -183,12 +183,17 @@ async def get_owned_paper(
     if load_versions:
         result = await db.execute(
             select(QuestionPaper)
-            .where(QuestionPaper.id == paper_id)
+            .where(
+                QuestionPaper.id == paper_id,
+                QuestionPaper.is_active.is_(True),
+            )
             .options(selectinload(QuestionPaper.versions))
         )
         paper = result.scalar_one_or_none()
     else:
         paper = await db.get(QuestionPaper, paper_id)
+        if paper is not None and paper.is_active is False:
+            paper = None
     if paper is None:
         return None
     notebook = await get_owned_notebook(db, paper.notebook_id, user)
@@ -203,11 +208,27 @@ async def list_papers_for_notebook(
 ) -> list[QuestionPaper]:
     result = await db.execute(
         select(QuestionPaper)
-        .where(QuestionPaper.notebook_id == notebook_id)
+        .where(
+            QuestionPaper.notebook_id == notebook_id,
+            QuestionPaper.is_active.is_(True),
+        )
         .options(selectinload(QuestionPaper.versions))
         .order_by(QuestionPaper.updated_at.desc())
     )
     return list(result.scalars().unique().all())
+
+
+async def soft_delete_paper(
+    db: AsyncSession,
+    paper_id: UUID,
+    user: User,
+) -> bool:
+    paper = await get_owned_paper(db, paper_id, user)
+    if paper is None:
+        return False
+    paper.is_active = False
+    await db.commit()
+    return True
 
 
 async def _load_chat_message_snapshots(
@@ -229,6 +250,7 @@ async def _load_chat_message_snapshots(
             ChatMessage.id.in_(unique_ids),
             Notebook.id == notebook_id,
             Notebook.user_id == user.id,
+            Notebook.is_active.is_(True),
         )
         .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
     )
@@ -307,7 +329,10 @@ async def enqueue_new_version(
 
     result = await db.execute(
         select(QuestionPaper)
-        .where(QuestionPaper.id == paper_id)
+        .where(
+            QuestionPaper.id == paper_id,
+            QuestionPaper.is_active.is_(True),
+        )
         .options(selectinload(QuestionPaper.versions))
         .with_for_update()
     )

@@ -89,6 +89,7 @@ def _make_paper(*, versions: list[QuestionPaperVersion] | None = None) -> Questi
         id=uuid4(),
         notebook_id=uuid4(),
         title="Revision Sheet",
+        is_active=True,
         created_at=now,
         updated_at=now,
     )
@@ -98,12 +99,20 @@ def _make_paper(*, versions: list[QuestionPaperVersion] | None = None) -> Questi
     return paper
 
 
+def _make_notebook(*, notebook_id=None, user_id=None, is_active: bool = True):
+    return SimpleNamespace(
+        id=notebook_id or uuid4(),
+        user_id=user_id or uuid4(),
+        is_active=is_active,
+    )
+
+
 def test_enqueue_creates_parent_and_version_one(
     mock_db: AsyncMock,
     mock_user: User,
 ) -> None:
     notebook_id = uuid4()
-    notebook = SimpleNamespace(id=notebook_id, user_id=mock_user.id)
+    notebook = _make_notebook(notebook_id=notebook_id, user_id=mock_user.id)
     mock_db.get = AsyncMock(return_value=notebook)
 
     async def flush_side_effect() -> None:
@@ -176,7 +185,7 @@ def test_enqueue_new_version_inherits_latest_ready_and_snapshots(
 ) -> None:
     ready = _make_version(version_number=1, status=QuestionPaperStatus.READY)
     paper = _make_paper(versions=[ready])
-    notebook = SimpleNamespace(id=paper.notebook_id, user_id=mock_user.id)
+    notebook = _make_notebook(notebook_id=paper.notebook_id, user_id=mock_user.id)
     message_id = uuid4()
     message = SimpleNamespace(
         id=message_id,
@@ -239,7 +248,7 @@ def test_enqueue_new_version_rejects_foreign_messages(
 ) -> None:
     ready = _make_version(version_number=1)
     paper = _make_paper(versions=[ready])
-    notebook = SimpleNamespace(id=paper.notebook_id, user_id=mock_user.id)
+    notebook = _make_notebook(notebook_id=paper.notebook_id, user_id=mock_user.id)
 
     paper_result = MagicMock()
     paper_result.scalar_one_or_none.return_value = paper
@@ -266,7 +275,7 @@ def test_enqueue_new_version_rejects_active_generation(
     ready = _make_version(version_number=1)
     pending = _make_version(version_number=2, status=QuestionPaperStatus.PENDING)
     paper = _make_paper(versions=[ready, pending])
-    notebook = SimpleNamespace(id=paper.notebook_id, user_id=mock_user.id)
+    notebook = _make_notebook(notebook_id=paper.notebook_id, user_id=mock_user.id)
     paper_result = MagicMock()
     paper_result.scalar_one_or_none.return_value = paper
     mock_db.execute = AsyncMock(return_value=paper_result)
@@ -289,7 +298,7 @@ def test_enqueue_new_version_requires_ready_base(
 ) -> None:
     failed = _make_version(version_number=1, status=QuestionPaperStatus.FAILED)
     paper = _make_paper(versions=[failed])
-    notebook = SimpleNamespace(id=paper.notebook_id, user_id=mock_user.id)
+    notebook = _make_notebook(notebook_id=paper.notebook_id, user_id=mock_user.id)
     paper_result = MagicMock()
     paper_result.scalar_one_or_none.return_value = paper
     mock_db.execute = AsyncMock(return_value=paper_result)
@@ -413,7 +422,7 @@ def test_list_and_version_detail_routes(
 ) -> None:
     v1 = _make_version(version_number=1)
     paper = _make_paper(versions=[v1])
-    notebook = SimpleNamespace(id=paper.notebook_id, user_id=uuid4())
+    notebook = _make_notebook(notebook_id=paper.notebook_id, user_id=uuid4())
     summary = _to_paper_summary(paper)
     detail = _to_version_detail(paper, v1)
 
