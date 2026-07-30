@@ -1,15 +1,39 @@
 import * as React from "react"
-import { AlertCircle, ChevronDown, Plus, Sparkles } from "lucide-react"
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Download,
+  Eye,
+  Loader2,
+  Plus,
+  Sparkles,
+} from "lucide-react"
 import { Link } from "react-router-dom"
+import { toast } from "sonner"
 
 import { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
 import { isActiveGenerationStatus } from "@/features/question-papers/lib/question-paper-utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { QuestionPaperSummary } from "@/lib/types/generation"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { downloadVersionExport } from "@/lib/api"
+import type {
+  QuestionPaperSummary,
+  QuestionPaperVersionSummary,
+} from "@/lib/types/generation"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
@@ -37,11 +61,12 @@ export function QuestionPapersSidebar({
     () => new Set()
   )
   const [selected, setSelected] = React.useState<SelectedVersion | null>(null)
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null)
 
-  function togglePaper(paperId: string) {
+  function setPaperOpen(paperId: string, open: boolean) {
     setCollapsedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(paperId)) next.delete(paperId)
+      if (open) next.delete(paperId)
       else next.add(paperId)
       return next
     })
@@ -53,6 +78,21 @@ export function QuestionPapersSidebar({
       paperTitle: paper.title,
       versionNumber,
     })
+  }
+
+  async function downloadVersion(
+    paper: QuestionPaperSummary,
+    version: QuestionPaperVersionSummary
+  ) {
+    setDownloadingId(version.id)
+    try {
+      await downloadVersionExport(paper.id, version.version_number, "paper")
+      toast.success("Question paper downloaded.")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed")
+    } finally {
+      setDownloadingId(null)
+    }
   }
 
   return (
@@ -90,7 +130,7 @@ export function QuestionPapersSidebar({
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-1 px-2 pb-4">
+        <div className="flex flex-col gap-2 px-2 pb-4">
           {papersQuery.isPending ? (
             Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-10 w-full rounded-lg" />
@@ -123,11 +163,20 @@ export function QuestionPapersSidebar({
               const versions = [...paper.versions].reverse()
 
               return (
-                <div key={paper.id} className="rounded-lg">
-                  <button
-                    type="button"
-                    onClick={() => togglePaper(paper.id)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-medium hover:bg-muted/60"
+                <Collapsible
+                  key={paper.id}
+                  open={expanded}
+                  onOpenChange={(open) => setPaperOpen(paper.id, open)}
+                  className="rounded-lg"
+                >
+                  <CollapsibleTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="text-md h-auto w-full justify-start gap-2 p-2 text-sm font-medium"
+                      />
+                    }
                   >
                     <ChevronDown
                       className={cn(
@@ -137,47 +186,122 @@ export function QuestionPapersSidebar({
                       aria-hidden
                     />
                     <span className="truncate">{paper.title}</span>
-                  </button>
+                  </CollapsibleTrigger>
 
-                  {expanded ? (
-                    <ul className="ml-4 space-y-0.5 border-l border-border/70 py-1 pl-3">
+                  <CollapsibleContent>
+                    <ul className="space-y-0.5 px-1 pb-1">
                       {versions.map((version) => {
                         const processing = isActiveGenerationStatus(
                           version.status
                         )
                         const ready = version.status === "ready"
+                        const failed = version.status === "failed"
+                        const downloading = downloadingId === version.id
                         const label = processing
                           ? `Version ${version.version_number} (Processing...)`
                           : `Version ${version.version_number}`
 
-                        if (!ready) {
-                          return (
-                            <li
-                              key={version.id}
-                              className="px-2 py-1.5 text-xs text-muted-foreground"
-                            >
-                              {label}
-                            </li>
-                          )
-                        }
-
                         return (
                           <li key={version.id}>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openVersion(paper, version.version_number)
-                              }
-                              className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted/60"
+                            <div
+                              className={cn(
+                                "flex items-center gap-1 rounded-md",
+                                ready && "hover:bg-emerald-500/10",
+                                processing && "text-muted-foreground",
+                                failed && "text-destructive/80"
+                              )}
                             >
-                              {label}
-                            </button>
+                              {ready ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className="h-auto min-w-0 flex-1 cursor-pointer justify-start gap-2 px-3 py-1 text-xs font-medium text-emerald-600 hover:bg-transparent hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+                                  onClick={() =>
+                                    openVersion(paper, version.version_number)
+                                  }
+                                >
+                                  <Check
+                                    className="size-3.5 shrink-0"
+                                    aria-hidden
+                                  />
+                                  <span className="truncate">{label}</span>
+                                </Button>
+                              ) : (
+                                <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-sm">
+                                  <span className="flex size-4 shrink-0 items-center justify-center">
+                                    {processing ? (
+                                      <Loader2
+                                        className="size-3.5 animate-spin"
+                                        aria-hidden
+                                      />
+                                    ) : (
+                                      <AlertCircle
+                                        className="size-3.5"
+                                        aria-hidden
+                                      />
+                                    )}
+                                  </span>
+                                  <span className="truncate">{label}</span>
+                                </div>
+                              )}
+
+                              {ready ? (
+                                <span className="flex shrink-0 items-center gap-0.5 pr-1">
+                                  <Tooltip>
+                                    <TooltipTrigger
+                                      render={
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon-xs"
+                                          className="text-muted-foreground hover:text-foreground"
+                                          aria-label={`Preview version ${version.version_number}`}
+                                          onClick={() =>
+                                            openVersion(
+                                              paper,
+                                              version.version_number
+                                            )
+                                          }
+                                        />
+                                      }
+                                    >
+                                      <Eye className="size-3.5" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Preview</TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger
+                                      render={
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon-xs"
+                                          className="text-muted-foreground hover:text-foreground"
+                                          disabled={downloading}
+                                          aria-label={`Download version ${version.version_number}`}
+                                          onClick={() =>
+                                            void downloadVersion(paper, version)
+                                          }
+                                        />
+                                      }
+                                    >
+                                      {downloading ? (
+                                        <Loader2 className="size-3.5 animate-spin" />
+                                      ) : (
+                                        <Download className="size-3.5" />
+                                      )}
+                                    </TooltipTrigger>
+                                    <TooltipContent>Download</TooltipContent>
+                                  </Tooltip>
+                                </span>
+                              ) : null}
+                            </div>
                           </li>
                         )
                       })}
                     </ul>
-                  ) : null}
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               )
             })
           )}
