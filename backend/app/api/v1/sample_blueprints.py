@@ -35,6 +35,7 @@ from app.services.generation.papers import (
     get_paper_detail,
     get_version_detail,
     list_paper_summaries,
+    soft_delete_paper,
 )
 
 router = APIRouter(prefix="/sample-blueprints", tags=["sample-blueprints"])
@@ -165,6 +166,23 @@ async def get_question_paper(
             detail="Question paper not found",
         )
     return detail
+
+
+@generation_router.delete(
+    "/papers/{paper_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_question_paper(
+    paper_id: UUID,
+    current_user: CurrentUser,
+    db: SessionDep,
+) -> None:
+    deleted = await soft_delete_paper(db, paper_id, current_user)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question paper not found",
+        )
 
 
 @generation_router.get(

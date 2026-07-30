@@ -2,6 +2,7 @@ export { NewVersionDialog } from "@/features/question-papers/components/new-vers
 export { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
 export { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
 export { useGenerateQuestionPaper } from "@/features/question-papers/hooks/use-create-paper-version"
+export { useDeleteQuestionPaper } from "@/features/question-papers/hooks/use-delete-question-paper"
 export {
   canCreateNewVersion,
   isPersistedMessageId,

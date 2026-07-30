@@ -8,11 +8,14 @@ import {
   Loader2,
   Plus,
   Sparkles,
+  Trash2,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
+import { useDeleteQuestionPaper } from "@/features/question-papers/hooks/use-delete-question-paper"
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
 import { isActiveGenerationStatus } from "@/features/question-papers/lib/question-paper-utils"
 import { Badge } from "@/components/ui/badge"
@@ -53,6 +56,7 @@ export function QuestionPapersSidebar({
   className,
 }: QuestionPapersSidebarProps) {
   const papersQuery = useNotebookPapers(notebook.id)
+  const deletePaper = useDeleteQuestionPaper(notebook.id)
   const papers = papersQuery.data ?? []
   const canGenerate = notebook.selected_chapters.length > 0
   const generateHref = `/notebooks/${notebook.id}/generate`
@@ -169,24 +173,44 @@ export function QuestionPapersSidebar({
                   onOpenChange={(open) => setPaperOpen(paper.id, open)}
                   className="rounded-lg"
                 >
-                  <CollapsibleTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="text-md h-auto w-full justify-start gap-2 p-2 text-sm font-medium"
+                  <div className="flex items-center gap-0.5">
+                    <CollapsibleTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-auto min-w-0 flex-1 justify-start gap-2 p-2 text-sm font-medium"
+                        />
+                      }
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-4 shrink-0 text-muted-foreground transition-transform",
+                          !expanded && "-rotate-90"
+                        )}
+                        aria-hidden
                       />
-                    }
-                  >
-                    <ChevronDown
-                      className={cn(
-                        "size-4 shrink-0 text-muted-foreground transition-transform",
-                        !expanded && "-rotate-90"
-                      )}
-                      aria-hidden
+                      <span className="truncate">{paper.title}</span>
+                    </CollapsibleTrigger>
+                    <ConfirmDialog
+                      title="Delete question paper?"
+                      description={`This will delete “${paper.title}”.`}
+                      confirmLabel="Delete"
+                      confirmVariant="destructive"
+                      onConfirm={() => deletePaper.mutateAsync(paper.id)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="mr-1 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={`Delete ${paper.title}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      }
                     />
-                    <span className="truncate">{paper.title}</span>
-                  </CollapsibleTrigger>
+                  </div>
 
                   <CollapsibleContent>
                     <ul className="space-y-0.5 px-1 pb-1">

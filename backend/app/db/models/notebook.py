@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, String, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -59,6 +59,9 @@ class Notebook(Base):
     selected_chapters: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, default=list, nullable=False
     )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -87,5 +90,6 @@ class Notebook(Base):
             user_id,
             func.lower(func.btrim(name)),
             unique=True,
+            postgresql_where=text("is_active IS TRUE"),
         ),
     )

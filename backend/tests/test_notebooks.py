@@ -184,13 +184,16 @@ def test_delete_notebook_success(
         class_grade=ClassGrade.CLASS_10,
         subject=Subject.MATHEMATICS,
         selected_chapters=[],
+        is_active=True,
     )
     mock_db.get = AsyncMock(return_value=notebook)
+    mock_db.execute = AsyncMock()
 
     response = client.delete(f"/api/v1/notebooks/{notebook_id}")
 
     assert response.status_code == 204
-    mock_db.delete.assert_awaited_once_with(notebook)
+    assert notebook.is_active is False
+    mock_db.delete.assert_not_awaited()
     mock_db.commit.assert_awaited_once()
 
 
@@ -204,7 +207,7 @@ def test_delete_notebook_not_found(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Notebook not found"
-    mock_db.delete.assert_not_awaited()
+    mock_db.commit.assert_not_awaited()
 
 
 def test_notebooks_require_auth(mock_db: AsyncMock) -> None:

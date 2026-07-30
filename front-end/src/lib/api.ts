@@ -304,6 +304,13 @@ export async function fetchNotebookPapers(
   return (await response.json()) as QuestionPaperSummary[]
 }
 
+export async function deleteQuestionPaper(paperId: string): Promise<void> {
+  const response = await authFetch(`/api/v1/generation/papers/${paperId}`, {
+    method: "DELETE",
+  })
+  if (!response.ok) throw new Error(await parseApiError(response))
+}
+
 export async function createPaperVersion(
   paperId: string,
   payload: GenerateNewVersionPayload

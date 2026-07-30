@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -45,6 +46,9 @@ class QuestionPaper(Base):
         nullable=False,
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -64,7 +68,12 @@ class QuestionPaper(Base):
     )
 
     __table_args__ = (
-        Index("ix_question_papers_notebook_updated", notebook_id, updated_at),
+        Index(
+            "ix_question_papers_notebook_updated",
+            notebook_id,
+            updated_at,
+            postgresql_where=text("is_active IS TRUE"),
+        ),
     )
 
 
