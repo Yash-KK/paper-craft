@@ -391,45 +391,6 @@ export function GeneratePaperForm({
               className="min-h-32"
             />
           </FormPanel>
-
-          <FormPanel
-            title="Format Reference"
-            description="Optional. Upload a DOCX to use as the formatting template for the final paper. If you skip this, the sample blueprint's reference document is used."
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="format-reference">Reference DOCX</Label>
-              <Input
-                id="format-reference"
-                key={form.formatReference?.name ?? "default-format-reference"}
-                type="file"
-                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={(e) =>
-                  form.setFormatReference(e.target.files?.[0] ?? null)
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                {form.formatReference
-                  ? `Using uploaded file: ${form.formatReference.name}`
-                  : `Using blueprint default: ${
-                      form.sample?.format_reference_uri?.replace(
-                        /^local:/,
-                        ""
-                      ) ?? "samples/40_marks_sample.docx"
-                    }`}
-              </p>
-              {form.formatReference ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="w-fit px-0 text-muted-foreground"
-                  onClick={() => form.setFormatReference(null)}
-                >
-                  Clear upload
-                </Button>
-              ) : null}
-            </div>
-          </FormPanel>
         </>
       ) : (
         <div className="rounded-2xl border border-dashed px-4 py-16 text-center text-sm text-muted-foreground">

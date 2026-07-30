@@ -1,6 +1,6 @@
 """Build styled question-paper / answer-key DOCX files from generation JSON.
 
-The reference DOCX (e.g. ``samples/40_marks_sample.docx``) is used only for
+The built-in sample DOCX (``samples/40_marks_sample.docx``) is used only for
 page layout / styles. All visible content comes from Paper Details and the
 generated paper JSON. Requires ``pandoc`` on PATH for LaTeX → Word equations.
 """
@@ -21,16 +21,16 @@ from docx.document import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import parse_xml
 from docx.oxml.ns import qn
-from docx.shared import Pt
+from docx.shared import Cm, Pt
 from docx.text.run import Run
 
 from app.services.export.latex import normalize_newlines, prepare_markdown_for_pandoc
 from app.services.export.section_copy import (
     format_option_label,
-    format_options_line,
     format_section_heading,
     infer_section_question_type,
     options_should_be_single_line,
+    question_body_lines,
     section_description,
     section_marks_summary,
     strip_embedded_options,
@@ -41,6 +41,9 @@ SIZE_SCHOOL_NAME = 16
 SIZE_EXAM_TITLE = 14
 SIZE_BODY = 12
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+INLINE_OPTION_TAB_STOPS_CM = (3.8, 7.2, 10.6)
+QUESTION_BODY_INDENT_CM = 0.5
+QUESTION_CONTINUATION_INDENT_CM = 0.75
 
 DOCX_MEDIA_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -160,9 +163,9 @@ def add_rich_block(doc, text, **kwargs):
             add_rich_paragraph(doc, line, **kwargs)
 
 
-def load_template(reference_docx: str | Path) -> Document:
-    """Keep styles / page setup from the reference; strip all body content."""
-    doc = docx.Document(str(reference_docx))
+def load_template(template_docx: str | Path) -> Document:
+    """Keep styles / page setup from the template; strip all body content."""
+    doc = docx.Document(str(template_docx))
     body = doc.element.body
     sect_pr = body.find(qn("w:sectPr"))
     for child in list(body):
@@ -346,6 +349,42 @@ def add_section_header(
     )
 
 
+def add_plain_paragraph(
+    doc,
+    text,
+    *,
+    size_pt=SIZE_BODY,
+    font_name=FONT_NAME,
+    indent_cm=None,
+):
+    paragraph = doc.add_paragraph()
+    _tighten_spacing(paragraph)
+    if indent_cm is not None:
+        paragraph.paragraph_format.left_indent = Cm(indent_cm)
+    run = paragraph.add_run(text)
+    run.font.name = font_name
+    run.font.size = Pt(size_pt)
+    return paragraph
+
+
+def add_inline_options_paragraph(doc, options: list[str], *, indent_cm=QUESTION_BODY_INDENT_CM):
+    """Render MCQ options on one line with tab stops (pandoc collapses spaces)."""
+    paragraph = doc.add_paragraph()
+    _tighten_spacing(paragraph)
+    paragraph.paragraph_format.left_indent = Cm(indent_cm)
+    tab_stops = paragraph.paragraph_format.tab_stops
+    for position in INLINE_OPTION_TAB_STOPS_CM:
+        tab_stops.add_tab_stop(Cm(position))
+
+    for index, option in enumerate(options):
+        if index > 0:
+            paragraph.add_run("\t")
+        run = paragraph.add_run(format_option_label(option, index))
+        run.font.name = FONT_NAME
+        run.font.size = Pt(SIZE_BODY)
+    return paragraph
+
+
 def add_question(doc, q: dict, case_study_number: int | None = None):
     if case_study_number is not None:
         add_rich_paragraph(
@@ -361,21 +400,24 @@ def add_question(doc, q: dict, case_study_number: int | None = None):
     if options:
         question_text = strip_embedded_options(question_text)
 
-    add_rich_block(
-        doc, f"{q['question_number']}. {question_text}", size_pt=SIZE_BODY
-    )
+    body_lines = question_body_lines(q.get("question_number"), question_text)
+    for index, line in enumerate(body_lines):
+        indent_cm = (
+            QUESTION_BODY_INDENT_CM
+            if index == 0
+            else QUESTION_CONTINUATION_INDENT_CM
+        )
+        add_rich_paragraph(doc, line, size_pt=SIZE_BODY, indent_cm=indent_cm)
 
     if options:
         if options_should_be_single_line(q.get("question_type")):
-            options_line = format_options_line(options, single_line=True)
-            add_rich_paragraph(doc, options_line, size_pt=SIZE_BODY, indent_cm=0.5)
+            add_inline_options_paragraph(doc, options)
         else:
             for i, opt in enumerate(options):
-                add_rich_paragraph(
+                add_plain_paragraph(
                     doc,
                     format_option_label(opt, i),
-                    size_pt=SIZE_BODY,
-                    indent_cm=0.5,
+                    indent_cm=QUESTION_BODY_INDENT_CM,
                 )
 
     if q.get("alternate_question_text"):
@@ -451,9 +493,9 @@ def ordered_section_names(question_paper: Any, assembled_sections: dict) -> list
 def _build_question_paper_document(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> Document:
-    doc = load_template(reference_docx)
+    doc = load_template(template_docx)
     add_header_block(doc, header_from_question_paper(question_paper))
 
     sections = final_paper.get("sections") or {}
@@ -483,9 +525,9 @@ def _build_question_paper_document(
 def _build_answer_key_document(
     question_paper: Any,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> Document:
-    doc = load_template(reference_docx)
+    doc = load_template(template_docx)
     add_header_block(
         doc,
         header_from_question_paper(question_paper),
@@ -571,10 +613,10 @@ def _document_to_bytes(doc: Document) -> bytes:
 def build_question_paper_docx(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     out_path: str | Path | None = None,
 ) -> Path | bytes:
-    doc = _build_question_paper_document(question_paper, final_paper, reference_docx)
+    doc = _build_question_paper_document(question_paper, final_paper, template_docx)
     if out_path is None:
         return _document_to_bytes(doc)
     path = Path(out_path)
@@ -585,11 +627,11 @@ def build_question_paper_docx(
 def build_answer_key_docx(
     question_paper: Any,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     out_path: str | Path | None = None,
 ) -> Path | bytes:
     doc = _build_answer_key_document(
-        question_paper, final_answer_key, reference_docx
+        question_paper, final_answer_key, template_docx
     )
     if out_path is None:
         return _document_to_bytes(doc)
@@ -601,21 +643,21 @@ def build_answer_key_docx(
 def render_question_paper_docx_bytes(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> bytes:
     return _document_to_bytes(
-        _build_question_paper_document(question_paper, final_paper, reference_docx)
+        _build_question_paper_document(question_paper, final_paper, template_docx)
     )
 
 
 def render_answer_key_docx_bytes(
     question_paper: Any,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
 ) -> bytes:
     return _document_to_bytes(
         _build_answer_key_document(
-            question_paper, final_answer_key, reference_docx
+            question_paper, final_answer_key, template_docx
         )
     )
 
@@ -623,11 +665,11 @@ def render_answer_key_docx_bytes(
 def export_question_paper_only(
     question_paper: Any,
     final_paper: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     paper_out: str | Path = "generated_question_paper.docx",
 ) -> Path:
     result = build_question_paper_docx(
-        question_paper, final_paper, reference_docx, paper_out
+        question_paper, final_paper, template_docx, paper_out
     )
     assert isinstance(result, Path)
     return result
@@ -637,12 +679,12 @@ def export_question_paper_and_answer_key(
     question_paper: Any,
     final_paper: dict,
     final_answer_key: dict,
-    reference_docx: str | Path,
+    template_docx: str | Path,
     paper_out: str | Path = "generated_question_paper.docx",
     answer_key_out: str | Path = "generated_answer_key.docx",
 ) -> tuple[str, str]:
-    build_question_paper_docx(question_paper, final_paper, reference_docx, paper_out)
+    build_question_paper_docx(question_paper, final_paper, template_docx, paper_out)
     build_answer_key_docx(
-        question_paper, final_answer_key, reference_docx, answer_key_out
+        question_paper, final_answer_key, template_docx, answer_key_out
     )
     return str(paper_out), str(answer_key_out)

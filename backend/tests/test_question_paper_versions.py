@@ -76,8 +76,6 @@ def _make_version(
         selected_chat_messages=[],
         generation_context={},
         generation_metadata={},
-        format_reference_uri="file:///tmp/default.docx",
-        format_reference_is_default=True,
         base_version_id=base_version_id,
         error=None,
         created_at=now,
@@ -330,8 +328,6 @@ def test_run_paper_generation_success_and_failure() -> None:
         final_paper={"sections": {"A": []}},
         final_answer_key={"sections": {"A": []}},
         generated_items=[{"slot_id": "s1"}],
-        format_reference_uri=version.format_reference_uri,
-        format_reference_is_default=True,
     )
 
     with patch(

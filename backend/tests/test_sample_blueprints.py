@@ -6,15 +6,11 @@ from pydantic import ValidationError
 
 from app.db.models.user import User
 from app.services.documents import (
-    DEFAULT_FORMAT_REFERENCE_URI,
+    DEFAULT_DOCX_TEMPLATE_URI,
     resolve_document,
     to_local_uri,
 )
 from app.schemas.generation import QuestionPaperBlueprint
-from app.services.generation.format_reference import (
-    DEFAULT_FORMAT_REFERENCE,
-    resolve_format_reference,
-)
 from app.services.generation.generate import _build_batch_messages
 from app.services.generation.plan import build_slots
 from app.services.generation.sample_blueprints_data import (
@@ -161,15 +157,15 @@ def test_teacher_instructions_are_prompt_context_only():
     assert "Avoid direct textbook questions." in messages[1][1]
 
 
-def test_default_format_reference_resolves():
-    path = resolve_format_reference()
-    assert path == DEFAULT_FORMAT_REFERENCE.resolve()
+def test_default_docx_template_resolves():
+    path = resolve_document()
+    assert path == resolve_document(DEFAULT_DOCX_TEMPLATE_URI)
     assert path.is_file()
     assert path.suffix.lower() == ".docx"
 
 
 def test_document_store_resolves_local_uri():
-    path = resolve_document(DEFAULT_FORMAT_REFERENCE_URI)
+    path = resolve_document(DEFAULT_DOCX_TEMPLATE_URI)
     assert path == resolve_document(to_local_uri("samples/40_marks_sample.docx"))
     assert path.is_file()
 

@@ -2,7 +2,7 @@
 
 Supported schemes:
 - ``local:<relative-path>`` — file under the project root (default for samples)
-- ``file:<absolute-path>`` — absolute filesystem path (e.g. teacher uploads)
+- ``file:<absolute-path>`` — absolute filesystem path
 - bare relative path — treated as ``local:``
 - absolute filesystem path — treated as ``file:``
 
@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlparse
 
 from app.core.config import PROJECT_ROOT
 
-DEFAULT_FORMAT_REFERENCE_URI = "local:samples/40_marks_sample.docx"
+DEFAULT_DOCX_TEMPLATE_URI = "local:samples/40_marks_sample.docx"
 
 
 def to_local_uri(relative_path: str) -> str:
@@ -30,9 +30,9 @@ def to_file_uri(path: Path) -> str:
 
 def resolve_document(uri: str | None = None) -> Path:
     """Materialize a document URI to an existing local .docx path."""
-    ref = (uri or DEFAULT_FORMAT_REFERENCE_URI).strip()
+    ref = (uri or DEFAULT_DOCX_TEMPLATE_URI).strip()
     if not ref:
-        ref = DEFAULT_FORMAT_REFERENCE_URI
+        ref = DEFAULT_DOCX_TEMPLATE_URI
 
     path = _uri_to_path(ref)
     if not path.is_file():
@@ -49,7 +49,7 @@ def _uri_to_path(uri: str) -> Path:
     if uri.startswith("s3://"):
         raise NotImplementedError(
             "S3 document resolution is not configured yet. "
-            "Store samples under local: for now, or upload a DOCX at generate time."
+            "Store samples under local: for now."
         )
 
     if uri.startswith("file:"):

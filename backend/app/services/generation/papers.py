@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import logging
-import shutil
-import uuid
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -14,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.config import PROJECT_ROOT, settings
+from app.core.config import settings
 from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.notebook import Notebook
 from app.db.models.question_paper import (
@@ -35,7 +32,6 @@ from app.schemas.generation import (
     SelectedChatMessageSnapshot,
 )
 from app.schemas.notebook import SelectedChapter
-from app.services.documents import DEFAULT_FORMAT_REFERENCE_URI, to_local_uri
 from app.services.export import (
     render_answer_key_markdown,
     render_paper_markdown,
@@ -44,7 +40,6 @@ from app.services.generation.service import generate_paper
 
 logger = logging.getLogger(__name__)
 
-FORMAT_REFERENCE_DIR = PROJECT_ROOT / "data" / "format_references"
 ACTIVE_STATUSES = (QuestionPaperStatus.PENDING, QuestionPaperStatus.RUNNING)
 
 
@@ -64,13 +59,6 @@ def _paper_title(
     if explicit is not None and explicit.strip():
         return explicit.strip()
     return (blueprint.exam_title or "").strip() or "Question Paper"
-
-
-def _persist_format_reference_upload(upload_path: Path) -> str:
-    FORMAT_REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
-    dest = FORMAT_REFERENCE_DIR / f"{uuid.uuid4()}.docx"
-    shutil.copy2(upload_path, dest)
-    return to_local_uri(f"data/format_references/{dest.name}")
 
 
 def _touch_parent(paper: QuestionPaper) -> None:
@@ -139,8 +127,6 @@ def _to_generation_result(
         final_paper=final_paper,
         final_answer_key=final_answer_key,
         generated_items=version.generated_items or [],
-        format_reference_uri=version.format_reference_uri,
-        format_reference_is_default=version.format_reference_is_default,
         paper_markdown=paper_markdown,
         answer_key_markdown=answer_key_markdown,
         selected_chat_messages=_parse_snapshots(version.selected_chat_messages),
@@ -264,7 +250,6 @@ async def enqueue_paper_generation(
     *,
     user: User,
     body: GeneratePaperRequest,
-    format_reference_upload: Path | None = None,
 ) -> GenerationResult:
     """Create a parent paper + pending Version 1 and enqueue Celery generation."""
     from app.tasks.generation import generate_question_paper_task
@@ -273,16 +258,6 @@ async def enqueue_paper_generation(
     if notebook is None:
         raise PermissionError("Notebook not found")
 
-    upload_uri: str | None = None
-    if format_reference_upload is not None:
-        upload_uri = _persist_format_reference_upload(format_reference_upload)
-
-    format_reference_uri = (
-        upload_uri
-        or (body.format_reference_uri or "").strip()
-        or DEFAULT_FORMAT_REFERENCE_URI
-    )
-    is_default = format_reference_uri == DEFAULT_FORMAT_REFERENCE_URI
     title = _paper_title(body.blueprint, explicit=body.title)
 
     paper = QuestionPaper(
@@ -304,8 +279,6 @@ async def enqueue_paper_generation(
         selected_chat_messages=[],
         generation_context={},
         generation_metadata={},
-        format_reference_uri=format_reference_uri,
-        format_reference_is_default=is_default,
     )
     db.add(version)
     _touch_parent(paper)
@@ -404,8 +377,6 @@ async def enqueue_new_version(
         selected_chat_messages=snapshots,
         generation_context=generation_context,
         generation_metadata={},
-        format_reference_uri=base.format_reference_uri,
-        format_reference_is_default=base.format_reference_is_default,
         base_version_id=base.id,
     )
     db.add(version)
@@ -496,8 +467,6 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
                 subject=version.subject,
                 grade=version.grade,
                 teacher_instructions=version.teacher_instructions,
-                format_reference_uri=version.format_reference_uri,
-                format_reference_upload=None,
                 revision_context=revision_context,
             )
 
@@ -507,8 +476,6 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
             version.final_paper = result.final_paper
             version.final_answer_key = result.final_answer_key
             version.generated_items = result.generated_items
-            version.format_reference_uri = result.format_reference_uri
-            version.format_reference_is_default = result.format_reference_is_default
             version.error = None
             metadata = dict(version.generation_metadata or {})
             metadata.update(

@@ -46,11 +46,6 @@ class SampleBlueprint(Base):
         Enum(Subject, name="sample_blueprint_subject", native_enum=False, length=100),
         nullable=True,
     )
-    format_reference_uri: Mapped[str | None] = mapped_column(
-        String(512),
-        nullable=True,
-        doc="Document URI for the formatting sample (local:... or future s3://...).",
-    )
     blueprint: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

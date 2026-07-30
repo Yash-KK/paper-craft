@@ -276,7 +276,6 @@ class SampleBlueprintSummary(BaseModel):
     board: Board | None = None
     subject: Subject | None = None
     grade: ClassGrade | None = None
-    format_reference_uri: str | None = None
 
 
 class SampleBlueprintDetail(SampleBlueprintSummary):
@@ -293,7 +292,6 @@ class GeneratePaperRequest(BaseModel):
     grade: int
     title: str | None = None
     teacher_instructions: str | None = None
-    format_reference_uri: str | None = None
 
 
 class GenerateNewVersionRequest(BaseModel):
@@ -318,8 +316,6 @@ class GeneratedPaperOutput(BaseModel):
     final_paper: dict
     final_answer_key: dict
     generated_items: list[dict]
-    format_reference_uri: str
-    format_reference_is_default: bool = True
 
 
 class GenerationResult(BaseModel):
@@ -335,8 +331,6 @@ class GenerationResult(BaseModel):
     final_paper: dict
     final_answer_key: dict
     generated_items: list[dict]
-    format_reference_uri: str
-    format_reference_is_default: bool = True
     paper_markdown: str = ""
     answer_key_markdown: str = ""
     selected_chat_messages: list[SelectedChatMessageSnapshot] = Field(
@@ -353,8 +347,6 @@ class QuestionPaperVersionSummary(BaseModel):
     status: QuestionPaperStatus
     subject: str
     grade: int
-    format_reference_uri: str
-    format_reference_is_default: bool
     created_at: datetime
     updated_at: datetime
     error: str | None = None

@@ -5,12 +5,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.services.export.latex import normalize_newlines
+
 _OPTION_BLOCK_RE = re.compile(
     r"(?:\n+\s*(?:\(?[A-Da-d]\)|[A-Da-d][).:])\s*[^\n]*)+\s*$"
 )
 _INLINE_OPTIONS_RE = re.compile(
     r"(?:\s*\([A-Da-d]\)\s+[^\n(]+){2,}\s*$"
 )
+
+INLINE_OPTION_GAP = "\u2003\u2003"
 
 QUESTION_TYPE_LABELS: dict[str, str] = {
     "MCQ": "Multiple Choice Questions (MCQs)",
@@ -44,8 +48,44 @@ def format_option_label(raw_option: str, index: int) -> str:
 def format_options_line(options: list[str], *, single_line: bool = True) -> str:
     formatted = [format_option_label(opt, i) for i, opt in enumerate(options)]
     if single_line:
-        return "     ".join(formatted)
+        return INLINE_OPTION_GAP.join(formatted)
     return "\n".join(formatted)
+
+
+def question_body_lines(
+    question_number: int | str | None,
+    question_text: str | None,
+) -> list[str]:
+    """Split question text into lines with the serial number on the first line only."""
+    cleaned = normalize_newlines(question_text or "").strip()
+    raw_lines = [line.strip() for line in cleaned.split("\n") if line.strip()]
+    if question_number is None:
+        return raw_lines
+    if not raw_lines:
+        return [f"{question_number}."]
+    lines = [f"{question_number}. {raw_lines[0]}"]
+    lines.extend(raw_lines[1:])
+    return lines
+
+
+def format_question_markdown_lines(
+    question_number: int | str | None,
+    question_text: str | None,
+) -> list[str]:
+    """Markdown lines for a question stem (bold number on the first line)."""
+    body_lines = question_body_lines(question_number, question_text)
+    if not body_lines:
+        return []
+    first = body_lines[0]
+    prefix = f"{question_number}. " if question_number is not None else ""
+    if prefix and first.startswith(prefix):
+        rest = first[len(prefix) :]
+        lines = [f"**{question_number}.** {rest}"]
+    else:
+        lines = [first]
+    for line in body_lines[1:]:
+        lines.append(f"   {line}")
+    return lines
 
 
 def options_should_be_single_line(question_type: str | None) -> bool:
