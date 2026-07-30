@@ -1,5 +1,5 @@
 import * as React from "react"
-import { MoreVertical, Trash2 } from "lucide-react"
+import { GitBranchPlus, MoreVertical, Trash2 } from "lucide-react"
 
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button } from "@/components/ui/button"
@@ -46,18 +46,31 @@ function PaperMenuItems({
 
 type QuestionPaperActionsMenuProps = {
   title: string
+  nextVersionNumber?: number | null
+  onGenerateVersion?: () => void
   onDelete: () => void | Promise<void>
   children: React.ReactNode
 }
 
 export function QuestionPaperActionsMenu({
   title,
+  nextVersionNumber = null,
+  onGenerateVersion,
   onDelete,
   children,
 }: QuestionPaperActionsMenuProps) {
   const [confirmOpen, setConfirmOpen] = React.useState(false)
 
   const actions: PaperAction[] = [
+    ...(nextVersionNumber != null && onGenerateVersion
+      ? [
+          {
+            label: `Generate Version ${nextVersionNumber}`,
+            icon: GitBranchPlus,
+            onSelect: onGenerateVersion,
+          } satisfies PaperAction,
+        ]
+      : []),
     {
       label: "Delete",
       icon: Trash2,
@@ -85,12 +98,12 @@ export function QuestionPaperActionsMenu({
             >
               <MoreVertical className="size-3.5" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-36">
+            <DropdownMenuContent align="end" className="min-w-40">
               <PaperMenuItems Item={DropdownMenuItem} actions={actions} />
             </DropdownMenuContent>
           </DropdownMenu>
         </ContextMenuTrigger>
-        <ContextMenuContent className="min-w-36">
+        <ContextMenuContent className="min-w-40">
           <PaperMenuItems Item={ContextMenuItem} actions={actions} />
         </ContextMenuContent>
       </ContextMenu>

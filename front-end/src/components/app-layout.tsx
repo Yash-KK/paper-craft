@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PanelLeft } from "lucide-react"
 import { matchPath, Outlet, useLocation } from "react-router-dom"
 
@@ -11,6 +11,10 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
+import {
+  ChatSelectionProvider,
+  useChatSelectionOptional,
+} from "@/features/chat/chat-selection-context"
 
 export function AppLayout() {
   const { status, user } = useAuth()
@@ -19,26 +23,28 @@ export function AppLayout() {
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <div className="h-svh overflow-hidden">
-        {authenticated && user && sidebarOpen ? (
-          <ResizablePanelGroup orientation="horizontal" className="h-full">
-            <ResizablePanel
-              defaultSize="22"
-              minSize="16"
-              maxSize="40"
-              className="border-r"
-            >
-              <AppSidebar user={user} />
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize="78">
-              <AppMain />
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        ) : (
-          <AppMain />
-        )}
-      </div>
+      <ChatSelectionProvider>
+        <div className="h-svh overflow-hidden">
+          {authenticated && user && sidebarOpen ? (
+            <ResizablePanelGroup orientation="horizontal" className="h-full">
+              <ResizablePanel
+                defaultSize="22"
+                minSize="16"
+                maxSize="40"
+                className="border-r"
+              >
+                <AppSidebar user={user} />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize="78">
+                <AppMain />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            <AppMain />
+          )}
+        </div>
+      </ChatSelectionProvider>
     </SidebarProvider>
   )
 }
@@ -47,10 +53,16 @@ function AppMain() {
   const { status } = useAuth()
   const sidebar = useSidebar()
   const location = useLocation()
+  const selection = useChatSelectionOptional()
   const authenticated = status === AuthStatus.Authenticated
   const notebookMatch =
     matchPath("/notebooks/:notebookId/generate", location.pathname) ??
     matchPath("/notebooks/:notebookId", location.pathname)
+  const notebookId = notebookMatch?.params.notebookId
+
+  useEffect(() => {
+    selection?.clear()
+  }, [notebookId])
 
   return (
     <div className="flex h-full min-w-0 flex-1 flex-col">

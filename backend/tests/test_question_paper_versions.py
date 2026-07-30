@@ -31,6 +31,7 @@ from app.services.generation.papers import (
     fail_stuck_versions,
     run_paper_generation,
 )
+from app.services.generation.next_version import run_next_version_generation
 from app.services.generation.sample_blueprints_data import REVISION_SHEET_BLUEPRINT
 
 
@@ -215,7 +216,7 @@ def test_enqueue_new_version_inherits_latest_ready_and_snapshots(
 
     body = GenerateNewVersionRequest(selected_message_ids=[message_id])
     with patch(
-        "app.tasks.generation.generate_question_paper_task.delay"
+        "app.tasks.generation.generate_next_question_paper_version_task.delay"
     ) as delay:
         result = asyncio.run(
             enqueue_new_version(
@@ -358,6 +359,66 @@ def test_run_paper_generation_success_and_failure() -> None:
         run_paper_generation(version.id, db=session)
     assert version.status == QuestionPaperStatus.FAILED
     assert version.error == "boom"
+
+
+def test_run_next_version_generation_uses_revision_pipeline() -> None:
+    base = _make_version(version_number=1, status=QuestionPaperStatus.READY)
+    base.generated_items = [{"question_number": 1, "question_text": "Old Q"}]
+    version = _make_version(
+        version_number=2,
+        status=QuestionPaperStatus.PENDING,
+        base_version_id=base.id,
+    )
+    version.generated_items = list(base.generated_items)
+    version.generation_context = {
+        "base_version_id": str(base.id),
+        "base_version_number": 1,
+        "base_generated_items": base.generated_items,
+        "base_final_paper": {},
+    }
+    version.selected_chat_messages = [
+        {"role": "user", "content": "Make Q1 harder"}
+    ]
+    paper = _make_paper(versions=[base, version])
+    version.question_paper_id = paper.id
+
+    session = MagicMock(spec=Session)
+    session.get.side_effect = lambda model, obj_id: (
+        version
+        if model is QuestionPaperVersion
+        else paper
+        if model is QuestionPaper
+        else None
+    )
+
+    fake_output = SimpleNamespace(
+        blueprint=SimpleNamespace(
+            model_dump=lambda mode="json": version.blueprint,
+            exam_title="Revision Sheet",
+        ),
+        final_paper={"sections": {"A": []}},
+        final_answer_key={"sections": {"A": []}},
+        generated_items=[{"slot_id": "s1", "question_text": "New Q"}],
+    )
+
+    with patch(
+        "app.services.generation.next_version.generate_next_version_paper",
+        return_value=fake_output,
+    ) as generate_next:
+        run_next_version_generation(version.id, db=session)
+
+    assert version.status == QuestionPaperStatus.READY
+    assert version.generated_items == [
+        {"slot_id": "s1", "question_text": "New Q"}
+    ]
+    assert (
+        version.generation_metadata.get("task")
+        == "generate_next_question_paper_version"
+    )
+    generate_next.assert_called_once()
+    kwargs = generate_next.call_args.kwargs
+    assert kwargs["base_generated_items"] == base.generated_items
+    assert kwargs["selected_chat_messages"][0]["content"] == "Make Q1 harder"
 
 
 def test_fail_stuck_versions_marks_running_rows() -> None:

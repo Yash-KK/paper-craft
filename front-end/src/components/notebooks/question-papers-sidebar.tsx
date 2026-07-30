@@ -13,10 +13,15 @@ import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
 import { QuestionPaperActionsMenu } from "@/features/question-papers/components/question-paper-actions-menu"
+import { GenerateVersionDialog } from "@/features/question-papers/components/generate-version-dialog"
 import { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
 import { useDeleteQuestionPaper } from "@/features/question-papers/hooks/use-delete-question-paper"
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
-import { isActiveGenerationStatus } from "@/features/question-papers/lib/question-paper-utils"
+import {
+  canCreateNewVersion,
+  isActiveGenerationStatus,
+  nextVersionNumber,
+} from "@/features/question-papers/lib/question-paper-utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -65,6 +70,8 @@ export function QuestionPapersSidebar({
   )
   const [selected, setSelected] = React.useState<SelectedVersion | null>(null)
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null)
+  const [generatePaper, setGeneratePaper] =
+    React.useState<QuestionPaperSummary | null>(null)
 
   function setPaperOpen(paperId: string, open: boolean) {
     setCollapsedIds((prev) => {
@@ -174,6 +181,12 @@ export function QuestionPapersSidebar({
                 >
                   <QuestionPaperActionsMenu
                     title={paper.title}
+                    nextVersionNumber={
+                      canCreateNewVersion(paper)
+                        ? nextVersionNumber(paper)
+                        : null
+                    }
+                    onGenerateVersion={() => setGeneratePaper(paper)}
                     onDelete={() => deletePaper.mutateAsync(paper.id)}
                   >
                     <CollapsibleTrigger
@@ -315,6 +328,17 @@ export function QuestionPapersSidebar({
           )}
         </div>
       </ScrollArea>
+
+      {generatePaper ? (
+        <GenerateVersionDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setGeneratePaper(null)
+          }}
+          notebookId={notebook.id}
+          paper={generatePaper}
+        />
+      ) : null}
 
       {selected ? (
         <PaperVersionDialog

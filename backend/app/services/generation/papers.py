@@ -325,7 +325,7 @@ async def enqueue_new_version(
     body: GenerateNewVersionRequest,
 ) -> GenerationResult:
     """Create the next version from the latest ready version + chat snapshots."""
-    from app.tasks.generation import generate_question_paper_task
+    from app.tasks.generation import generate_next_question_paper_version_task
 
     result = await db.execute(
         select(QuestionPaper)
@@ -371,11 +371,7 @@ async def enqueue_new_version(
         message_ids=body.selected_message_ids,
     )
 
-    teacher_instructions = (
-        (body.teacher_instructions or "").strip()
-        or (base.teacher_instructions or "").strip()
-        or None
-    )
+    teacher_instructions = (body.teacher_instructions or "").strip() or None
 
     generation_context = {
         "base_version_id": str(base.id),
@@ -410,9 +406,9 @@ async def enqueue_new_version(
     await db.refresh(paper)
     await db.refresh(version)
 
-    generate_question_paper_task.delay(str(version.id))
+    generate_next_question_paper_version_task.delay(str(version.id))
     logger.info(
-        "Enqueued question paper revision paper_id=%s version_id=%s base=%s",
+        "Enqueued next-version generation paper_id=%s version_id=%s base=%s",
         paper.id,
         version.id,
         base.id,
@@ -471,20 +467,6 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
                 SelectedChapter.model_validate(chapter)
                 for chapter in version.selected_chapters
             ]
-            revision_context = None
-            context = version.generation_context or {}
-            if version.version_number > 1 or context.get("base_generated_items"):
-                revision_context = {
-                    "base_version_id": context.get("base_version_id"),
-                    "base_version_number": context.get("base_version_number"),
-                    "base_final_paper": context.get("base_final_paper")
-                    or version.final_paper
-                    or {},
-                    "base_generated_items": context.get("base_generated_items")
-                    or version.generated_items
-                    or [],
-                    "selected_chat_messages": version.selected_chat_messages or [],
-                }
 
             result = generate_paper(
                 blueprint=blueprint,
@@ -492,7 +474,6 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
                 subject=version.subject,
                 grade=version.grade,
                 teacher_instructions=version.teacher_instructions,
-                revision_context=revision_context,
             )
 
             finished_at = datetime.now(UTC)
