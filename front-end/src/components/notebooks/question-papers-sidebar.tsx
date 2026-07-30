@@ -8,12 +8,11 @@ import {
   Loader2,
   Plus,
   Sparkles,
-  Trash2,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
 
-import { ConfirmDialog } from "@/components/confirm-dialog"
+import { QuestionPaperActionsMenu } from "@/features/question-papers/components/question-paper-actions-menu"
 import { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
 import { useDeleteQuestionPaper } from "@/features/question-papers/hooks/use-delete-question-paper"
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
@@ -173,13 +172,16 @@ export function QuestionPapersSidebar({
                   onOpenChange={(open) => setPaperOpen(paper.id, open)}
                   className="rounded-lg"
                 >
-                  <div className="flex items-center gap-0.5">
+                  <QuestionPaperActionsMenu
+                    title={paper.title}
+                    onDelete={() => deletePaper.mutateAsync(paper.id)}
+                  >
                     <CollapsibleTrigger
                       render={
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-auto min-w-0 flex-1 justify-start gap-2 p-2 text-sm font-medium"
+                          className="h-auto w-full justify-start gap-2 p-2 text-sm font-medium hover:bg-transparent"
                         />
                       }
                     >
@@ -192,25 +194,7 @@ export function QuestionPapersSidebar({
                       />
                       <span className="truncate">{paper.title}</span>
                     </CollapsibleTrigger>
-                    <ConfirmDialog
-                      title="Delete question paper?"
-                      description={`This will delete “${paper.title}”.`}
-                      confirmLabel="Delete"
-                      confirmVariant="destructive"
-                      onConfirm={() => deletePaper.mutateAsync(paper.id)}
-                      trigger={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          className="mr-1 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          aria-label={`Delete ${paper.title}`}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      }
-                    />
-                  </div>
+                  </QuestionPaperActionsMenu>
 
                   <CollapsibleContent>
                     <ul className="space-y-0.5 px-1 pb-1">
