@@ -1,18 +1,18 @@
-"""Dedicated pipeline for generating the next question-paper version.
+"""Next question-paper version: one prompt, one LLM call, persist result.
 
-Context is the previous ready version + selected chat messages + optional
-teacher instructions. Blueprint structure is reused for slot layout only;
-source-document retrieval is intentionally skipped.
+Inputs are the previous version JSON, selected chat messages, and optional
+teacher instructions. No LangGraph / retrieval / multi-stage orchestration.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.models.question_paper import (
@@ -21,17 +21,43 @@ from app.db.models.question_paper import (
     QuestionPaperVersion,
 )
 from app.db.session import get_sync_db
-from app.schemas.generation import (
-    GeneratedPaperOutput,
-    GenerationState,
-    QuestionPaperBlueprint,
-)
-from app.schemas.notebook import SelectedChapter
-from app.services.generation.assemble import assemble_node
-from app.services.generation.generate import generate_paper_node
-from app.services.generation.plan import plan_slots_node
+from app.schemas.generation import GeneratedPaperOutput, QuestionPaperBlueprint
+from app.services.chat.llm import get_chat_model
 
 logger = logging.getLogger(__name__)
+
+NEXT_VERSION_SYSTEM = """You revise an existing school question paper.
+
+You receive the previous ready version as JSON (student paper, answer key, and
+generated item records), plus selected teacher chat messages and optional
+teacher instructions.
+
+Rules:
+- Preserve the previous structure (sections, question numbers, types, marks,
+  chapter assignments, internal-choice flags) unless chat/instructions
+  explicitly require a change.
+- Apply only what the chat messages and teacher instructions ask for.
+- Leave unchanged questions as they were.
+- Keep questions academically correct, unambiguous, and fully solvable.
+- Return a complete revised paper: final_paper, final_answer_key, and
+  generated_items must stay aligned with each other and use the same field
+  shapes as the previous version.
+- Do not invent new top-level fields. Do not drop questions unless asked.
+"""
+
+
+class NextVersionContent(BaseModel):
+    """Structured LLM output for a revised question-paper version."""
+
+    final_paper: dict[str, Any] = Field(
+        description="Revised student-facing paper; same shape as previous final_paper"
+    )
+    final_answer_key: dict[str, Any] = Field(
+        description="Revised answer key; same shape as previous final_answer_key"
+    )
+    generated_items: list[dict[str, Any]] = Field(
+        description="Full revised item records; same shape as previous generated_items"
+    )
 
 
 def _paper_title(blueprint: QuestionPaperBlueprint) -> str:
@@ -42,68 +68,88 @@ def _touch_parent(paper: QuestionPaper) -> None:
     paper.updated_at = datetime.now(UTC)
 
 
-def _seed_empty_context(state: dict) -> dict:
-    """Skip textbook retrieval; revision grounding comes from the prior version."""
-    slots = list(state.get("slots") or [])
-    for slot in slots:
-        slot["context_chunks"] = []
-    return {"slots": slots}
+def _format_chat_messages(messages: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            continue
+        role = (message.get("role") or "user").upper()
+        content = (message.get("content") or "").strip()
+        if content:
+            lines.append(f"{role}: {content}")
+    if not lines:
+        return "(none)"
+    return "\n".join(lines)
 
 
-def build_next_version_graph():
-    builder = StateGraph(GenerationState)
-    builder.add_node("plan_slots", plan_slots_node)
-    builder.add_node("skip_retrieve", _seed_empty_context)
-    builder.add_node("revise_paper", generate_paper_node)
-    builder.add_node("assemble", assemble_node)
+def build_next_version_messages(
+    *,
+    previous_final_paper: dict[str, Any],
+    previous_final_answer_key: dict[str, Any],
+    previous_generated_items: list[dict[str, Any]],
+    selected_chat_messages: list[dict[str, Any]],
+    teacher_instructions: str | None,
+) -> list[tuple[str, str]]:
+    """Build the single system + human prompt for next-version generation."""
+    instructions = (teacher_instructions or "").strip()
+    teacher_block = instructions or "(none)"
 
-    builder.add_edge(START, "plan_slots")
-    builder.add_edge("plan_slots", "skip_retrieve")
-    builder.add_edge("skip_retrieve", "revise_paper")
-    builder.add_edge("revise_paper", "assemble")
-    builder.add_edge("assemble", END)
-    return builder.compile()
+    human = f"""PREVIOUS FINAL PAPER (JSON):
+{json.dumps(previous_final_paper, ensure_ascii=False, indent=2)}
 
+PREVIOUS FINAL ANSWER KEY (JSON):
+{json.dumps(previous_final_answer_key, ensure_ascii=False, indent=2)}
 
-next_version_graph = build_next_version_graph()
+PREVIOUS GENERATED ITEMS (JSON):
+{json.dumps(previous_generated_items, ensure_ascii=False, indent=2)}
+
+SELECTED CHAT MESSAGES:
+{_format_chat_messages(selected_chat_messages)}
+
+TEACHER INSTRUCTIONS:
+{teacher_block}
+
+Return the complete revised final_paper, final_answer_key, and generated_items.
+"""
+    return [
+        ("system", NEXT_VERSION_SYSTEM),
+        ("human", human),
+    ]
 
 
 def generate_next_version_paper(
     *,
     blueprint: QuestionPaperBlueprint,
-    selected_chapters: list[SelectedChapter],
-    subject: str,
-    grade: int,
-    teacher_instructions: str | None,
-    base_generated_items: list[dict[str, Any]],
+    previous_final_paper: dict[str, Any],
+    previous_final_answer_key: dict[str, Any],
+    previous_generated_items: list[dict[str, Any]],
     selected_chat_messages: list[dict[str, Any]],
-    base_version_id: str | None = None,
-    base_version_number: int | None = None,
-    base_final_paper: dict[str, Any] | None = None,
+    teacher_instructions: str | None,
 ) -> GeneratedPaperOutput:
-    """Revise a prior version using chat guidance — independent of V1 generation."""
-    revision_context = {
-        "base_version_id": base_version_id,
-        "base_version_number": base_version_number,
-        "base_final_paper": base_final_paper or {},
-        "base_generated_items": base_generated_items,
-        "selected_chat_messages": selected_chat_messages,
-    }
-    result = next_version_graph.invoke(
-        {
-            "question_paper": blueprint.model_dump(mode="json"),
-            "selected_chapters": [c.model_dump() for c in selected_chapters],
-            "subject": subject,
-            "grade": grade,
-            "teacher_instructions": (teacher_instructions or "").strip() or None,
-            "revision_context": revision_context,
-        }
+    """Single LLM call → structured NextVersionContent → GeneratedPaperOutput."""
+    messages = build_next_version_messages(
+        previous_final_paper=previous_final_paper,
+        previous_final_answer_key=previous_final_answer_key,
+        previous_generated_items=previous_generated_items,
+        selected_chat_messages=selected_chat_messages,
+        teacher_instructions=teacher_instructions,
+    )
+    structured_llm = (
+        get_chat_model()
+        .bind(max_tokens=16000)
+        .with_structured_output(NextVersionContent)
+    )
+    result = structured_llm.invoke(messages)
+    content = (
+        result
+        if isinstance(result, NextVersionContent)
+        else NextVersionContent.model_validate(result)
     )
     return GeneratedPaperOutput(
         blueprint=blueprint,
-        final_paper=result["final_paper"] or {"sections": {}},
-        final_answer_key=result["final_answer_key"] or {"sections": {}},
-        generated_items=result.get("generated_items") or [],
+        final_paper=content.final_paper or {"sections": {}},
+        final_answer_key=content.final_answer_key or {"sections": {}},
+        generated_items=list(content.generated_items or []),
     )
 
 
@@ -161,37 +207,33 @@ def run_next_version_generation(
 
         try:
             context = version.generation_context or {}
-            base_items = (
+            previous_items = list(
                 context.get("base_generated_items")
                 or version.generated_items
                 or []
             )
-            if not base_items:
+            previous_final_paper = dict(
+                context.get("base_final_paper") or version.final_paper or {}
+            )
+            previous_final_answer_key = dict(
+                context.get("base_final_answer_key")
+                or version.final_answer_key
+                or {}
+            )
+            if not previous_items and not previous_final_paper:
                 raise ValueError(
-                    "base_generated_items is empty — cannot revise without a "
-                    "previous version"
+                    "Previous version content is empty — cannot generate next version "
+                    f"(version_id={version_id})"
                 )
 
             blueprint = QuestionPaperBlueprint.model_validate(version.blueprint)
-            selected_chapters = [
-                SelectedChapter.model_validate(chapter)
-                for chapter in (version.selected_chapters or [])
-            ]
-
             result = generate_next_version_paper(
                 blueprint=blueprint,
-                selected_chapters=selected_chapters,
-                subject=version.subject,
-                grade=version.grade,
-                teacher_instructions=version.teacher_instructions,
-                base_generated_items=list(base_items),
+                previous_final_paper=previous_final_paper,
+                previous_final_answer_key=previous_final_answer_key,
+                previous_generated_items=previous_items,
                 selected_chat_messages=list(version.selected_chat_messages or []),
-                base_version_id=context.get("base_version_id")
-                or str(version.base_version_id),
-                base_version_number=context.get("base_version_number"),
-                base_final_paper=context.get("base_final_paper")
-                or version.final_paper
-                or {},
+                teacher_instructions=version.teacher_instructions,
             )
 
             finished_at = datetime.now(UTC)

@@ -19,7 +19,6 @@ def generate_paper(
             "subject": subject,
             "grade": grade,
             "teacher_instructions": (teacher_instructions or "").strip() or None,
-            "revision_context": None,
         }
     )
 

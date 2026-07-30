@@ -310,7 +310,7 @@ class SelectedChatMessageSnapshot(BaseModel):
 
 
 class GeneratedPaperOutput(BaseModel):
-    """Sync graph output before persistence onto a version row."""
+    """Generation output before persistence onto a version row."""
 
     blueprint: QuestionPaperBlueprint
     final_paper: dict
@@ -396,4 +396,3 @@ class GenerationState(TypedDict):
     generated_items: list[dict]
     final_paper: dict | None
     final_answer_key: dict | None
-    revision_context: dict | None

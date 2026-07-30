@@ -20,7 +20,6 @@ from app.db.models.question_paper import (
 )
 from app.db.models.user import User
 from app.schemas.generation import GenerateNewVersionRequest, GeneratePaperRequest
-from app.services.generation import generate as generate_mod
 from app.services.generation.papers import (
     ActiveGenerationError,
     NoReadyVersionError,
@@ -31,7 +30,10 @@ from app.services.generation.papers import (
     fail_stuck_versions,
     run_paper_generation,
 )
-from app.services.generation.next_version import run_next_version_generation
+from app.services.generation.next_version import (
+    build_next_version_messages,
+    run_next_version_generation,
+)
 from app.services.generation.sample_blueprints_data import REVISION_SHEET_BLUEPRINT
 
 
@@ -361,9 +363,11 @@ def test_run_paper_generation_success_and_failure() -> None:
     assert version.error == "boom"
 
 
-def test_run_next_version_generation_uses_revision_pipeline() -> None:
+def test_run_next_version_generation_uses_simple_pipeline() -> None:
     base = _make_version(version_number=1, status=QuestionPaperStatus.READY)
     base.generated_items = [{"question_number": 1, "question_text": "Old Q"}]
+    base.final_paper = {"sections": {"A": [{"question_number": 1}]}}
+    base.final_answer_key = {"sections": {"A": [{"question_number": 1}]}}
     version = _make_version(
         version_number=2,
         status=QuestionPaperStatus.PENDING,
@@ -374,11 +378,13 @@ def test_run_next_version_generation_uses_revision_pipeline() -> None:
         "base_version_id": str(base.id),
         "base_version_number": 1,
         "base_generated_items": base.generated_items,
-        "base_final_paper": {},
+        "base_final_paper": base.final_paper,
+        "base_final_answer_key": base.final_answer_key,
     }
     version.selected_chat_messages = [
         {"role": "user", "content": "Make Q1 harder"}
     ]
+    version.teacher_instructions = "Keep marks the same"
     paper = _make_paper(versions=[base, version])
     version.question_paper_id = paper.id
 
@@ -417,8 +423,11 @@ def test_run_next_version_generation_uses_revision_pipeline() -> None:
     )
     generate_next.assert_called_once()
     kwargs = generate_next.call_args.kwargs
-    assert kwargs["base_generated_items"] == base.generated_items
+    assert kwargs["previous_generated_items"] == base.generated_items
+    assert kwargs["previous_final_paper"] == base.final_paper
+    assert kwargs["previous_final_answer_key"] == base.final_answer_key
     assert kwargs["selected_chat_messages"][0]["content"] == "Make Q1 harder"
+    assert kwargs["teacher_instructions"] == "Keep marks the same"
 
 
 def test_fail_stuck_versions_marks_running_rows() -> None:
@@ -439,43 +448,30 @@ def test_fail_stuck_versions_marks_running_rows() -> None:
     session.commit.assert_called_once()
 
 
-def test_revision_prompt_includes_prior_question_and_chat() -> None:
-    slot = {
-        "slot_id": "s1",
-        "section_name": "A",
-        "question_number": 1,
-        "question_type": "VSA",
-        "marks": 1,
-        "chapter_number": 1,
-        "chapter_name": "Real Numbers",
-        "has_internal_choice": False,
-        "sub_parts": [],
-        "context_chunks": [],
-    }
-    revision_context = {
-        "base_generated_items": [
-            {
-                "question_number": 1,
-                "question_text": "Old question text",
-                "answer": "Old answer",
-            }
+def test_next_version_prompt_includes_previous_paper_and_chat() -> None:
+    messages = build_next_version_messages(
+        previous_final_paper={
+            "sections": {"A": [{"question_number": 1, "question_text": "Old Q"}]}
+        },
+        previous_final_answer_key={
+            "sections": {"A": [{"question_number": 1, "answer": "Old A"}]}
+        },
+        previous_generated_items=[
+            {"question_number": 1, "question_text": "Old question text"}
         ],
-        "selected_chat_messages": [
+        selected_chat_messages=[
             {"role": "user", "content": "Make question 1 application-based"}
         ],
-    }
-    messages = generate_mod._build_batch_messages(
-        [slot],
-        revision_context=revision_context,
-        prior_by_question_number=generate_mod._prior_items_by_question_number(
-            revision_context
-        ),
+        teacher_instructions="Prefer word problems",
     )
     system_text = messages[0][1]
     human_text = messages[1][1]
-    assert "REVISION MODE" in system_text
+    assert "revise an existing school question paper" in system_text.lower()
     assert "Old question text" in human_text
     assert "Make question 1 application-based" in human_text
+    assert "Prefer word problems" in human_text
+    assert "PREVIOUS FINAL PAPER" in human_text
+
 
 
 def test_list_and_version_detail_routes(
