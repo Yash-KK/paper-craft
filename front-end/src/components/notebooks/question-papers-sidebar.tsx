@@ -181,7 +181,7 @@ export function QuestionPapersSidebar({
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-auto w-full justify-start gap-2 p-2 text-sm font-medium hover:bg-transparent"
+                          className="h-auto w-full justify-start gap-2 bg-transparent p-2 text-sm font-medium hover:bg-transparent aria-expanded:bg-transparent"
                         />
                       }
                     >

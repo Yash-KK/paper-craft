@@ -69,7 +69,7 @@ export function QuestionPaperActionsMenu({
   return (
     <>
       <ContextMenu>
-        <ContextMenuTrigger className="group/paper flex w-full items-center rounded-lg hover:bg-muted">
+        <ContextMenuTrigger className="has-aria-expanded:bg-muted:bg-muted flex w-full items-center rounded-lg hover:bg-muted">
           <div className="min-w-0 flex-1">{children}</div>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -78,7 +78,7 @@ export function QuestionPaperActionsMenu({
                   type="button"
                   variant="ghost"
                   size="icon-xs"
-                  className="mr-1 shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground group-hover/paper:text-foreground"
+                  className="mr-1 shrink-0 bg-transparent text-muted-foreground hover:bg-transparent hover:text-foreground aria-expanded:bg-transparent aria-expanded:text-foreground"
                   aria-label={`Actions for ${title}`}
                 />
               }
