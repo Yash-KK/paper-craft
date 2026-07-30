@@ -11,6 +11,13 @@ import {
 import { MarkingSchemeSection } from "@/components/notebooks/marking-scheme-section"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MenuSelect } from "@/components/ui/menu-select"
@@ -47,21 +54,23 @@ function FormPanel({
   children: ReactNode
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card">
-      <div className="flex items-start justify-between gap-3 border-b bg-violet-500/10 px-4 py-3 sm:px-5">
+    <Card className="gap-0 overflow-hidden rounded-2xl py-0 ring-border/10">
+      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 border-b bg-violet-500/10 px-4 py-3 sm:px-5">
         <div className="flex items-start gap-3">
           {icon}
           <div>
-            <h2 className="font-heading text-base font-semibold">{title}</h2>
+            <CardTitle className="font-heading text-base font-semibold">
+              {title}
+            </CardTitle>
             {description ? (
-              <p className="text-xs text-muted-foreground">{description}</p>
+              <CardDescription className="text-xs">{description}</CardDescription>
             ) : null}
           </div>
         </div>
         {trailing}
-      </div>
-      <div className="p-4 sm:p-5">{children}</div>
-    </section>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-5">{children}</CardContent>
+    </Card>
   )
 }
 

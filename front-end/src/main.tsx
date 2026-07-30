@@ -8,6 +8,7 @@ import { AuthProvider } from "@/components/auth-provider"
 import { QueryProvider } from "@/components/query-provider"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -15,8 +16,10 @@ createRoot(document.getElementById("root")!).render(
       <QueryProvider>
         <BrowserRouter>
           <AuthProvider>
-            <App />
-            <Toaster richColors position="bottom-center" />
+            <TooltipProvider>
+              <App />
+              <Toaster richColors position="bottom-center" />
+            </TooltipProvider>
           </AuthProvider>
         </BrowserRouter>
       </QueryProvider>

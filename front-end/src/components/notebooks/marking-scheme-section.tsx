@@ -170,14 +170,16 @@ export function MarkingSchemeSection({
                 }
               />
               <span className="text-muted-foreground">Qs</span>
-              <button
+              <Button
                 type="button"
-                className="rounded p-0.5 text-muted-foreground hover:bg-violet-500/20 hover:text-foreground"
+                variant="ghost"
+                size="icon-xs"
+                className="text-muted-foreground hover:bg-violet-500/20 hover:text-foreground"
                 aria-label="Remove chapter"
                 onClick={() => onRemoveChapter(group.allocationIndexes)}
               >
                 <X className="size-3.5" />
-              </button>
+              </Button>
             </div>
           ))}
 
