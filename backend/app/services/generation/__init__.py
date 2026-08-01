@@ -1,4 +1,5 @@
 from app.services.generation.papers import (
+    cancel_version_generation,
     enqueue_new_version,
     enqueue_paper_generation,
     get_paper_detail,
@@ -12,6 +13,7 @@ from app.services.generation.next_version import (
 from app.services.generation.service import generate_paper
 
 __all__ = [
+    "cancel_version_generation",
     "enqueue_new_version",
     "enqueue_paper_generation",
     "generate_paper",

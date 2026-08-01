@@ -22,9 +22,11 @@ from app.db.models.user import User
 from app.schemas.generation import GenerateNewVersionRequest, GeneratePaperRequest
 from app.services.generation.papers import (
     ActiveGenerationError,
+    CancellationNotAllowedError,
     NoReadyVersionError,
     _to_paper_summary,
     _to_version_detail,
+    cancel_version_generation,
     enqueue_new_version,
     enqueue_paper_generation,
     fail_stuck_versions,
@@ -154,6 +156,7 @@ def test_enqueue_creates_parent_and_version_one(
     with patch(
         "app.tasks.generation.generate_question_paper_task.delay"
     ) as delay:
+        delay.return_value = SimpleNamespace(id="celery-task-1")
         result = asyncio.run(
             enqueue_paper_generation(mock_db, user=mock_user, body=body)
         )
@@ -164,10 +167,12 @@ def test_enqueue_creates_parent_and_version_one(
     assert version.version_number == 1
     assert version.status == QuestionPaperStatus.PENDING
     assert version.selected_chat_messages == []
+    assert version.generation_metadata.get("celery_task_id") == "celery-task-1"
     assert result.version_number == 1
     assert result.status == QuestionPaperStatus.PENDING
     assert result.title == "My Paper"
     delay.assert_called_once_with(str(version.id))
+    assert mock_db.commit.await_count >= 2
 
 
 def test_grouped_paper_summary_includes_versions() -> None:
@@ -514,3 +519,75 @@ def test_version_export_requires_ready(client: TestClient) -> None:
         )
     assert response.status_code == 409
     assert "not ready" in response.json()["detail"]
+
+
+def test_cancel_version_one_revokes_celery_and_marks_cancelled(
+    mock_db: AsyncMock,
+    mock_user: User,
+) -> None:
+    version = _make_version(
+        version_number=1,
+        status=QuestionPaperStatus.RUNNING,
+    )
+    version.generation_metadata = {"celery_task_id": "task-abc"}
+    paper = _make_paper(versions=[version])
+    mock_db.refresh = AsyncMock()
+
+    with (
+        patch(
+            "app.services.generation.papers.get_owned_version",
+            new=AsyncMock(return_value=(paper, version)),
+        ),
+        patch("app.core.celery_app.celery_app.control.revoke") as revoke,
+    ):
+        summary = asyncio.run(
+            cancel_version_generation(
+                mock_db,
+                user=mock_user,
+                paper_id=paper.id,
+                version_number=1,
+            )
+        )
+
+    assert summary.status == QuestionPaperStatus.CANCELLED
+    assert version.status == QuestionPaperStatus.CANCELLED
+    assert version.error == "Cancelled by user"
+    revoke.assert_called_once_with("task-abc", terminate=True, signal="SIGTERM")
+    mock_db.commit.assert_awaited()
+
+
+def test_cancel_rejects_non_version_one(
+    mock_db: AsyncMock,
+    mock_user: User,
+) -> None:
+    version = _make_version(
+        version_number=2,
+        status=QuestionPaperStatus.RUNNING,
+    )
+    paper = _make_paper(versions=[version])
+
+    with patch(
+        "app.services.generation.papers.get_owned_version",
+        new=AsyncMock(return_value=(paper, version)),
+    ):
+        with pytest.raises(CancellationNotAllowedError, match="Version 1"):
+            asyncio.run(
+                cancel_version_generation(
+                    mock_db,
+                    user=mock_user,
+                    paper_id=paper.id,
+                    version_number=2,
+                )
+            )
+
+
+def test_run_paper_generation_skips_cancelled_version() -> None:
+    version = _make_version(status=QuestionPaperStatus.CANCELLED)
+    paper = _make_paper(versions=[version])
+    session = MagicMock(spec=Session)
+    session.get.side_effect = [version, paper]
+
+    run_paper_generation(version.id, db=session)
+
+    assert version.status == QuestionPaperStatus.CANCELLED
+    session.commit.assert_not_called()

@@ -5,6 +5,7 @@ export { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook
 export { useGenerateQuestionPaper } from "@/features/question-papers/hooks/use-create-paper-version"
 export { useDeleteQuestionPaper } from "@/features/question-papers/hooks/use-delete-question-paper"
 export {
+  canCancelVersion,
   canCreateNewVersion,
   isPersistedMessageId,
   nextVersionNumber,

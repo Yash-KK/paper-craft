@@ -8,6 +8,7 @@ import {
   Loader2,
   Plus,
   Sparkles,
+  X,
 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { toast } from "sonner"
@@ -15,9 +16,11 @@ import { toast } from "sonner"
 import { QuestionPaperActionsMenu } from "@/features/question-papers/components/question-paper-actions-menu"
 import { GenerateVersionDialog } from "@/features/question-papers/components/generate-version-dialog"
 import { PaperVersionDialog } from "@/features/question-papers/components/paper-version-dialog"
+import { useCancelPaperVersion } from "@/features/question-papers/hooks/use-cancel-paper-version"
 import { useDeleteQuestionPaper } from "@/features/question-papers/hooks/use-delete-question-paper"
 import { useNotebookPapers } from "@/features/question-papers/hooks/use-notebook-papers"
 import {
+  canCancelVersion,
   canCreateNewVersion,
   isActiveGenerationStatus,
   nextVersionNumber,
@@ -61,6 +64,7 @@ export function QuestionPapersSidebar({
 }: QuestionPapersSidebarProps) {
   const papersQuery = useNotebookPapers(notebook.id)
   const deletePaper = useDeleteQuestionPaper(notebook.id)
+  const cancelVersion = useCancelPaperVersion(notebook.id)
   const papers = papersQuery.data ?? []
   const canGenerate = notebook.selected_chapters.length > 0
   const generateHref = `/notebooks/${notebook.id}/generate`
@@ -217,10 +221,19 @@ export function QuestionPapersSidebar({
                         )
                         const ready = version.status === "ready"
                         const failed = version.status === "failed"
+                        const cancelled = version.status === "cancelled"
+                        const cancellable = canCancelVersion(version)
+                        const cancelling =
+                          cancelVersion.isPending &&
+                          cancelVersion.variables?.paperId === paper.id &&
+                          cancelVersion.variables?.versionNumber ===
+                            version.version_number
                         const downloading = downloadingId === version.id
                         const label = processing
                           ? `Version ${version.version_number} (Processing...)`
-                          : `Version ${version.version_number}`
+                          : cancelled
+                            ? `Version ${version.version_number} (Cancelled)`
+                            : `Version ${version.version_number}`
 
                         return (
                           <li key={version.id}>
@@ -229,7 +242,7 @@ export function QuestionPapersSidebar({
                                 "flex items-center gap-1 rounded-md",
                                 ready && "hover:bg-emerald-500/10",
                                 processing && "text-muted-foreground",
-                                failed && "text-destructive/80"
+                                (failed || cancelled) && "text-destructive/80"
                               )}
                             >
                               {ready ? (
@@ -265,6 +278,39 @@ export function QuestionPapersSidebar({
                                   <span className="truncate">{label}</span>
                                 </div>
                               )}
+
+                              {cancellable ? (
+                                <span className="flex shrink-0 items-center pr-1">
+                                  <Tooltip>
+                                    <TooltipTrigger
+                                      render={
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon-xs"
+                                          className="text-muted-foreground hover:text-destructive"
+                                          disabled={cancelling}
+                                          aria-label={`Cancel version ${version.version_number}`}
+                                          onClick={() =>
+                                            void cancelVersion.mutateAsync({
+                                              paperId: paper.id,
+                                              versionNumber:
+                                                version.version_number,
+                                            })
+                                          }
+                                        />
+                                      }
+                                    >
+                                      {cancelling ? (
+                                        <Loader2 className="size-3.5 animate-spin" />
+                                      ) : (
+                                        <X className="size-3.5" />
+                                      )}
+                                    </TooltipTrigger>
+                                    <TooltipContent>Cancel</TooltipContent>
+                                  </Tooltip>
+                                </span>
+                              ) : null}
 
                               {ready ? (
                                 <span className="flex shrink-0 items-center gap-0.5 pr-1">
