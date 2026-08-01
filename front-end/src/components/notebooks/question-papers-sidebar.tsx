@@ -25,6 +25,7 @@ import {
   isActiveGenerationStatus,
   nextVersionNumber,
 } from "@/features/question-papers/lib/question-paper-utils"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -76,6 +77,10 @@ export function QuestionPapersSidebar({
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null)
   const [generatePaper, setGeneratePaper] =
     React.useState<QuestionPaperSummary | null>(null)
+  const [cancelTarget, setCancelTarget] = React.useState<{
+    paperId: string
+    versionNumber: number
+  } | null>(null)
 
   function setPaperOpen(paperId: string, open: boolean) {
     setCollapsedIds((prev) => {
@@ -292,7 +297,7 @@ export function QuestionPapersSidebar({
                                           disabled={cancelling}
                                           aria-label={`Cancel version ${version.version_number}`}
                                           onClick={() =>
-                                            void cancelVersion.mutateAsync({
+                                            setCancelTarget({
                                               paperId: paper.id,
                                               versionNumber:
                                                 version.version_number,
@@ -397,6 +402,23 @@ export function QuestionPapersSidebar({
           versionNumber={selected.versionNumber}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={cancelTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTarget(null)
+        }}
+        title="Cancel generation?"
+        description={`This will stop Version ${cancelTarget?.versionNumber ?? 1} and mark it as cancelled.`}
+        confirmLabel="Cancel generation"
+        cancelLabel="Keep generating"
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          if (!cancelTarget) return
+          await cancelVersion.mutateAsync(cancelTarget)
+          setCancelTarget(null)
+        }}
+      />
     </div>
   )
 }
