@@ -96,11 +96,7 @@ def _extract_first_paragraph_children(document_xml: bytes):
     paragraph = body.find(f"{{{W_NS}}}p")
     if paragraph is None:
         return []
-    return [
-        child
-        for child in paragraph
-        if _etree_localname(child) != "pPr"
-    ]
+    return [child for child in paragraph if _etree_localname(child) != "pPr"]
 
 
 def _tighten_spacing(paragraph):
@@ -136,9 +132,7 @@ def add_rich_paragraph(
         return paragraph
 
     md = prepare_markdown_for_pandoc(text)
-    children = _extract_first_paragraph_children(
-        _pandoc_markdown_to_document_xml(md)
-    )
+    children = _extract_first_paragraph_children(_pandoc_markdown_to_document_xml(md))
     for child in children:
         from lxml import etree
 
@@ -214,9 +208,7 @@ def header_from_question_paper(question_paper: Any) -> dict[str, Any]:
         "total_marks": _get_paper_field(question_paper, "total_marks"),
         "duration_minutes": _get_paper_field(question_paper, "duration_minutes"),
         "exam_date": exam_date,
-        "general_instructions": _get_paper_field(
-            question_paper, "general_instructions"
-        )
+        "general_instructions": _get_paper_field(question_paper, "general_instructions")
         or [],
     }
 
@@ -330,9 +322,7 @@ def add_section_header(
     if section_instructions and section_instructions.strip():
         description = section_instructions.strip()
         if marks_each is not None and "×" not in description:
-            description = (
-                f"{description}      {count} × {marks_each:g} = {total:g}M"
-            )
+            description = f"{description}      {count} × {marks_each:g} = {total:g}M"
     else:
         description = section_description(
             question_type=question_type
@@ -368,7 +358,9 @@ def add_plain_paragraph(
     return paragraph
 
 
-def add_inline_options_paragraph(doc, options: list[str], *, indent_cm=QUESTION_BODY_INDENT_CM):
+def add_inline_options_paragraph(
+    doc, options: list[str], *, indent_cm=QUESTION_BODY_INDENT_CM
+):
     """Render MCQ options on one line with tab stops (pandoc collapses spaces)."""
     paragraph = doc.add_paragraph()
     _tighten_spacing(paragraph)
@@ -404,9 +396,7 @@ def add_question(doc, q: dict, case_study_number: int | None = None):
     body_lines = question_body_lines(q.get("question_number"), question_text)
     for index, line in enumerate(body_lines):
         indent_cm = (
-            QUESTION_BODY_INDENT_CM
-            if index == 0
-            else QUESTION_CONTINUATION_INDENT_CM
+            QUESTION_BODY_INDENT_CM if index == 0 else QUESTION_CONTINUATION_INDENT_CM
         )
         add_rich_paragraph(doc, line, size_pt=SIZE_BODY, indent_cm=indent_cm)
 
@@ -442,8 +432,9 @@ def section_instructions_map(question_paper: Any) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for section in sections:
         if isinstance(section, dict):
-            name, instr = section.get("section_name"), section.get(
-                "section_instructions"
+            name, instr = (
+                section.get("section_name"),
+                section.get("section_instructions"),
             )
         else:
             name = getattr(section, "section_name", None)

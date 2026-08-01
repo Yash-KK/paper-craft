@@ -152,9 +152,7 @@ def generate_next_version_paper(
     )
 
 
-def run_next_version_generation(
-    version_id: UUID, *, db: Session | None = None
-) -> None:
+def run_next_version_generation(version_id: UUID, *, db: Session | None = None) -> None:
     """Sync worker: generate the next version from its base version + chat context."""
 
     def _run(session: Session) -> None:
@@ -167,9 +165,7 @@ def run_next_version_generation(
 
         paper = session.get(QuestionPaper, version.question_paper_id)
         if paper is None:
-            logger.warning(
-                "Parent paper missing for version %s; skipping", version_id
-            )
+            logger.warning("Parent paper missing for version %s; skipping", version_id)
             return
 
         if version.status == QuestionPaperStatus.READY:
@@ -207,9 +203,7 @@ def run_next_version_generation(
         try:
             context = version.generation_context or {}
             previous_items = list(
-                context.get("base_generated_items")
-                or version.generated_items
-                or []
+                context.get("base_generated_items") or version.generated_items or []
             )
             previous_final_paper = dict(
                 context.get("base_final_paper") or version.final_paper or {}
@@ -265,9 +259,7 @@ def run_next_version_generation(
                 if paper is not None:
                     _touch_parent(paper)
                 session.commit()
-            logger.exception(
-                "Version %s next-version generation failed", version_id
-            )
+            logger.exception("Version %s next-version generation failed", version_id)
             raise
 
     if db is not None:

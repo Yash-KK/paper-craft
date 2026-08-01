@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi_sso.sso.google import GoogleSSO
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +17,7 @@ from app.services.vectorstore.client import get_vector_store
 bearer_scheme = HTTPBearer(auto_error=True)
 
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
+GoogleSSODep = Annotated[GoogleSSO, Depends(get_google_sso)]
 
 
 async def get_current_user(
@@ -58,13 +60,14 @@ def get_chat_service(
 ChatServiceDep = Annotated[ChatService, Depends(get_chat_service)]
 
 __all__ = [
-    "get_vector_store",
-    "get_google_sso",
-    "get_db",
-    "get_current_user",
+    "ChatServiceDep",
+    "CurrentUser",
+    "GoogleSSODep",
+    "SessionDep",
     "get_chat_repository",
     "get_chat_service",
-    "SessionDep",
-    "CurrentUser",
-    "ChatServiceDep",
+    "get_current_user",
+    "get_db",
+    "get_google_sso",
+    "get_vector_store",
 ]

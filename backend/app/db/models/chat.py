@@ -87,9 +87,7 @@ class ChatMessage(Base):
             native_enum=False,
             length=20,
             create_constraint=True,
-            values_callable=lambda enum_class: [
-                member.value for member in enum_class
-            ],
+            values_callable=lambda enum_class: [member.value for member in enum_class],
         ),
         nullable=False,
     )

@@ -72,7 +72,10 @@ def collect_page_assets(book_dir: Path) -> dict[int, dict[str, list[Path]]]:
     Returns: {page_num: {"image": [Path, ...], "table": [Path, ...]}}
     """
     assets: dict[int, dict[str, list[Path]]] = {}
-    for subdir, kind in ((book_dir / "images", "image"), (book_dir / "tables", "table")):
+    for subdir, kind in (
+        (book_dir / "images", "image"),
+        (book_dir / "tables", "table"),
+    ):
         if not subdir.exists():
             continue
         for file_path in sorted(subdir.glob("*.md")):
@@ -80,5 +83,7 @@ def collect_page_assets(book_dir: Path) -> dict[int, dict[str, list[Path]]]:
             if not match:
                 continue
             page_num = int(match.group(1))
-            assets.setdefault(page_num, {"image": [], "table": []})[kind].append(file_path)
+            assets.setdefault(page_num, {"image": [], "table": []})[kind].append(
+                file_path
+            )
     return assets

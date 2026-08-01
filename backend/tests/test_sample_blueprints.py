@@ -5,12 +5,12 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.db.models.user import User
+from app.schemas.generation import QuestionPaperBlueprint
 from app.services.documents import (
     DEFAULT_DOCX_TEMPLATE_URI,
     resolve_document,
     to_local_uri,
 )
-from app.schemas.generation import QuestionPaperBlueprint
 from app.services.generation.generate import _build_batch_messages
 from app.services.generation.plan import build_slots
 from app.services.generation.sample_blueprints_data import (
@@ -20,7 +20,9 @@ from app.services.generation.sample_blueprints_data import (
 from tests.conftest import mock_execute_result
 
 
-@pytest.mark.parametrize("grade", ["Class 8", "Class 9", "Class 10", "Class 11", "Class 12"])
+@pytest.mark.parametrize(
+    "grade", ["Class 8", "Class 9", "Class 10", "Class 11", "Class 12"]
+)
 def test_sample_blueprint_filter_ignores_grade(
     grade: str,
     client: TestClient,
@@ -76,7 +78,9 @@ def test_forty_marks_blueprint_expands_to_forty_marks():
         "Section D",
         "Section E",
     }
-    assert [s.question_number for s in slots if s.question_type.value == "ASSERTION_REASON"] == [
+    assert [
+        s.question_number for s in slots if s.question_type.value == "ASSERTION_REASON"
+    ] == [
         9,
         10,
     ]
@@ -92,7 +96,11 @@ def test_revision_sheet_blueprint_has_no_marks():
     assert blueprint.allocated_marks is None
     assert len(blueprint.learning_outcomes) == 7
     assert blueprint.sections[2].question_type.value == "CASE_STUDY"
-    assert [part.label for part in blueprint.sections[2].sub_parts] == ["i", "ii", "iii"]
+    assert [part.label for part in blueprint.sections[2].sub_parts] == [
+        "i",
+        "ii",
+        "iii",
+    ]
 
     chapters = [
         {

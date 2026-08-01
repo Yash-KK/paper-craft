@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 
 from fastapi_sso.sso.google import GoogleSSO
@@ -20,7 +20,7 @@ def get_google_sso() -> GoogleSSO:
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
     """Sign a JWT for an authenticated user (subject is the user id)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )

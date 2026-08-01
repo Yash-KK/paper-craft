@@ -129,9 +129,7 @@ async def run_retrieval_sources(
     return [
         (
             name,
-            f"Retrieval failed: {value}"
-            if isinstance(value, BaseException)
-            else value,
+            f"Retrieval failed: {value}" if isinstance(value, BaseException) else value,
         )
         for name, value in zip(names, raw, strict=True)
     ]

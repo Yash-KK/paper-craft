@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
-from fastapi_sso.sso.google import GoogleSSO
+from fastapi_sso.sso.base import SSOLoginError
 from sqlalchemy import select
 
-from app.api.deps import SessionDep, get_google_sso
+from app.api.deps import GoogleSSODep, SessionDep
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.models.user import AuthProvider, User, UserProfile
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.get("/login")
-async def login(sso: GoogleSSO = Depends(get_google_sso)):
+async def login(sso: GoogleSSODep):
     """Redirect the user to Google for SSO."""
     async with sso:
         return await sso.get_login_redirect(
@@ -24,13 +24,13 @@ async def login(sso: GoogleSSO = Depends(get_google_sso)):
 async def callback(
     request: Request,
     db: SessionDep,
-    sso: GoogleSSO = Depends(get_google_sso),
+    sso: GoogleSSODep,
 ):
     """Handle the Google redirect, upsert the user, and hand a JWT to the frontend."""
     try:
         async with sso:
             google_user = await sso.verify_and_process(request)
-    except Exception:
+    except (SSOLoginError, ValueError, RuntimeError, OSError):
         return RedirectResponse(f"{settings.frontend_url}?auth_error=true")
 
     if google_user is None or not google_user.id:

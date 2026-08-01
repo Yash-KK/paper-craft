@@ -1,7 +1,7 @@
 """Test bootstrap and shared fixtures."""
 
 from collections.abc import AsyncGenerator, Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
@@ -30,16 +30,16 @@ def mock_user(user_id: UUID) -> User:
         email_verified=True,
         full_name="Test Teacher",
         role=UserRole.TEACHER,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     user.profile = UserProfile(
         id=uuid4(),
         user_id=user_id,
         board=Board.CBSE,
         settings={},
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     return user
 

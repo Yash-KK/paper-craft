@@ -42,10 +42,7 @@ async def list_notebook_chat_messages(
     query = chat_service.messages_cursor_query(session.id)
 
     def to_chronological(items: Sequence[Any]) -> Sequence[ChatMessageResponse]:
-        return [
-            ChatMessageResponse.model_validate(item)
-            for item in reversed(items)
-        ]
+        return [ChatMessageResponse.model_validate(item) for item in reversed(items)]
 
     return await apaginate(db, query, transformer=to_chronological)
 

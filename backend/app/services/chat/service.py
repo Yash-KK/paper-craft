@@ -19,9 +19,7 @@ class ChatService:
     def __init__(self, repository: ChatRepository) -> None:
         self._repo = repository
 
-    async def _require_owned_notebook(
-        self, notebook_id: UUID, user: User
-    ) -> Notebook:
+    async def _require_owned_notebook(self, notebook_id: UUID, user: User) -> Notebook:
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
         if notebook is None:
             raise HTTPException(
@@ -103,5 +101,5 @@ class ChatService:
                 yield event
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — SSE boundary: any turn failure → error event
             yield {"event": "error", "data": str(exc)}

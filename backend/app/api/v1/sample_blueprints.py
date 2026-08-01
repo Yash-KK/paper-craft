@@ -261,10 +261,7 @@ async def export_question_paper_version(
     if version.status != QuestionPaperStatus.READY:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Version is not ready for export "
-                f"(status={version.status.value})"
-            ),
+            detail=(f"Version is not ready for export (status={version.status.value})"),
         )
 
     try:
@@ -281,9 +278,7 @@ async def export_question_paper_version(
             version.final_paper,
             template,
         )
-        filename = (
-            f"{_safe_filename(paper.title)}-v{version.version_number}.docx"
-        )
+        filename = f"{_safe_filename(paper.title)}-v{version.version_number}.docx"
     except PandocNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

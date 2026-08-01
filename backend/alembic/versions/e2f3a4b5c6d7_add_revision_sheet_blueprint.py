@@ -13,8 +13,9 @@ import uuid
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e2f3a4b5c6d7"
@@ -105,9 +106,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        sa.text("DELETE FROM sample_blueprints WHERE slug = 'revision-sheet'")
-    )
+    op.execute(sa.text("DELETE FROM sample_blueprints WHERE slug = 'revision-sheet'"))
     op.execute(
         sa.text(
             """

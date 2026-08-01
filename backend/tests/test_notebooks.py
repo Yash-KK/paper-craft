@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -22,8 +22,8 @@ def test_create_notebook_success(
 
     async def assign_id_on_refresh(notebook: Notebook) -> None:
         notebook.id = uuid4()
-        notebook.created_at = datetime.now(timezone.utc)
-        notebook.updated_at = datetime.now(timezone.utc)
+        notebook.created_at = datetime.now(UTC)
+        notebook.updated_at = datetime.now(UTC)
 
     mock_db.refresh.side_effect = assign_id_on_refresh
 
@@ -129,7 +129,7 @@ def test_update_notebook_chapters_success(
     mock_db.execute = AsyncMock(return_value=mock_execute_result(chapters))
 
     async def refresh_notebook(item: Notebook) -> None:
-        item.updated_at = datetime.now(timezone.utc)
+        item.updated_at = datetime.now(UTC)
 
     mock_db.refresh.side_effect = refresh_notebook
 

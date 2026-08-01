@@ -7,17 +7,18 @@ Create Date: 2026-07-26 10:15:00.000000
 """
 
 import uuid
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "f7a8b9c0d1e2"
-down_revision: Union[str, Sequence[str], None] = "e6f7a8b9c0d1"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = "e6f7a8b9c0d1"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -32,7 +33,9 @@ def upgrade() -> None:
         sa.Column("subject", sa.String(length=100), nullable=True),
         sa.Column("blueprint", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+        sa.Column(
+            "is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

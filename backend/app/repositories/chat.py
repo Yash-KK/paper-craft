@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -23,7 +23,11 @@ class ChatRepository:
         user: User,
     ) -> Notebook | None:
         notebook = await self._db.get(Notebook, notebook_id)
-        if notebook is None or notebook.user_id != user.id or notebook.is_active is False:
+        if (
+            notebook is None
+            or notebook.user_id != user.id
+            or notebook.is_active is False
+        ):
             return None
         return notebook
 
@@ -99,7 +103,7 @@ class ChatRepository:
         if touch_session:
             session = await self._db.get(ChatSession, session_id)
             if session is not None:
-                session.updated_at = datetime.now(timezone.utc)
+                session.updated_at = datetime.now(UTC)
         self._db.add(message)
         await self._db.commit()
         await self._db.refresh(message)

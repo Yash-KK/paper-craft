@@ -4,6 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
+from fastapi_sso.sso.base import SSOLoginError
 from starlette.responses import RedirectResponse
 
 from app.api.deps import get_db, get_google_sso
@@ -25,7 +26,9 @@ def mock_google_sso() -> MagicMock:
 
 
 @pytest.fixture
-def auth_client(mock_db: AsyncMock, mock_google_sso: MagicMock) -> Generator[TestClient, None, None]:
+def auth_client(
+    mock_db: AsyncMock, mock_google_sso: MagicMock
+) -> Generator[TestClient, None, None]:
     async def override_get_db():
         yield mock_db
 
@@ -41,7 +44,9 @@ def auth_client(mock_db: AsyncMock, mock_google_sso: MagicMock) -> Generator[Tes
     app.dependency_overrides.clear()
 
 
-def test_login_redirects_to_google(auth_client: TestClient, mock_google_sso: MagicMock) -> None:
+def test_login_redirects_to_google(
+    auth_client: TestClient, mock_google_sso: MagicMock
+) -> None:
     response = auth_client.get("/auth/login", follow_redirects=False)
 
     assert response.status_code == 307
@@ -87,7 +92,9 @@ def test_callback_redirects_on_sso_failure(
     auth_client: TestClient,
     mock_google_sso: MagicMock,
 ) -> None:
-    mock_google_sso.verify_and_process = AsyncMock(side_effect=Exception("invalid code"))
+    mock_google_sso.verify_and_process = AsyncMock(
+        side_effect=SSOLoginError(400, "invalid code")
+    )
 
     response = auth_client.get("/auth/callback?code=bad-code", follow_redirects=False)
 

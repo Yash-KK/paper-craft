@@ -254,7 +254,9 @@ async def _load_chat_message_snapshots(
     )
     messages = list(result.scalars().all())
     found_ids = {message.id for message in messages}
-    missing = [str(message_id) for message_id in unique_ids if message_id not in found_ids]
+    missing = [
+        str(message_id) for message_id in unique_ids if message_id not in found_ids
+    ]
     if missing:
         raise LookupError(
             "One or more selected chat messages were not found in this notebook"
@@ -356,14 +358,10 @@ async def enqueue_new_version(
         )
 
     ready_versions = [
-        version
-        for version in versions
-        if version.status == QuestionPaperStatus.READY
+        version for version in versions if version.status == QuestionPaperStatus.READY
     ]
     if not ready_versions:
-        raise NoReadyVersionError(
-            "No ready version exists to base a new revision on"
-        )
+        raise NoReadyVersionError("No ready version exists to base a new revision on")
     base = max(ready_versions, key=lambda version: version.version_number)
     next_number = (
         max(version.version_number for version in versions) + 1 if versions else 1
@@ -482,9 +480,7 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
 
         paper = session.get(QuestionPaper, version.question_paper_id)
         if paper is None:
-            logger.warning(
-                "Parent paper missing for version %s; skipping", version_id
-            )
+            logger.warning("Parent paper missing for version %s; skipping", version_id)
             return
 
         if version.status == QuestionPaperStatus.READY:
@@ -562,9 +558,7 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
             metadata.update(
                 {
                     "finished_at": finished_at.isoformat(),
-                    "duration_seconds": (
-                        finished_at - started_at
-                    ).total_seconds(),
+                    "duration_seconds": (finished_at - started_at).total_seconds(),
                 }
             )
             version.generation_metadata = metadata

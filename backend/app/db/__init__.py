@@ -9,11 +9,11 @@ from app.db.session import (
 )
 
 __all__ = [
-    "Base",
     "AsyncSessionLocal",
+    "Base",
     "SyncSessionLocal",
     "async_engine",
-    "sync_engine",
     "get_db",
     "get_sync_db",
+    "sync_engine",
 ]
