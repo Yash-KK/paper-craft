@@ -1,6 +1,5 @@
-// chat/hooks/use-chat-stream.ts
 import { useCallback, useRef, useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query"
 import { fetchEventSource } from "@microsoft/fetch-event-source"
 
 import {
@@ -8,9 +7,11 @@ import {
   fromPersisted,
   fromWireEvent,
   makeId,
+  mergeLatestPersistedPage,
 } from "@/features/chat/lib/chat-stream-utils"
 import type {
   ChatMessage,
+  ChatMessagesPage,
   ChatToolId,
   PersistedMessage,
 } from "@/features/chat/types/chat"
@@ -41,10 +42,16 @@ export function useChatStream(
     })
   }, [])
 
-  const invalidatePersistedMessages = useCallback(() => {
-    void queryClient.invalidateQueries({
+  const syncFromLatestPage = useCallback(async () => {
+    await queryClient.refetchQueries({
       queryKey: queryKeys.notebookChatMessages(notebookId),
     })
+    const cached = queryClient.getQueryData<InfiniteData<ChatMessagesPage>>(
+      queryKeys.notebookChatMessages(notebookId)
+    )
+    const latestPage = cached?.pages[0]?.items
+    if (!latestPage?.length) return
+    setMessages((prev) => mergeLatestPersistedPage(prev, latestPage))
   }, [notebookId, queryClient])
 
   const sendMessage = useCallback(
@@ -98,9 +105,6 @@ export function useChatStream(
               if (event.type === "done" || event.type === "error") {
                 finished = true
                 controller.abort()
-                if (event.type === "done") {
-                  invalidatePersistedMessages()
-                }
               }
             },
             onclose() {
@@ -122,15 +126,16 @@ export function useChatStream(
         }
       } finally {
         setIsStreaming(false)
+        if (finished) {
+          try {
+            await syncFromLatestPage()
+          } catch {
+            // Optimistic messages remain until the next successful refetch.
+          }
+        }
       }
     },
-    [
-      enabledTools,
-      invalidatePersistedMessages,
-      isStreaming,
-      notebookId,
-      patchLast,
-    ]
+    [enabledTools, isStreaming, notebookId, patchLast, syncFromLatestPage]
   )
 
   const stopStream = useCallback(() => {
