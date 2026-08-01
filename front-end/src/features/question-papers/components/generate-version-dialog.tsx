@@ -46,11 +46,17 @@ export function GenerateVersionDialog({
   const [teacherInstructions, setTeacherInstructions] = React.useState("")
   const selection = useChatSelectionOptional()
   const messagesQuery = useNotebookChatMessages(notebookId, open)
+  const {
+    data: messagesData,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = messagesQuery
   const createVersion = useCreatePaperVersion(paper.id, notebookId)
   const versionNumber = nextVersionNumber(paper)
 
   const allPersistedIds = React.useMemo(() => {
-    const pages = messagesQuery.data?.pages ?? []
+    const pages = messagesData?.pages ?? []
     return [...pages]
       .reverse()
       .flatMap((page) => page.items)
@@ -60,7 +66,7 @@ export function GenerateVersionDialog({
           (message.role === "user" || message.role === "assistant")
       )
       .map((message) => message.id)
-  }, [messagesQuery.data])
+  }, [messagesData])
 
   const explicitSelectedIds = React.useMemo(() => {
     if (!selection || selection.selectedCount === 0) return []
@@ -74,19 +80,20 @@ export function GenerateVersionDialog({
 
   React.useEffect(() => {
     if (!open || !usingAllMessages) return
-    if (!messagesQuery.hasNextPage || messagesQuery.isFetchingNextPage) return
-    void messagesQuery.fetchNextPage()
+    if (!hasNextPage || isFetchingNextPage) return
+    void fetchNextPage()
   }, [
     open,
     usingAllMessages,
-    messagesQuery.hasNextPage,
-    messagesQuery.isFetchingNextPage,
-    messagesQuery.fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   ])
 
-  React.useEffect(() => {
-    if (!open) setTeacherInstructions("")
-  }, [open])
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) setTeacherInstructions("")
+    onOpenChange(nextOpen)
+  }
 
   async function handleGenerate() {
     if (!canCreateNewVersion(paper)) return
@@ -98,16 +105,16 @@ export function GenerateVersionDialog({
       teacher_instructions: teacherInstructions.trim() || null,
     })
     selection?.clear()
+    setTeacherInstructions("")
     onOpenChange(false)
   }
 
   const pending =
     createVersion.isPending ||
-    (usingAllMessages &&
-      (Boolean(messagesQuery.hasNextPage) || messagesQuery.isFetchingNextPage))
+    (usingAllMessages && (Boolean(hasNextPage) || isFetchingNextPage))
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Generate Version {versionNumber}</DialogTitle>
@@ -117,8 +124,7 @@ export function GenerateVersionDialog({
               aria-hidden
             />
             <span>
-              {messagesQuery.isFetchingNextPage ||
-              (usingAllMessages && messagesQuery.hasNextPage)
+              {isFetchingNextPage || (usingAllMessages && hasNextPage)
                 ? "Loading chat messages…"
                 : `${effectiveCount} chat message${effectiveCount === 1 ? "" : "s"} selected as context for Version ${versionNumber}.`}
             </span>
@@ -143,7 +149,7 @@ export function GenerateVersionDialog({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={createVersion.isPending}
           >
             Cancel

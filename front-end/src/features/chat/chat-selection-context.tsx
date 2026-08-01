@@ -21,22 +21,33 @@ export function ChatSelectionProvider({
     () => new Set()
   )
 
+  const clear = React.useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggle = React.useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const isSelected = React.useCallback(
+    (id: string) => selectedIds.has(id),
+    [selectedIds]
+  )
+
   const value = React.useMemo<ChatSelectionContextValue>(
     () => ({
       selectedIds,
       selectedCount: selectedIds.size,
-      isSelected: (id) => selectedIds.has(id),
-      toggle: (id) => {
-        setSelectedIds((prev) => {
-          const next = new Set(prev)
-          if (next.has(id)) next.delete(id)
-          else next.add(id)
-          return next
-        })
-      },
-      clear: () => setSelectedIds(new Set()),
+      isSelected,
+      toggle,
+      clear,
     }),
-    [selectedIds]
+    [selectedIds, isSelected, toggle, clear]
   )
 
   return (
