@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     collection_name: str = Field(alias="COLLECTION_NAME")
     sparse_embedding_model: str = Field(alias="SPARSE_EMBEDDING_MODEL")
     extracted_data_dir: Path = Field(alias="EXTRACTED_DATA_DIR")
-    ncert_book_config: dict[str, dict[str, str | int]] = Field(alias="NCERT_BOOK_CONFIG")
+    ncert_book_config: dict[str, dict[str, str | int]] = Field(
+        alias="NCERT_BOOK_CONFIG"
+    )
 
     google_client_id: str = Field(alias="GOOGLE_CLIENT_ID")
     google_client_secret: str = Field(alias="GOOGLE_CLIENT_SECRET")

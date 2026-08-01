@@ -11,8 +11,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "f3a4b5c6d7e8"
@@ -89,9 +90,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(
-            ["notebook_id"], ["notebooks.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["notebook_id"], ["notebooks.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -109,10 +108,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_question_papers_notebook_status", table_name="question_papers"
-    )
-    op.drop_index(
-        "ix_question_papers_notebook_updated", table_name="question_papers"
-    )
+    op.drop_index("ix_question_papers_notebook_status", table_name="question_papers")
+    op.drop_index("ix_question_papers_notebook_updated", table_name="question_papers")
     op.drop_table("question_papers")

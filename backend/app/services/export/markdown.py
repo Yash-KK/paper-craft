@@ -109,8 +109,7 @@ def render_paper_markdown(
                 else:
                     lines.append(
                         "\n".join(
-                            format_option_label(opt, i)
-                            for i, opt in enumerate(options)
+                            format_option_label(opt, i) for i, opt in enumerate(options)
                         )
                     )
 

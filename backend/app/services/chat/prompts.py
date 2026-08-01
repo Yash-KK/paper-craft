@@ -31,9 +31,7 @@ _SOURCE_LINES = {
     "retrieve_context": (
         "- Textbook retrieval: passages from this notebook's selected chapters."
     ),
-    "web_search": (
-        "- Web search: live web results for current facts."
-    ),
+    "web_search": ("- Web search: live web results for current facts."),
 }
 
 

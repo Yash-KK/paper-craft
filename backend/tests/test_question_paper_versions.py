@@ -20,6 +20,10 @@ from app.db.models.question_paper import (
 )
 from app.db.models.user import User
 from app.schemas.generation import GenerateNewVersionRequest, GeneratePaperRequest
+from app.services.generation.next_version import (
+    build_next_version_messages,
+    run_next_version_generation,
+)
 from app.services.generation.papers import (
     ActiveGenerationError,
     CancellationNotAllowedError,
@@ -31,10 +35,6 @@ from app.services.generation.papers import (
     enqueue_paper_generation,
     fail_stuck_versions,
     run_paper_generation,
-)
-from app.services.generation.next_version import (
-    build_next_version_messages,
-    run_next_version_generation,
 )
 from app.services.generation.sample_blueprints_data import REVISION_SHEET_BLUEPRINT
 
@@ -153,9 +153,7 @@ def test_enqueue_creates_parent_and_version_one(
         }
     )
 
-    with patch(
-        "app.tasks.generation.generate_question_paper_task.delay"
-    ) as delay:
+    with patch("app.tasks.generation.generate_question_paper_task.delay") as delay:
         delay.return_value = SimpleNamespace(id="celery-task-1")
         result = asyncio.run(
             enqueue_paper_generation(mock_db, user=mock_user, body=body)
@@ -357,10 +355,13 @@ def test_run_paper_generation_success_and_failure() -> None:
 
     version.status = QuestionPaperStatus.PENDING
     version.error = None
-    with patch(
-        "app.services.generation.papers.generate_paper",
-        side_effect=RuntimeError("boom"),
-    ), pytest.raises(RuntimeError):
+    with (
+        patch(
+            "app.services.generation.papers.generate_paper",
+            side_effect=RuntimeError("boom"),
+        ),
+        pytest.raises(RuntimeError),
+    ):
         run_paper_generation(version.id, db=session)
     assert version.status == QuestionPaperStatus.FAILED
     assert version.error == "boom"
@@ -382,9 +383,7 @@ def test_run_next_version_generation_uses_simple_pipeline() -> None:
         "base_generated_items": base.generated_items,
         "base_final_paper": base.final_paper,
     }
-    version.selected_chat_messages = [
-        {"role": "user", "content": "Make Q1 harder"}
-    ]
+    version.selected_chat_messages = [{"role": "user", "content": "Make Q1 harder"}]
     version.teacher_instructions = "Keep marks the same"
     paper = _make_paper(versions=[base, version])
     version.question_paper_id = paper.id
@@ -414,9 +413,7 @@ def test_run_next_version_generation_uses_simple_pipeline() -> None:
         run_next_version_generation(version.id, db=session)
 
     assert version.status == QuestionPaperStatus.READY
-    assert version.generated_items == [
-        {"slot_id": "s1", "question_text": "New Q"}
-    ]
+    assert version.generated_items == [{"slot_id": "s1", "question_text": "New Q"}]
     assert (
         version.generation_metadata.get("task")
         == "generate_next_question_paper_version"
@@ -470,7 +467,6 @@ def test_next_version_prompt_includes_previous_paper_and_chat() -> None:
     assert "ANSWER KEY" not in human_text.upper()
 
 
-
 def test_list_and_version_detail_routes(
     client: TestClient,
 ) -> None:
@@ -480,27 +476,27 @@ def test_list_and_version_detail_routes(
     summary = _to_paper_summary(paper)
     detail = _to_version_detail(paper, v1)
 
-    with patch(
-        "app.api.v1.sample_blueprints.get_owned_notebook",
-        new=AsyncMock(return_value=notebook),
-    ), patch(
-        "app.api.v1.sample_blueprints.list_paper_summaries",
-        new=AsyncMock(return_value=[summary]),
-    ), patch(
-        "app.api.v1.sample_blueprints.get_version_detail",
-        new=AsyncMock(return_value=detail),
+    with (
+        patch(
+            "app.api.v1.sample_blueprints.get_owned_notebook",
+            new=AsyncMock(return_value=notebook),
+        ),
+        patch(
+            "app.api.v1.sample_blueprints.list_paper_summaries",
+            new=AsyncMock(return_value=[summary]),
+        ),
+        patch(
+            "app.api.v1.sample_blueprints.get_version_detail",
+            new=AsyncMock(return_value=detail),
+        ),
     ):
-        listed = client.get(
-            f"/api/v1/generation/notebooks/{paper.notebook_id}/papers"
-        )
+        listed = client.get(f"/api/v1/generation/notebooks/{paper.notebook_id}/papers")
         assert listed.status_code == 200
         body = listed.json()
         assert body[0]["id"] == str(paper.id)
         assert body[0]["versions"][0]["version_number"] == 1
 
-        version_resp = client.get(
-            f"/api/v1/generation/papers/{paper.id}/versions/1"
-        )
+        version_resp = client.get(f"/api/v1/generation/papers/{paper.id}/versions/1")
         assert version_resp.status_code == 200
         assert version_resp.json()["version_number"] == 1
         assert version_resp.json()["status"] == "ready"
@@ -514,9 +510,7 @@ def test_version_export_requires_ready(client: TestClient) -> None:
         "app.api.v1.sample_blueprints.get_owned_version",
         new=AsyncMock(return_value=(paper, pending)),
     ):
-        response = client.get(
-            f"/api/v1/generation/papers/{paper.id}/versions/1/export"
-        )
+        response = client.get(f"/api/v1/generation/papers/{paper.id}/versions/1/export")
     assert response.status_code == 409
     assert "not ready" in response.json()["detail"]
 
@@ -566,19 +560,21 @@ def test_cancel_rejects_non_version_one(
     )
     paper = _make_paper(versions=[version])
 
-    with patch(
-        "app.services.generation.papers.get_owned_version",
-        new=AsyncMock(return_value=(paper, version)),
+    with (
+        patch(
+            "app.services.generation.papers.get_owned_version",
+            new=AsyncMock(return_value=(paper, version)),
+        ),
+        pytest.raises(CancellationNotAllowedError, match="Version 1"),
     ):
-        with pytest.raises(CancellationNotAllowedError, match="Version 1"):
-            asyncio.run(
-                cancel_version_generation(
-                    mock_db,
-                    user=mock_user,
-                    paper_id=paper.id,
-                    version_number=2,
-                )
+        asyncio.run(
+            cancel_version_generation(
+                mock_db,
+                user=mock_user,
+                paper_id=paper.id,
+                version_number=2,
             )
+        )
 
 
 def test_run_paper_generation_skips_cancelled_version() -> None:

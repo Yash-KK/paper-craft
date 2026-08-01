@@ -36,6 +36,7 @@ dev = [
     "mistralai>=2.6.0",
     "mypy>=2.3.0",
     "pytest>=9.1.1",
+    "ruff>=0.16.1",
     "types-python-jose>=3.5.0.20260408",
 ]
 

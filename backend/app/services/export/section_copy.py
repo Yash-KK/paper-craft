@@ -10,9 +10,7 @@ from app.services.export.latex import normalize_newlines
 _OPTION_BLOCK_RE = re.compile(
     r"(?:\n+\s*(?:\(?[A-Da-d]\)|[A-Da-d][).:])\s*[^\n]*)+\s*$"
 )
-_INLINE_OPTIONS_RE = re.compile(
-    r"(?:\s*\([A-Da-d]\)\s+[^\n(]+){2,}\s*$"
-)
+_INLINE_OPTIONS_RE = re.compile(r"(?:\s*\([A-Da-d]\)\s+[^\n(]+){2,}\s*$")
 
 INLINE_OPTION_GAP = "\u2003\u2003"
 
@@ -131,17 +129,13 @@ def section_description(
         label = QUESTION_TYPE_LABELS["ASSERTION_REASON"]
         if marks_each is not None:
             blurb = (
-                f"This section comprises {label} of "
-                f"{_marks_phrase(marks_each)} each."
+                f"This section comprises {label} of {_marks_phrase(marks_each)} each."
             )
         else:
             blurb = f"This section comprises {label}."
     elif marks_each is not None and qtype in QUESTION_TYPE_LABELS:
         label = QUESTION_TYPE_LABELS[qtype]
-        blurb = (
-            f"This section comprises {label} of "
-            f"{_marks_phrase(marks_each)} each."
-        )
+        blurb = f"This section comprises {label} of {_marks_phrase(marks_each)} each."
     elif qtype in QUESTION_TYPE_LABELS:
         blurb = f"This section comprises {QUESTION_TYPE_LABELS[qtype]}."
     else:

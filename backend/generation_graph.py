@@ -38,6 +38,11 @@ if __name__ == "__main__":
         teacher_instructions="Focus more on application-based questions.",
     )
     print("blueprint title:", result.blueprint.exam_title)
-    print("allocated / total:", result.blueprint.allocated_marks, "/", result.blueprint.total_marks)
+    print(
+        "allocated / total:",
+        result.blueprint.allocated_marks,
+        "/",
+        result.blueprint.total_marks,
+    )
     print("sections:", list((result.final_paper or {}).get("sections", {}).keys()))
     print("items:", len(result.generated_items))

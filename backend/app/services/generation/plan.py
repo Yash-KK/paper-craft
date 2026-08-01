@@ -107,10 +107,7 @@ def build_slots(
                     )
                 )
 
-        if (
-            section.question_type == QuestionType.MCQ
-            and len(section_slots) >= 2
-        ):
+        if section.question_type == QuestionType.MCQ and len(section_slots) >= 2:
             for i in range(-2, 0):
                 slot = section_slots[i]
                 if slot.question_type != QuestionType.ASSERTION_REASON:

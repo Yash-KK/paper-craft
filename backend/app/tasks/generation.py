@@ -31,15 +31,11 @@ def generate_question_paper_task(self, version_id: str) -> dict[str, str]:
     bind=True,
     max_retries=0,
 )
-def generate_next_question_paper_version_task(
-    self, version_id: str
-) -> dict[str, str]:
+def generate_next_question_paper_version_task(self, version_id: str) -> dict[str, str]:
     """Background job: generate the next version from a prior ready version."""
     del self
     version_uuid = UUID(version_id)
-    logger.info(
-        "Starting next-version generation task version_id=%s", version_uuid
-    )
+    logger.info("Starting next-version generation task version_id=%s", version_uuid)
     run_next_version_generation(version_uuid)
     return {"version_id": version_id, "status": "done"}
 

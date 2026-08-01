@@ -45,7 +45,9 @@ class ChapterAllocation(BaseModel):
         description="Catalog chapter number when known; null until rematched to notebook chapters.",
     )
     chapter_name: str = Field(description="Lesson / chapter display name.")
-    question_count: int = Field(ge=1, description="Number of questions for this chapter in the section.")
+    question_count: int = Field(
+        ge=1, description="Number of questions for this chapter in the section."
+    )
     blooms_level: BloomsLevel | None = Field(
         default=None,
         description="Optional Bloom's level for generation; not shown as a form section.",
@@ -98,7 +100,9 @@ class BlueprintSection(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def section_total_marks(self) -> float | None:
-        if self.marks_each is None and all(a.marks is None for a in self.chapter_allocations):
+        if self.marks_each is None and all(
+            a.marks is None for a in self.chapter_allocations
+        ):
             return None
         total = 0.0
         for allocation in self.chapter_allocations:
@@ -231,7 +235,9 @@ class Slot(BaseModel):
 
 
 class GeneratedQuestion(BaseModel):
-    slot_id: str = Field(description="Must exactly match the slot_id given in the question spec.")
+    slot_id: str = Field(
+        description="Must exactly match the slot_id given in the question spec."
+    )
     question_text: str = Field(
         description="For ASSERTION_REASON: only Assertion (A) and Reason (R) — options are appended later."
     )

@@ -37,6 +37,7 @@ source_chunk_ids: list only chunk_ids that actually contributed; never fabricate
 Return only a valid GeneratedPaperResponse. Faithfulness and accuracy outrank creativity.
 """
 
+
 def _chunked(seq: list, size: int):
     for i in range(0, len(seq), size):
         yield seq[i : i + size]
@@ -55,23 +56,28 @@ def _render_slot_block(slot: dict) -> str:
         for sp in slot["sub_parts"]:
             marks = sp.get("marks")
             marks_bit = f" {marks} marks" if marks is not None else ""
-            choice_bit = " [internal choice here]" if sp.get("has_internal_choice") else ""
+            choice_bit = (
+                " [internal choice here]" if sp.get("has_internal_choice") else ""
+            )
             lines.append(f"  - ({sp['label']}){marks_bit}{choice_bit}")
         sub_parts_text = "\nSub-parts required:\n" + "\n".join(lines)
 
     marks = slot.get("marks")
-    marks_line = f"Marks: {marks}" if marks is not None else "Marks: (ungraded practice)"
+    marks_line = (
+        f"Marks: {marks}" if marks is not None else "Marks: (ungraded practice)"
+    )
 
     return f"""\
-=== slot_id: {slot['slot_id']} ===
-Section: {slot['section_name']}
-Question type: {slot['question_type']}
+=== slot_id: {slot["slot_id"]} ===
+Section: {slot["section_name"]}
+Question type: {slot["question_type"]}
 {marks_line}
-Chapter: {slot['chapter_number']} ({slot['chapter_name']})
-has_internal_choice: {slot['has_internal_choice']}{sub_parts_text}
+Chapter: {slot["chapter_number"]} ({slot["chapter_name"]})
+has_internal_choice: {slot["has_internal_choice"]}{sub_parts_text}
 Source text:
 {context_text}
 """
+
 
 def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
     errors = []
@@ -82,7 +88,9 @@ def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
         errors.append("MCQ must have exactly 4 options")
 
     if slot["has_internal_choice"] and not gq.alternate_question_text:
-        errors.append("has_internal_choice is true but alternate_question_text is missing")
+        errors.append(
+            "has_internal_choice is true but alternate_question_text is missing"
+        )
 
     return errors
 
@@ -104,7 +112,9 @@ def _build_batch_messages(
             for s in slots
             if s["slot_id"] in feedback_by_slot
         }
-        feedback_text = "\n".join(f"- {sid}: {err}" for sid, err in batch_feedback.items())
+        feedback_text = "\n".join(
+            f"- {sid}: {err}" for sid, err in batch_feedback.items()
+        )
         header = (
             f"Your previous attempt had validation errors on these slot_ids - fix them and "
             f"return ONLY these {len(slots)} items:\n{feedback_text}\n\nSpecs:"
@@ -137,17 +147,10 @@ def _build_batch_messages(
         )
 
     generation_rules_block = ""
-    cleaned_rules = [
-        rule.strip() for rule in (generation_rules or []) if rule.strip()
-    ]
+    cleaned_rules = [rule.strip() for rule in (generation_rules or []) if rule.strip()]
     if cleaned_rules:
-        rendered_rules = "\n".join(
-            f"- {rule}" for rule in cleaned_rules
-        )
-        generation_rules_block = (
-            "\n\nBLUEPRINT GENERATION RULES:\n"
-            f"{rendered_rules}\n"
-        )
+        rendered_rules = "\n".join(f"- {rule}" for rule in cleaned_rules)
+        generation_rules_block = f"\n\nBLUEPRINT GENERATION RULES:\n{rendered_rules}\n"
 
     return [
         ("system", GENERATION_SYSTEM_INSTRUCTIONS),
@@ -221,7 +224,11 @@ def generate_paper_node(state: dict) -> dict:
         errors: dict[str, str] = {}
         for slot_id, slot in slots_by_id.items():
             gq = items_by_slot.get(slot_id)
-            errs = ["missing from model output"] if gq is None else validate_generated(slot, gq)
+            errs = (
+                ["missing from model output"]
+                if gq is None
+                else validate_generated(slot, gq)
+            )
             if errs:
                 errors[slot_id] = "; ".join(errs)
         return errors
@@ -251,7 +258,9 @@ def generate_paper_node(state: dict) -> dict:
     generated_items = []
     for slot_id, slot in slots_by_id.items():
         gq = items_by_slot.get(slot_id)
-        status = "needs_manual_review" if slot_id in errors_by_slot or gq is None else "ok"
+        status = (
+            "needs_manual_review" if slot_id in errors_by_slot or gq is None else "ok"
+        )
 
         options = gq.options if gq else None
         if gq and slot["question_type"] == QuestionType.ASSERTION_REASON.value:

@@ -43,10 +43,14 @@ def ingest_directory(root_dir: Path) -> dict:
             1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TEXT.value
         ),
         ChunkType.IMAGE.value: sum(
-            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.IMAGE.value
+            1
+            for d in documents
+            if d.metadata.get("chunk_type") == ChunkType.IMAGE.value
         ),
         ChunkType.TABLE.value: sum(
-            1 for d in documents if d.metadata.get("chunk_type") == ChunkType.TABLE.value
+            1
+            for d in documents
+            if d.metadata.get("chunk_type") == ChunkType.TABLE.value
         ),
     }
     return {

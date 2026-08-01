@@ -30,9 +30,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(
-        f"UPDATE {_TABLE} SET status = 'failed' WHERE status = 'cancelled'"
-    )
+    op.execute(f"UPDATE {_TABLE} SET status = 'failed' WHERE status = 'cancelled'")
     op.drop_constraint(_STATUS_CHECK, _TABLE, type_="check")
     op.create_check_constraint(
         _STATUS_CHECK,
