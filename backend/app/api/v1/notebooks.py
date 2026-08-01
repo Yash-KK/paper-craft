@@ -24,6 +24,24 @@ NOTEBOOK_COLORS = (
 )
 
 
+async def _active_paper_count(db: SessionDep, notebook_id: UUID) -> int:
+    count = await db.scalar(
+        select(func.count())
+        .select_from(QuestionPaper)
+        .where(
+            QuestionPaper.notebook_id == notebook_id,
+            QuestionPaper.is_active.is_(True),
+        )
+    )
+    return int(count or 0)
+
+
+async def _to_list_item(db: SessionDep, notebook: Notebook) -> NotebookListItem:
+    return NotebookListItem.model_validate(notebook).model_copy(
+        update={"question_paper_count": await _active_paper_count(db, notebook.id)}
+    )
+
+
 async def _resolve_selected_chapters(
     db: SessionDep,
     *,
@@ -73,16 +91,31 @@ def _profile_board(current_user: CurrentUser) -> Board:
 async def list_notebooks(
     current_user: CurrentUser,
     db: SessionDep,
-) -> list[Notebook]:
+) -> list[NotebookListItem]:
+    paper_count = (
+        select(func.count())
+        .select_from(QuestionPaper)
+        .where(
+            QuestionPaper.notebook_id == Notebook.id,
+            QuestionPaper.is_active.is_(True),
+        )
+        .correlate(Notebook)
+        .scalar_subquery()
+    )
     result = await db.execute(
-        select(Notebook)
+        select(Notebook, paper_count)
         .where(
             Notebook.user_id == current_user.id,
             Notebook.is_active.is_(True),
         )
         .order_by(Notebook.created_at.desc())
     )
-    return list(result.scalars().all())
+    return [
+        NotebookListItem.model_validate(notebook).model_copy(
+            update={"question_paper_count": int(count or 0)}
+        )
+        for notebook, count in result.all()
+    ]
 
 
 @router.post("", response_model=NotebookListItem, status_code=status.HTTP_201_CREATED)
@@ -90,7 +123,7 @@ async def create_notebook(
     body: NotebookCreate,
     current_user: CurrentUser,
     db: SessionDep,
-) -> Notebook:
+) -> NotebookListItem:
     board = _profile_board(current_user)
 
     existing_id = await db.scalar(
@@ -134,7 +167,7 @@ async def create_notebook(
         ) from exc
 
     await db.refresh(notebook)
-    return notebook
+    return await _to_list_item(db, notebook)
 
 
 @router.patch("/{notebook_id}", response_model=NotebookListItem)
@@ -143,7 +176,7 @@ async def update_notebook(
     body: NotebookUpdate,
     current_user: CurrentUser,
     db: SessionDep,
-) -> Notebook:
+) -> NotebookListItem:
     notebook = await db.get(Notebook, notebook_id)
     if (
         notebook is None
@@ -212,7 +245,7 @@ async def update_notebook(
         ) from exc
 
     await db.refresh(notebook)
-    return notebook
+    return await _to_list_item(db, notebook)
 
 
 @router.delete("/{notebook_id}", status_code=status.HTTP_204_NO_CONTENT)

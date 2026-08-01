@@ -18,6 +18,7 @@ export type NotebookListItem = {
   subject: Subject | null
   color_hex: string | null
   selected_chapters: SelectedChapter[]
+  question_paper_count: number
   updated_at: string
 }
 

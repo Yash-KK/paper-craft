@@ -13,6 +13,7 @@ export function useDeleteQuestionPaper(notebookId: string) {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.notebookPapers(notebookId),
       })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.notebooks })
       toast.success("Question paper deleted.")
     },
     onError: (err) => {
