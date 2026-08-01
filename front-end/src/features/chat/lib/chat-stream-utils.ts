@@ -4,6 +4,13 @@ import type {
   SSEEvent,
 } from "@/features/chat/types/chat"
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export function isPersistedChatMessageId(id: string): boolean {
+  return UUID_RE.test(id)
+}
+
 export function makeId(): string {
   return Math.random().toString(36).slice(2)
 }
@@ -23,6 +30,42 @@ export function fromPersisted(message: PersistedMessage): ChatMessage | null {
     })),
     isStreaming: false,
   }
+}
+
+export function toUiMessages(messages: PersistedMessage[]): ChatMessage[] {
+  return messages.flatMap((message) => {
+    const ui = fromPersisted(message)
+    return ui ? [ui] : []
+  })
+}
+
+/** Replace trailing optimistic messages with the newest persisted page. */
+export function mergeLatestPersistedPage(
+  prev: ChatMessage[],
+  persistedPage: PersistedMessage[]
+): ChatMessage[] {
+  const fromServer = toUiMessages(persistedPage)
+  if (fromServer.length === 0) return prev
+
+  const temps: ChatMessage[] = []
+  for (let i = prev.length - 1; i >= 0; i -= 1) {
+    if (isPersistedChatMessageId(prev[i].id)) break
+    temps.unshift(prev[i])
+  }
+  if (temps.length === 0) return prev
+
+  const serverTail = fromServer.slice(-temps.length)
+  const matches =
+    serverTail.length === temps.length &&
+    serverTail.every((message, index) => message.role === temps[index].role)
+  if (!matches) return prev
+
+  const serverIds = new Set(fromServer.map((message) => message.id))
+  const older = prev.filter(
+    (message) =>
+      isPersistedChatMessageId(message.id) && !serverIds.has(message.id)
+  )
+  return [...older, ...fromServer]
 }
 
 /** Map backend EventSourceResponse frames (`event` + plain `data`) to UI events. */
@@ -52,9 +95,6 @@ export function applyStreamEvent(
   setIsStreaming: (value: boolean) => void
 ): void {
   switch (event.type) {
-    case "thinking":
-      break
-
     case "token":
       patchLast((message) => ({
         ...message,

@@ -1,11 +1,13 @@
+from app.services.chat.tools import RETRIEVAL_SOURCE_ORDER
+
 SYSTEM_PROMPT = """\
 You are a subject-matter assistant for a school teacher. Answer standalone questions about
 concepts, explanations, or problem solving. This is not for paper generation.
 {tools_section}
 ANSWERING
-- Prefer tool results when available; follow their terminology, notation, and methods.
-- Fill gaps using your own knowledge without contradicting tool results.
-- If tools return nothing relevant, say so and answer from your own knowledge.
+- Prefer retrieved context when available; follow its terminology, notation, and methods.
+- Fill gaps using your own knowledge without contradicting retrieved context.
+- If retrieved context is empty or irrelevant, say so and answer from your own knowledge.
 
 CONCEPT QUESTIONS
 Explain clearly at the level implied by the material or question. Include a short example when useful.
@@ -25,24 +27,28 @@ Write for a fellow teacher in a confident, professional tone. Be clear and conci
 follow-up questions, or offers of additional help. End naturally once the answer is complete.
 """
 
-_TOOL_LINES = {
+_SOURCE_LINES = {
     "retrieve_context": (
-        "- retrieve_context: Search this notebook's textbooks/notes. You MUST call this tool."
+        "- Textbook retrieval: passages from this notebook's selected chapters."
     ),
     "web_search": (
-        "- web_search: Search the live web for current facts. You MUST call this tool."
+        "- Web search: live web results for current facts."
     ),
 }
 
 
-def build_system_prompt(enabled_tools: frozenset[str]) -> str:
-    lines = [_TOOL_LINES[name] for name in ("retrieve_context", "web_search") if name in enabled_tools]
-    if lines:
-        tools_section = (
-            "\nTOOLS\n"
-            + "\n".join(lines)
-            + "\nCall every listed tool before answering. Do not skip any.\n"
-        )
-    else:
-        tools_section = "\n"
+def build_system_prompt(enabled_sources: frozenset[str]) -> str:
+    lines = [
+        _SOURCE_LINES[name]
+        for name in RETRIEVAL_SOURCE_ORDER
+        if name in enabled_sources and name in _SOURCE_LINES
+    ]
+    if not lines:
+        return SYSTEM_PROMPT.format(tools_section="\n")
+    tools_section = (
+        "\nRETRIEVED CONTEXT\n"
+        + "\n".join(lines)
+        + "\nContext from these sources is provided with the user question. "
+        "Ground your answer in that context when it is relevant.\n"
+    )
     return SYSTEM_PROMPT.format(tools_section=tools_section)

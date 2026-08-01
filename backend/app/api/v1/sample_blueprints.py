@@ -1,4 +1,3 @@
-from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
@@ -22,7 +21,6 @@ from app.services.documents import resolve_document
 from app.services.export import (
     DOCX_MEDIA_TYPE,
     PandocNotFoundError,
-    render_answer_key_docx_bytes,
     render_question_paper_docx_bytes,
 )
 from app.services.generation.papers import (
@@ -215,7 +213,6 @@ async def export_question_paper_version(
     version_number: int,
     current_user: CurrentUser,
     db: SessionDep,
-    variant: Literal["paper", "answer_key"] = "paper",
 ) -> Response:
     owned = await get_owned_version(
         db,
@@ -247,25 +244,14 @@ async def export_question_paper_version(
         ) from exc
 
     try:
-        if variant == "answer_key":
-            content = render_answer_key_docx_bytes(
-                version.blueprint,
-                version.final_answer_key,
-                template,
-            )
-            filename = (
-                f"{_safe_filename(paper.title)}-v{version.version_number}"
-                "-answer-key.docx"
-            )
-        else:
-            content = render_question_paper_docx_bytes(
-                version.blueprint,
-                version.final_paper,
-                template,
-            )
-            filename = (
-                f"{_safe_filename(paper.title)}-v{version.version_number}.docx"
-            )
+        content = render_question_paper_docx_bytes(
+            version.blueprint,
+            version.final_paper,
+            template,
+        )
+        filename = (
+            f"{_safe_filename(paper.title)}-v{version.version_number}.docx"
+        )
     except PandocNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

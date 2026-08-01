@@ -32,10 +32,8 @@ from app.schemas.generation import (
     SelectedChatMessageSnapshot,
 )
 from app.schemas.notebook import SelectedChapter
-from app.services.export import (
-    render_answer_key_markdown,
-    render_paper_markdown,
-)
+from app.services.export import render_paper_markdown
+from app.services.export.section_copy import resolve_final_paper
 from app.services.generation.service import generate_paper
 
 logger = logging.getLogger(__name__)
@@ -109,13 +107,13 @@ def _to_generation_result(
     version: QuestionPaperVersion,
 ) -> GenerationResult:
     blueprint = QuestionPaperBlueprint.model_validate(version.blueprint)
-    final_paper = version.final_paper or {"sections": {}}
-    final_answer_key = version.final_answer_key or {"sections": {}}
+    final_paper = resolve_final_paper(
+        version.final_paper,
+        version.generated_items,
+    )
     paper_markdown = ""
-    answer_key_markdown = ""
     if version.status == QuestionPaperStatus.READY:
         paper_markdown = render_paper_markdown(blueprint, final_paper)
-        answer_key_markdown = render_answer_key_markdown(blueprint, final_answer_key)
     return GenerationResult(
         paper_id=paper.id,
         version_id=version.id,
@@ -125,10 +123,8 @@ def _to_generation_result(
         status=version.status,
         blueprint=blueprint,
         final_paper=final_paper,
-        final_answer_key=final_answer_key,
         generated_items=version.generated_items or [],
         paper_markdown=paper_markdown,
-        answer_key_markdown=answer_key_markdown,
         selected_chat_messages=_parse_snapshots(version.selected_chat_messages),
         error=version.error,
     )
@@ -147,7 +143,6 @@ def _to_version_detail(
         title=paper.title,
         blueprint=result.blueprint,
         final_paper=result.final_paper,
-        final_answer_key=result.final_answer_key,
         generated_items=result.generated_items,
         selected_chapters=[
             SelectedChapter.model_validate(chapter)
@@ -158,7 +153,6 @@ def _to_version_detail(
         generation_context=version.generation_context or {},
         generation_metadata=version.generation_metadata or {},
         paper_markdown=result.paper_markdown,
-        answer_key_markdown=result.answer_key_markdown,
     )
 
 
@@ -325,7 +319,7 @@ async def enqueue_new_version(
     body: GenerateNewVersionRequest,
 ) -> GenerationResult:
     """Create the next version from the latest ready version + chat snapshots."""
-    from app.tasks.generation import generate_question_paper_task
+    from app.tasks.generation import generate_next_question_paper_version_task
 
     result = await db.execute(
         select(QuestionPaper)
@@ -371,17 +365,12 @@ async def enqueue_new_version(
         message_ids=body.selected_message_ids,
     )
 
-    teacher_instructions = (
-        (body.teacher_instructions or "").strip()
-        or (base.teacher_instructions or "").strip()
-        or None
-    )
+    teacher_instructions = (body.teacher_instructions or "").strip() or None
 
     generation_context = {
         "base_version_id": str(base.id),
         "base_version_number": base.version_number,
         "base_final_paper": base.final_paper or {},
-        "base_final_answer_key": base.final_answer_key or {},
         "base_generated_items": base.generated_items or [],
         "selected_message_ids": [item["id"] for item in snapshots],
     }
@@ -397,7 +386,6 @@ async def enqueue_new_version(
         blueprint=dict(base.blueprint or {}),
         # Seed prior paper so workers/UI can show base until generation completes.
         final_paper=dict(base.final_paper or {}),
-        final_answer_key=dict(base.final_answer_key or {}),
         generated_items=list(base.generated_items or []),
         selected_chat_messages=snapshots,
         generation_context=generation_context,
@@ -410,9 +398,9 @@ async def enqueue_new_version(
     await db.refresh(paper)
     await db.refresh(version)
 
-    generate_question_paper_task.delay(str(version.id))
+    generate_next_question_paper_version_task.delay(str(version.id))
     logger.info(
-        "Enqueued question paper revision paper_id=%s version_id=%s base=%s",
+        "Enqueued next-version generation paper_id=%s version_id=%s base=%s",
         paper.id,
         version.id,
         base.id,
@@ -471,20 +459,6 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
                 SelectedChapter.model_validate(chapter)
                 for chapter in version.selected_chapters
             ]
-            revision_context = None
-            context = version.generation_context or {}
-            if version.version_number > 1 or context.get("base_generated_items"):
-                revision_context = {
-                    "base_version_id": context.get("base_version_id"),
-                    "base_version_number": context.get("base_version_number"),
-                    "base_final_paper": context.get("base_final_paper")
-                    or version.final_paper
-                    or {},
-                    "base_generated_items": context.get("base_generated_items")
-                    or version.generated_items
-                    or [],
-                    "selected_chat_messages": version.selected_chat_messages or [],
-                }
 
             result = generate_paper(
                 blueprint=blueprint,
@@ -492,14 +466,12 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
                 subject=version.subject,
                 grade=version.grade,
                 teacher_instructions=version.teacher_instructions,
-                revision_context=revision_context,
             )
 
             finished_at = datetime.now(UTC)
             version.status = QuestionPaperStatus.READY
             version.blueprint = result.blueprint.model_dump(mode="json")
             version.final_paper = result.final_paper
-            version.final_answer_key = result.final_answer_key
             version.generated_items = result.generated_items
             version.error = None
             metadata = dict(version.generation_metadata or {})

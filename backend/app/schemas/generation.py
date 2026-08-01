@@ -230,11 +230,6 @@ class Slot(BaseModel):
     sub_parts: list[SlotSubPart] = Field(default_factory=list)
 
 
-class RubricStep(BaseModel):
-    description: str
-    marks: float
-
-
 class GeneratedQuestion(BaseModel):
     slot_id: str = Field(description="Must exactly match the slot_id given in the question spec.")
     question_text: str = Field(
@@ -244,20 +239,10 @@ class GeneratedQuestion(BaseModel):
         default=None,
         description="Exactly 4 options if question_type is MCQ, else null",
     )
-    correct_option: str | None = Field(
-        default=None,
-        description="'a'/'b'/'c'/'d' if MCQ or ASSERTION_REASON, else null",
-    )
-    answer: str
-    marking_rubric: list[RubricStep] = Field(
-        default_factory=list,
-        description="Steps whose marks sum exactly to the required marks when mark-based.",
-    )
     alternate_question_text: str | None = Field(
         default=None,
         description="Only if has_internal_choice is true.",
     )
-    alternate_answer: str | None = None
     source_chunk_ids: list[str] = Field(default_factory=list)
 
 
@@ -310,11 +295,10 @@ class SelectedChatMessageSnapshot(BaseModel):
 
 
 class GeneratedPaperOutput(BaseModel):
-    """Sync graph output before persistence onto a version row."""
+    """Generation output before persistence onto a version row."""
 
     blueprint: QuestionPaperBlueprint
     final_paper: dict
-    final_answer_key: dict
     generated_items: list[dict]
 
 
@@ -329,10 +313,8 @@ class GenerationResult(BaseModel):
     status: QuestionPaperStatus
     blueprint: QuestionPaperBlueprint
     final_paper: dict
-    final_answer_key: dict
     generated_items: list[dict]
     paper_markdown: str = ""
-    answer_key_markdown: str = ""
     selected_chat_messages: list[SelectedChatMessageSnapshot] = Field(
         default_factory=list
     )
@@ -373,7 +355,6 @@ class QuestionPaperVersionDetail(QuestionPaperVersionSummary):
     title: str
     blueprint: QuestionPaperBlueprint
     final_paper: dict
-    final_answer_key: dict
     generated_items: list[dict]
     selected_chapters: list[SelectedChapter] = Field(default_factory=list)
     selected_chat_messages: list[SelectedChatMessageSnapshot] = Field(
@@ -383,7 +364,6 @@ class QuestionPaperVersionDetail(QuestionPaperVersionSummary):
     generation_context: dict[str, Any] = Field(default_factory=dict)
     generation_metadata: dict[str, Any] = Field(default_factory=dict)
     paper_markdown: str = ""
-    answer_key_markdown: str = ""
 
 
 class GenerationState(TypedDict):
@@ -395,5 +375,3 @@ class GenerationState(TypedDict):
     slots: list[dict]
     generated_items: list[dict]
     final_paper: dict | None
-    final_answer_key: dict | None
-    revision_context: dict | None

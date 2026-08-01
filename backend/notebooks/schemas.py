@@ -113,7 +113,6 @@ class GenerationState(TypedDict):
     slots: list[dict]
     generated_items: Annotated[list[dict], operator.add]
     final_paper: dict | None
-    final_answer_key: dict | None
     review_decision: dict | None
 
 

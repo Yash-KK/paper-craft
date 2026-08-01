@@ -1,16 +1,17 @@
-// chat/hooks/use-chat-stream.ts
 import { useCallback, useRef, useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query"
 import { fetchEventSource } from "@microsoft/fetch-event-source"
 
 import {
   applyStreamEvent,
-  fromPersisted,
   fromWireEvent,
   makeId,
+  mergeLatestPersistedPage,
+  toUiMessages,
 } from "@/features/chat/lib/chat-stream-utils"
 import type {
   ChatMessage,
+  ChatMessagesPage,
   ChatToolId,
   PersistedMessage,
 } from "@/features/chat/types/chat"
@@ -23,10 +24,7 @@ export function useChatStream(
 ) {
   const queryClient = useQueryClient()
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    initialMessages.flatMap((message) => {
-      const ui = fromPersisted(message)
-      return ui ? [ui] : []
-    })
+    toUiMessages(initialMessages)
   )
   const [isStreaming, setIsStreaming] = useState(false)
   const [enabledTools, setEnabledTools] = useState<ChatToolId[]>([])
@@ -41,22 +39,29 @@ export function useChatStream(
     })
   }, [])
 
-  const invalidatePersistedMessages = useCallback(() => {
-    void queryClient.invalidateQueries({
+  const syncFromLatestPage = useCallback(async () => {
+    await queryClient.refetchQueries({
       queryKey: queryKeys.notebookChatMessages(notebookId),
     })
+    const cached = queryClient.getQueryData<InfiniteData<ChatMessagesPage>>(
+      queryKeys.notebookChatMessages(notebookId)
+    )
+    const latestPage = cached?.pages[0]?.items
+    if (!latestPage?.length) return
+    setMessages((prev) => mergeLatestPersistedPage(prev, latestPage))
   }, [notebookId, queryClient])
 
   const sendMessage = useCallback(
     async (question: string) => {
-      if (isStreaming || !question.trim()) return
+      const content = question.trim()
+      if (isStreaming || !content) return
 
       setMessages((prev) => [
         ...prev,
         {
           id: makeId(),
           role: "user",
-          content: question.trim(),
+          content,
           toolCalls: [],
           isStreaming: false,
         },
@@ -84,7 +89,7 @@ export function useChatStream(
               Authorization: `Bearer ${getToken()}`,
             },
             body: JSON.stringify({
-              content: question.trim(),
+              content,
               enabled_tools: enabledTools,
             }),
             signal: controller.signal,
@@ -98,9 +103,6 @@ export function useChatStream(
               if (event.type === "done" || event.type === "error") {
                 finished = true
                 controller.abort()
-                if (event.type === "done") {
-                  invalidatePersistedMessages()
-                }
               }
             },
             onclose() {
@@ -122,15 +124,16 @@ export function useChatStream(
         }
       } finally {
         setIsStreaming(false)
+        if (finished) {
+          try {
+            await syncFromLatestPage()
+          } catch {
+            // Optimistic messages remain until the next successful refetch.
+          }
+        }
       }
     },
-    [
-      enabledTools,
-      invalidatePersistedMessages,
-      isStreaming,
-      notebookId,
-      patchLast,
-    ]
+    [enabledTools, isStreaming, notebookId, patchLast, syncFromLatestPage]
   )
 
   const stopStream = useCallback(() => {
@@ -140,10 +143,7 @@ export function useChatStream(
   }, [patchLast])
 
   const prependOlderMessages = useCallback((older: PersistedMessage[]) => {
-    const incoming = older.flatMap((message) => {
-      const ui = fromPersisted(message)
-      return ui ? [ui] : []
-    })
+    const incoming = toUiMessages(older)
     if (incoming.length === 0) return
 
     setMessages((prev) => {

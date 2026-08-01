@@ -5,8 +5,6 @@ This module used to own the DOCX builder. The implementation now lives in
 """
 
 from app.services.export import (  # noqa: F401
-    build_answer_key_docx,
     build_question_paper_docx,
-    export_question_paper_and_answer_key,
     export_question_paper_only,
 )

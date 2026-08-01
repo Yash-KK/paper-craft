@@ -17,16 +17,10 @@ export type ChatMessage = {
 }
 
 export type SSEEvent =
-  | { type: "thinking" }
   | { type: "token"; content: string }
   | { type: "tool_start"; tool: string; input: string }
   | { type: "tool_end"; tool: string; output: string }
-  | {
-      type: "done"
-      session_id?: string
-      user_message?: PersistedMessage
-      assistant_message?: PersistedMessage
-    }
+  | { type: "done" }
   | { type: "error"; message: string }
 
 export type PersistedMessage = {

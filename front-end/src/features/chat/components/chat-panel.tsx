@@ -7,6 +7,8 @@ import { ChatComposer } from "@/features/chat/components/chat-composer"
 import { ChatEmptyState } from "@/features/chat/components/chat-empty-state"
 import { ChatMessageBubble } from "@/features/chat/components/chat-message"
 import { ScrollToBottomButton } from "@/features/chat/components/scroll-to-bottom-button"
+import { isPersistedChatMessageId } from "@/features/chat/lib/chat-stream-utils"
+import { useChatSelectionOptional } from "@/features/chat/chat-selection-context"
 import { useChatStream } from "@/features/chat/hooks/use-chat-stream"
 import { MATHJAX_CONFIG } from "@/features/chat/lib/mathjax-config"
 import type { PersistedMessage } from "@/features/chat/types/chat"
@@ -82,6 +84,7 @@ function ChatPanelReady({
   isFetchingNextPage,
   fetchNextPage,
 }: ChatPanelReadyProps) {
+  const selection = useChatSelectionOptional()
   const {
     messages,
     isStreaming,
@@ -256,9 +259,25 @@ function ChatPanelReady({
                 />
               )}
 
-              {messages.map((message) => (
-                <ChatMessageBubble key={message.id} message={message} />
-              ))}
+              {messages.map((message) => {
+                const selectable =
+                  Boolean(selection) &&
+                  !message.isStreaming &&
+                  isPersistedChatMessageId(message.id)
+                return (
+                  <ChatMessageBubble
+                    key={message.id}
+                    message={message}
+                    selectable={selectable}
+                    selected={selection?.isSelected(message.id) ?? false}
+                    onToggleSelect={
+                      selectable
+                        ? () => selection?.toggle(message.id)
+                        : undefined
+                    }
+                  />
+                )
+              })}
 
               <div ref={bottomRef} />
             </div>
