@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { useAuth } from "@/components/auth-provider"
@@ -60,6 +60,7 @@ export function CreateNotebookDialog({
   open,
   onOpenChange,
 }: CreateNotebookDialogProps) {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM)
   const createNotebook = useCreateNotebook()
@@ -136,13 +137,14 @@ export function CreateNotebookDialog({
     }
 
     try {
-      await createNotebook.mutateAsync({
+      const notebook = await createNotebook.mutateAsync({
         name: trimmed,
         class_grade: form.classGrade,
         subject: form.subject,
         selected_chapter_numbers: form.chapters,
       })
       handleOpenChange(false)
+      navigate(`/notebooks/${notebook.id}`)
     } catch {
       // Toast handled by mutation onError
     }
