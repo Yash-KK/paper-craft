@@ -23,6 +23,8 @@ from app.db.models.question_paper import (
 from app.db.session import get_sync_db
 from app.schemas.generation import GeneratedPaperOutput, QuestionPaperBlueprint
 from app.services.chat.llm import get_chat_model
+from app.services.export.section_copy import resolve_final_paper
+from app.services.generation.assemble import assemble_final_paper
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +138,17 @@ def generate_next_version_paper(
         if isinstance(result, NextVersionContent)
         else NextVersionContent.model_validate(result)
     )
+    items = [item for item in (content.generated_items or []) if isinstance(item, dict)]
+    # Prefer assembling the student paper from items so section values stay
+    # list[dict] even when the model returns a malformed final_paper.
+    if items:
+        final_paper = assemble_final_paper(items)
+    else:
+        final_paper = resolve_final_paper(content.final_paper)
     return GeneratedPaperOutput(
         blueprint=blueprint,
-        final_paper=content.final_paper or {"sections": {}},
-        generated_items=list(content.generated_items or []),
+        final_paper=final_paper,
+        generated_items=items,
     )
 
 

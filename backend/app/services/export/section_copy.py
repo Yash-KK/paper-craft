@@ -164,6 +164,7 @@ def _marks_scheme(
 
 def infer_section_question_type(questions: list[dict[str, Any]]) -> str | None:
     """Prefer the dominant non-AR type so MCQ sections with trailing AR stay MCQ."""
+    questions = [q for q in questions if isinstance(q, dict)]
     if not questions:
         return None
     types = [str(q.get("question_type") or "") for q in questions]
@@ -174,9 +175,70 @@ def infer_section_question_type(questions: list[dict[str, Any]]) -> str | None:
     return types[0] or None
 
 
+def coerce_section_questions(raw: Any) -> list[dict[str, Any]]:
+    """Accept only question dicts; drop LLM string / malformed section payloads."""
+    if raw is None:
+        return []
+    if isinstance(raw, dict):
+        if "question_text" in raw or "question_number" in raw:
+            return [raw]
+        return []
+    if isinstance(raw, str) or not isinstance(raw, list):
+        return []
+    return [q for q in raw if isinstance(q, dict)]
+
+
+def normalize_final_paper(final_paper: Any) -> dict[str, Any]:
+    """Coerce final_paper.sections to ``dict[str, list[dict]]``."""
+    if not isinstance(final_paper, dict):
+        return {"sections": {}}
+
+    sections_raw = final_paper.get("sections")
+    sections: dict[str, list[dict[str, Any]]] = {}
+
+    if isinstance(sections_raw, dict):
+        for name, questions in sections_raw.items():
+            coerced = coerce_section_questions(questions)
+            if coerced:
+                sections[str(name)] = coerced
+    elif isinstance(sections_raw, list):
+        for entry in sections_raw:
+            if not isinstance(entry, dict):
+                continue
+            name = entry.get("section_name") or entry.get("name")
+            qs = entry.get("questions") or entry.get("items")
+            coerced = coerce_section_questions(qs if qs is not None else entry)
+            if name and coerced:
+                sections[str(name)] = coerced
+
+    return {"sections": sections}
+
+
+def resolve_final_paper(
+    final_paper: Any,
+    generated_items: list[Any] | None = None,
+) -> dict[str, Any]:
+    """Prefer a well-shaped final_paper; otherwise rebuild from generated_items."""
+    normalized = normalize_final_paper(final_paper)
+    if any(normalized["sections"].values()):
+        return normalized
+
+    items = [
+        item
+        for item in (generated_items or [])
+        if isinstance(item, dict) and item.get("section_name")
+    ]
+    if items:
+        from app.services.generation.assemble import assemble_final_paper
+
+        return assemble_final_paper(items)
+    return normalized
+
+
 def section_marks_summary(
     questions: list[dict[str, Any]],
 ) -> tuple[int, float | None, float]:
+    questions = [q for q in questions if isinstance(q, dict)]
     count = len(questions)
     try:
         marks = [float(q.get("marks") or 0) for q in questions]

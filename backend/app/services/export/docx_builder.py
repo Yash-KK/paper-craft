@@ -31,6 +31,7 @@ from app.services.export.section_copy import (
     infer_section_question_type,
     options_should_be_single_line,
     question_body_lines,
+    resolve_final_paper,
     section_description,
     section_marks_summary,
     strip_embedded_options,
@@ -498,7 +499,7 @@ def _build_question_paper_document(
     doc = load_template(template_docx)
     add_header_block(doc, header_from_question_paper(question_paper))
 
-    sections = final_paper.get("sections") or {}
+    sections = resolve_final_paper(final_paper).get("sections") or {}
     instructions_by_section = section_instructions_map(question_paper)
     type_by_section = section_question_type_map(question_paper)
     for section_name in ordered_section_names(question_paper, sections):

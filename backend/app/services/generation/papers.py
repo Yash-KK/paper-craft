@@ -33,6 +33,7 @@ from app.schemas.generation import (
 )
 from app.schemas.notebook import SelectedChapter
 from app.services.export import render_paper_markdown
+from app.services.export.section_copy import resolve_final_paper
 from app.services.generation.service import generate_paper
 
 logger = logging.getLogger(__name__)
@@ -106,7 +107,10 @@ def _to_generation_result(
     version: QuestionPaperVersion,
 ) -> GenerationResult:
     blueprint = QuestionPaperBlueprint.model_validate(version.blueprint)
-    final_paper = version.final_paper or {"sections": {}}
+    final_paper = resolve_final_paper(
+        version.final_paper,
+        version.generated_items,
+    )
     paper_markdown = ""
     if version.status == QuestionPaperStatus.READY:
         paper_markdown = render_paper_markdown(blueprint, final_paper)

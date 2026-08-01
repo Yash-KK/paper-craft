@@ -12,6 +12,7 @@ from app.services.export.section_copy import (
     format_section_heading,
     infer_section_question_type,
     options_should_be_single_line,
+    resolve_final_paper,
     section_description,
     section_marks_summary,
     strip_embedded_options,
@@ -64,7 +65,7 @@ def render_paper_markdown(
 
     type_by_section = _section_question_type_map(question_paper)
     instructions_by_section = _section_instructions_map(question_paper)
-    sections = final_paper.get("sections") or {}
+    sections = resolve_final_paper(final_paper).get("sections") or {}
 
     for section_name in _ordered_section_names(question_paper, sections):
         questions = sections.get(section_name) or []
