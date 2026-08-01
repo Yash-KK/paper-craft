@@ -33,7 +33,10 @@ export function useCreateNotebook() {
 
   return useMutation({
     mutationFn: (payload: NotebookCreatePayload) => createNotebook(payload),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
+      queryClient.setQueryData<NotebookListItem[]>(queryKeys.notebooks, (current) =>
+        current ? [created, ...current.filter((item) => item.id !== created.id)] : [created]
+      )
       await queryClient.invalidateQueries({ queryKey: queryKeys.notebooks })
       toast.success("Notebook created successfully.")
     },

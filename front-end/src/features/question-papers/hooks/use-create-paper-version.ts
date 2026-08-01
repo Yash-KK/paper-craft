@@ -20,6 +20,7 @@ export function useGenerateQuestionPaper() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.notebookPapers(result.notebook_id),
       })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notebooks })
     },
     onError: (err) => {
       toast.error(

@@ -59,6 +59,7 @@ class NotebookListItem(BaseModel):
     subject: Subject | None = None
     color_hex: str | None = None
     selected_chapters: list[SelectedChapter] = Field(default_factory=list)
+    question_paper_count: int = 0
     updated_at: datetime
 
 

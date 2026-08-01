@@ -21,6 +21,11 @@ export function NotebookStats({
   className,
   compact = false,
 }: NotebookStatsProps) {
+  const questionPaperCount = notebooks.reduce(
+    (sum, notebook) => sum + (notebook.question_paper_count ?? 0),
+    0
+  )
+
   const stats = [
     {
       label: "Total Notebooks",
@@ -31,7 +36,7 @@ export function NotebookStats({
     },
     {
       label: "Question Papers",
-      value: String(0),
+      value: String(questionPaperCount),
       icon: FileText,
       accent: "text-teal-600 dark:text-teal-400",
       iconBg: "bg-teal-500/10",
