@@ -4,6 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
+from fastapi_sso.sso.base import SSOLoginError
 from starlette.responses import RedirectResponse
 
 from app.api.deps import get_db, get_google_sso
@@ -92,7 +93,7 @@ def test_callback_redirects_on_sso_failure(
     mock_google_sso: MagicMock,
 ) -> None:
     mock_google_sso.verify_and_process = AsyncMock(
-        side_effect=Exception("invalid code")
+        side_effect=SSOLoginError(400, "invalid code")
     )
 
     response = auth_client.get("/auth/callback?code=bad-code", follow_redirects=False)
