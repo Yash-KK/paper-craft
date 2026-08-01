@@ -15,6 +15,11 @@ from app.services.chat.tools import (
     run_retrieval_sources,
 )
 
+_CONTEXT_PREFIX = (
+    "Retrieved context (use when relevant; do not invent "
+    "citations beyond what appears here):\n\n"
+)
+
 
 def to_langchain_history(messages: list[ChatMessage]) -> list[BaseMessage]:
     return [
@@ -37,48 +42,36 @@ async def stream_notebook_chat(
 ) -> AsyncIterator[dict[str, str]]:
     """Yield SSE events: token / tool_start / tool_end / done / error.
 
-    When retrieval sources are enabled they all run concurrently, then the
-    model is called once with the merged context.
+    Enabled retrieval sources run concurrently, then the model is called once
+    with the merged context.
     """
     messages = to_langchain_history(history[-5:]) + [HumanMessage(content=question)]
 
-    if not enabled_tools:
-        async for event in _stream_answer(messages, frozenset()):
-            yield event
-        return
+    if enabled_tools:
+        for name in RETRIEVAL_SOURCE_ORDER:
+            if name in enabled_tools:
+                yield {"event": "tool_start", "data": name}
 
-    names = [name for name in RETRIEVAL_SOURCE_ORDER if name in enabled_tools]
-    for name in names:
-        yield {"event": "tool_start", "data": name}
-
-    context = NotebookContext(
-        selected_chapters=selected_chapters,
-        board=board,
-        top_k=top_k,
-    )
-    results = await run_retrieval_sources(
-        query=question,
-        enabled=enabled_tools,
-        context=context,
-    )
-
-    for name, _ in results:
-        yield {"event": "tool_end", "data": name}
-
-    context_block = format_retrieval_context(results)
-    grounded = list(messages)
-    if context_block:
-        grounded.append(
-            HumanMessage(
-                content=(
-                    "Retrieved context (use when relevant; do not invent "
-                    "citations beyond what appears here):\n\n"
-                    f"{context_block}"
-                )
-            )
+        results = await run_retrieval_sources(
+            query=question,
+            enabled=enabled_tools,
+            context=NotebookContext(
+                selected_chapters=selected_chapters,
+                board=board,
+                top_k=top_k,
+            ),
         )
+        for name, _ in results:
+            yield {"event": "tool_end", "data": name}
 
-    async for event in _stream_answer(grounded, enabled_tools):
+        context_block = format_retrieval_context(results)
+        if context_block:
+            messages = [
+                *messages,
+                HumanMessage(content=f"{_CONTEXT_PREFIX}{context_block}"),
+            ]
+
+    async for event in _stream_answer(messages, enabled_tools):
         yield event
 
 

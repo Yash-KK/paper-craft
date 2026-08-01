@@ -32,19 +32,19 @@ export function fromPersisted(message: PersistedMessage): ChatMessage | null {
   }
 }
 
-/**
- * After a turn finishes, replace optimistic (non-UUID) messages with the
- * newest persisted page while keeping older UUID messages already loaded.
- * No-ops until the server page includes the optimistic turn (role+content).
- */
+export function toUiMessages(messages: PersistedMessage[]): ChatMessage[] {
+  return messages.flatMap((message) => {
+    const ui = fromPersisted(message)
+    return ui ? [ui] : []
+  })
+}
+
+/** Replace trailing optimistic messages with the newest persisted page. */
 export function mergeLatestPersistedPage(
   prev: ChatMessage[],
   persistedPage: PersistedMessage[]
 ): ChatMessage[] {
-  const fromServer = persistedPage.flatMap((message) => {
-    const ui = fromPersisted(message)
-    return ui ? [ui] : []
-  })
+  const fromServer = toUiMessages(persistedPage)
   if (fromServer.length === 0) return prev
 
   const temps: ChatMessage[] = []
@@ -95,9 +95,6 @@ export function applyStreamEvent(
   setIsStreaming: (value: boolean) => void
 ): void {
   switch (event.type) {
-    case "thinking":
-      break
-
     case "token":
       patchLast((message) => ({
         ...message,

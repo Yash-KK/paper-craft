@@ -3,11 +3,8 @@ import {
   paperHasActiveGeneration,
   type QuestionPaperSummary,
 } from "@/lib/types/generation"
-import { isPersistedChatMessageId } from "@/features/chat/lib/chat-stream-utils"
 
-export function isPersistedMessageId(id: string): boolean {
-  return isPersistedChatMessageId(id)
-}
+export { isPersistedChatMessageId as isPersistedMessageId } from "@/features/chat/lib/chat-stream-utils"
 
 export function canCreateNewVersion(paper: QuestionPaperSummary): boolean {
   if (paperHasActiveGeneration(paper)) return false

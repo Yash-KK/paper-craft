@@ -4,10 +4,10 @@ import { fetchEventSource } from "@microsoft/fetch-event-source"
 
 import {
   applyStreamEvent,
-  fromPersisted,
   fromWireEvent,
   makeId,
   mergeLatestPersistedPage,
+  toUiMessages,
 } from "@/features/chat/lib/chat-stream-utils"
 import type {
   ChatMessage,
@@ -24,10 +24,7 @@ export function useChatStream(
 ) {
   const queryClient = useQueryClient()
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
-    initialMessages.flatMap((message) => {
-      const ui = fromPersisted(message)
-      return ui ? [ui] : []
-    })
+    toUiMessages(initialMessages)
   )
   const [isStreaming, setIsStreaming] = useState(false)
   const [enabledTools, setEnabledTools] = useState<ChatToolId[]>([])
@@ -56,14 +53,15 @@ export function useChatStream(
 
   const sendMessage = useCallback(
     async (question: string) => {
-      if (isStreaming || !question.trim()) return
+      const content = question.trim()
+      if (isStreaming || !content) return
 
       setMessages((prev) => [
         ...prev,
         {
           id: makeId(),
           role: "user",
-          content: question.trim(),
+          content,
           toolCalls: [],
           isStreaming: false,
         },
@@ -91,7 +89,7 @@ export function useChatStream(
               Authorization: `Bearer ${getToken()}`,
             },
             body: JSON.stringify({
-              content: question.trim(),
+              content,
               enabled_tools: enabledTools,
             }),
             signal: controller.signal,
@@ -145,10 +143,7 @@ export function useChatStream(
   }, [patchLast])
 
   const prependOlderMessages = useCallback((older: PersistedMessage[]) => {
-    const incoming = older.flatMap((message) => {
-      const ui = fromPersisted(message)
-      return ui ? [ui] : []
-    })
+    const incoming = toUiMessages(older)
     if (incoming.length === 0) return
 
     setMessages((prev) => {

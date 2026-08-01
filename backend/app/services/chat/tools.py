@@ -65,22 +65,19 @@ async def retrieve_context(context: NotebookContext, query: str) -> str:
     if chapter_filters:
         search_kwargs["filter"] = models.Filter(should=chapter_filters)
 
-    docs = await get_vector_store().as_retriever(
-        search_type="similarity",
-        search_kwargs=search_kwargs,
-    ).ainvoke(query)
-
+    docs = await (
+        get_vector_store()
+        .as_retriever(search_type="similarity", search_kwargs=search_kwargs)
+        .ainvoke(query)
+    )
     if not docs:
         return "No relevant passages found."
 
-    blocks = []
-    for doc in docs:
-        meta = {k: doc.metadata[k] for k in _METADATA_KEYS if k in doc.metadata}
-        blocks.append(
-            f"metadata: {json.dumps(meta, ensure_ascii=False)}\n"
-            f"page_content:\n{doc.page_content}"
-        )
-    return "\n\n------\n\n".join(blocks)
+    return "\n\n------\n\n".join(
+        f"metadata: {json.dumps({k: doc.metadata[k] for k in _METADATA_KEYS if k in doc.metadata}, ensure_ascii=False)}\n"
+        f"page_content:\n{doc.page_content}"
+        for doc in docs
+    )
 
 
 async def web_search(_context: NotebookContext, query: str) -> str:
@@ -103,7 +100,7 @@ async def web_search(_context: NotebookContext, query: str) -> str:
     return json.dumps(result, ensure_ascii=False, indent=2)
 
 
-# Stable order for UI + context blocks. Add new sources here.
+# Stable order for UI + context blocks. Register new sources here.
 RETRIEVAL_SOURCE_ORDER: tuple[str, ...] = ("retrieve_context", "web_search")
 
 RETRIEVAL_SOURCES: dict[str, RetrievalFn] = {
@@ -125,29 +122,24 @@ async def run_retrieval_sources(
 ) -> list[tuple[str, str]]:
     """Run every enabled source concurrently; return ``(source_name, result_text)``."""
     names = [name for name in RETRIEVAL_SOURCE_ORDER if name in enabled]
-    if not names:
-        return []
-
     raw = await asyncio.gather(
         *(RETRIEVAL_SOURCES[name](context, query) for name in names),
         return_exceptions=True,
     )
-
-    results: list[tuple[str, str]] = []
-    for name, value in zip(names, raw, strict=True):
-        if isinstance(value, BaseException):
-            results.append((name, f"Retrieval failed: {value}"))
-        else:
-            results.append((name, value))
-    return results
+    return [
+        (
+            name,
+            f"Retrieval failed: {value}"
+            if isinstance(value, BaseException)
+            else value,
+        )
+        for name, value in zip(names, raw, strict=True)
+    ]
 
 
 def format_retrieval_context(results: list[tuple[str, str]]) -> str:
     """Merge per-source results into one context block for the LLM."""
-    if not results:
-        return ""
-    parts: list[str] = []
-    for name, text in results:
-        label = RETRIEVAL_SOURCE_LABELS.get(name, name)
-        parts.append(f"### {label} ({name})\n{text.strip()}")
-    return "\n\n".join(parts)
+    return "\n\n".join(
+        f"### {RETRIEVAL_SOURCE_LABELS.get(name, name)} ({name})\n{text.strip()}"
+        for name, text in results
+    )

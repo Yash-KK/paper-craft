@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 
 from app.db.models.chat import ChatMessage, ChatMessageRole, ChatSession
+from app.db.models.notebook import Notebook
 from app.db.models.user import User
 from app.repositories.chat import ChatRepository
 from app.schemas.chat import ChatSessionResponse
@@ -18,14 +19,20 @@ class ChatService:
     def __init__(self, repository: ChatRepository) -> None:
         self._repo = repository
 
-    async def get_or_create_owned_session(
+    async def _require_owned_notebook(
         self, notebook_id: UUID, user: User
-    ) -> ChatSession:
+    ) -> Notebook:
         notebook = await self._repo.get_owned_notebook(notebook_id, user)
         if notebook is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
             )
+        return notebook
+
+    async def get_or_create_owned_session(
+        self, notebook_id: UUID, user: User
+    ) -> ChatSession:
+        notebook = await self._require_owned_notebook(notebook_id, user)
         return await self._repo.get_or_create_session(notebook)
 
     async def get_chat(self, notebook_id: UUID, user: User) -> ChatSessionResponse:
@@ -45,16 +52,12 @@ class ChatService:
         enabled_tools: Sequence[str] | None = None,
     ) -> AsyncIterator[dict[str, str]]:
         """Validate ownership, persist the user message, then return the SSE generator."""
-        notebook = await self._repo.get_owned_notebook(notebook_id, user)
-        if notebook is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Notebook not found"
-            )
-
+        notebook = await self._require_owned_notebook(notebook_id, user)
         session = await self._repo.get_or_create_session(notebook)
         history = await self._repo.list_recent_messages(session.id, limit=20)
-
-        await self._repo.create_message(session_id=session.id, role=ChatMessageRole.USER, content=content)
+        await self._repo.create_message(
+            session_id=session.id, role=ChatMessageRole.USER, content=content
+        )
 
         return self._generate_turn(
             question=content,
@@ -71,7 +74,7 @@ class ChatService:
         *,
         question: str,
         history: list[ChatMessage],
-        selected_chapters,
+        selected_chapters: list,
         board: str | None,
         top_k: int,
         enabled_tools: frozenset[str],
@@ -97,7 +100,6 @@ class ChatService:
                         )
                     yield {"event": "done", "data": ""}
                     return
-
                 yield event
         except asyncio.CancelledError:
             raise

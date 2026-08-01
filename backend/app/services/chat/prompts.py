@@ -1,3 +1,5 @@
+from app.services.chat.tools import RETRIEVAL_SOURCE_ORDER
+
 SYSTEM_PROMPT = """\
 You are a subject-matter assistant for a school teacher. Answer standalone questions about
 concepts, explanations, or problem solving. This is not for paper generation.
@@ -38,16 +40,15 @@ _SOURCE_LINES = {
 def build_system_prompt(enabled_sources: frozenset[str]) -> str:
     lines = [
         _SOURCE_LINES[name]
-        for name in ("retrieve_context", "web_search")
-        if name in enabled_sources
+        for name in RETRIEVAL_SOURCE_ORDER
+        if name in enabled_sources and name in _SOURCE_LINES
     ]
-    if lines:
-        tools_section = (
-            "\nRETRIEVED CONTEXT\n"
-            + "\n".join(lines)
-            + "\nContext from these sources is provided with the user question. "
-            "Ground your answer in that context when it is relevant.\n"
-        )
-    else:
-        tools_section = "\n"
+    if not lines:
+        return SYSTEM_PROMPT.format(tools_section="\n")
+    tools_section = (
+        "\nRETRIEVED CONTEXT\n"
+        + "\n".join(lines)
+        + "\nContext from these sources is provided with the user question. "
+        "Ground your answer in that context when it is relevant.\n"
+    )
     return SYSTEM_PROMPT.format(tools_section=tools_section)
