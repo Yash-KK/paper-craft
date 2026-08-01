@@ -459,7 +459,9 @@ async def cancel_version_generation(
     if isinstance(task_id, str) and task_id:
         from app.core.celery_app import celery_app
 
-        celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
+        # SIGKILL: SIGTERM often leaves Prefork workers mid-HTTP, which then
+        # surfaces as SystemExit inside langchain batch(return_exceptions=True).
+        celery_app.control.revoke(task_id, terminate=True, signal="SIGKILL")
         logger.info(
             "Revoked generation task_id=%s for version_id=%s",
             task_id,
@@ -573,6 +575,7 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
             logger.info("Version %s generation completed", version_id)
         except Exception as exc:
             session.rollback()
+            session.expire_all()
             version = session.get(QuestionPaperVersion, version_id)
             paper = (
                 session.get(QuestionPaper, version.question_paper_id)

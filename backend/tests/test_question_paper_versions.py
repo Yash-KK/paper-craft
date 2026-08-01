@@ -552,7 +552,7 @@ def test_cancel_version_one_revokes_celery_and_marks_cancelled(
     assert summary.status == QuestionPaperStatus.CANCELLED
     assert version.status == QuestionPaperStatus.CANCELLED
     assert version.error == "Cancelled by user"
-    revoke.assert_called_once_with("task-abc", terminate=True, signal="SIGTERM")
+    revoke.assert_called_once_with("task-abc", terminate=True, signal="SIGKILL")
     mock_db.commit.assert_awaited()
 
 

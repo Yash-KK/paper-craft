@@ -195,8 +195,12 @@ def _run_batches_parallel(
 
     items_by_slot: dict[str, GeneratedQuestion] = {}
     for response in responses:
-        if isinstance(response, Exception):
-            continue
+        # return_exceptions=True can surface BaseException (e.g. SystemExit from
+        # Celery SIGTERM). Those are not Exception subclasses — re-raise them.
+        if isinstance(response, BaseException):
+            if isinstance(response, Exception):
+                continue
+            raise response
         for item in response.items:
             items_by_slot[item.slot_id] = item
     return items_by_slot
