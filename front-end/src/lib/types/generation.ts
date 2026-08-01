@@ -101,7 +101,12 @@ export type GenerateNewVersionPayload = {
   teacher_instructions?: string | null
 }
 
-export type QuestionPaperStatus = "pending" | "running" | "ready" | "failed"
+export type QuestionPaperStatus =
+  | "pending"
+  | "running"
+  | "ready"
+  | "failed"
+  | "cancelled"
 
 export type SelectedChatMessageSnapshot = {
   id: string

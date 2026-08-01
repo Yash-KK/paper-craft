@@ -14,6 +14,7 @@ from app.schemas.generation import (
     GenerationResult,
     QuestionPaperSummary,
     QuestionPaperVersionDetail,
+    QuestionPaperVersionSummary,
     SampleBlueprintDetail,
     SampleBlueprintSummary,
 )
@@ -25,7 +26,9 @@ from app.services.export import (
 )
 from app.services.generation.papers import (
     ActiveGenerationError,
+    CancellationNotAllowedError,
     NoReadyVersionError,
+    cancel_version_generation,
     enqueue_new_version,
     enqueue_paper_generation,
     get_owned_notebook,
@@ -181,6 +184,35 @@ async def delete_question_paper(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Question paper not found",
         )
+
+
+@generation_router.post(
+    "/papers/{paper_id}/versions/{version_number}/cancel",
+    response_model=QuestionPaperVersionSummary,
+)
+async def cancel_question_paper_version(
+    paper_id: UUID,
+    version_number: int,
+    current_user: CurrentUser,
+    db: SessionDep,
+) -> QuestionPaperVersionSummary:
+    try:
+        return await cancel_version_generation(
+            db,
+            user=current_user,
+            paper_id=paper_id,
+            version_number=version_number,
+        )
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except CancellationNotAllowedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
 
 
 @generation_router.get(

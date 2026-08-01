@@ -76,9 +76,10 @@ Source text:
 def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
     errors = []
 
-    if slot["question_type"] == QuestionType.MCQ.value:
-        if not gq.options or len(gq.options) != 4:
-            errors.append("MCQ must have exactly 4 options")
+    if slot["question_type"] == QuestionType.MCQ.value and (
+        not gq.options or len(gq.options) != 4
+    ):
+        errors.append("MCQ must have exactly 4 options")
 
     if slot["has_internal_choice"] and not gq.alternate_question_text:
         errors.append("has_internal_choice is true but alternate_question_text is missing")
@@ -195,8 +196,12 @@ def _run_batches_parallel(
 
     items_by_slot: dict[str, GeneratedQuestion] = {}
     for response in responses:
-        if isinstance(response, Exception):
-            continue
+        # return_exceptions=True can surface BaseException (e.g. SystemExit from
+        # Celery SIGTERM). Those are not Exception subclasses — re-raise them.
+        if isinstance(response, BaseException):
+            if isinstance(response, Exception):
+                continue
+            raise response
         for item in response.items:
             items_by_slot[item.slot_id] = item
     return items_by_slot

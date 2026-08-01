@@ -49,6 +49,10 @@ class NoReadyVersionError(RuntimeError):
     """Raised when creating a new version without a ready base."""
 
 
+class CancellationNotAllowedError(RuntimeError):
+    """Raised when a version cannot be cancelled (not V1 or not active)."""
+
+
 def _paper_title(
     blueprint: QuestionPaperBlueprint,
     *,
@@ -302,11 +306,18 @@ async def enqueue_paper_generation(
     await db.refresh(paper)
     await db.refresh(version)
 
-    generate_question_paper_task.delay(str(version.id))
+    async_result = generate_question_paper_task.delay(str(version.id))
+    metadata = dict(version.generation_metadata or {})
+    metadata["celery_task_id"] = async_result.id
+    version.generation_metadata = metadata
+    await db.commit()
+    await db.refresh(version)
+
     logger.info(
-        "Enqueued question paper generation paper_id=%s version_id=%s",
+        "Enqueued question paper generation paper_id=%s version_id=%s task_id=%s",
         paper.id,
         version.id,
+        async_result.id,
     )
     return _to_generation_result(paper, version)
 
@@ -408,6 +419,58 @@ async def enqueue_new_version(
     return _to_generation_result(paper, version)
 
 
+async def cancel_version_generation(
+    db: AsyncSession,
+    *,
+    user: User,
+    paper_id: UUID,
+    version_number: int,
+) -> QuestionPaperVersionSummary:
+    """Cancel Version 1 generation only while it is pending or running."""
+    owned = await get_owned_version(
+        db,
+        paper_id=paper_id,
+        version_number=version_number,
+        user=user,
+    )
+    if owned is None:
+        raise PermissionError("Question paper version not found")
+
+    paper, version = owned
+    if version.version_number != 1:
+        raise CancellationNotAllowedError(
+            "Only the initial Version 1 generation can be cancelled"
+        )
+    if version.status not in ACTIVE_STATUSES:
+        raise CancellationNotAllowedError(
+            "Only a pending or running Version 1 can be cancelled"
+        )
+
+    task_id = (version.generation_metadata or {}).get("celery_task_id")
+    version.status = QuestionPaperStatus.CANCELLED
+    version.error = "Cancelled by user"
+    metadata = dict(version.generation_metadata or {})
+    metadata["cancelled_at"] = datetime.now(UTC).isoformat()
+    version.generation_metadata = metadata
+    _touch_parent(paper)
+    await db.commit()
+    await db.refresh(version)
+
+    if isinstance(task_id, str) and task_id:
+        from app.core.celery_app import celery_app
+
+        # SIGKILL: SIGTERM often leaves Prefork workers mid-HTTP, which then
+        # surfaces as SystemExit inside langchain batch(return_exceptions=True).
+        celery_app.control.revoke(task_id, terminate=True, signal="SIGKILL")
+        logger.info(
+            "Revoked generation task_id=%s for version_id=%s",
+            task_id,
+            version.id,
+        )
+
+    return QuestionPaperVersionSummary.model_validate(version)
+
+
 def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None:
     """Sync worker entrypoint: generate and persist results for one version."""
 
@@ -428,10 +491,23 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
             logger.info("Version %s already ready; skipping", version_id)
             return
 
-        if version.status == QuestionPaperStatus.FAILED:
+        if version.status in (
+            QuestionPaperStatus.FAILED,
+            QuestionPaperStatus.CANCELLED,
+        ):
             logger.info(
-                "Version %s previously failed; skipping unless re-queued",
+                "Version %s is %s; skipping generation",
                 version_id,
+                version.status.value,
+            )
+            return
+
+        session.refresh(version)
+        if version.status != QuestionPaperStatus.PENDING:
+            logger.info(
+                "Version %s left pending state (%s); skipping",
+                version_id,
+                version.status.value,
             )
             return
 
@@ -468,6 +544,14 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
                 teacher_instructions=version.teacher_instructions,
             )
 
+            session.refresh(version)
+            if version.status == QuestionPaperStatus.CANCELLED:
+                logger.info(
+                    "Version %s was cancelled during generation; discarding result",
+                    version_id,
+                )
+                return
+
             finished_at = datetime.now(UTC)
             version.status = QuestionPaperStatus.READY
             version.blueprint = result.blueprint.model_dump(mode="json")
@@ -491,6 +575,7 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
             logger.info("Version %s generation completed", version_id)
         except Exception as exc:
             session.rollback()
+            session.expire_all()
             version = session.get(QuestionPaperVersion, version_id)
             paper = (
                 session.get(QuestionPaper, version.question_paper_id)
@@ -498,6 +583,12 @@ def run_paper_generation(version_id: UUID, *, db: Session | None = None) -> None
                 else None
             )
             if version is not None:
+                if version.status == QuestionPaperStatus.CANCELLED:
+                    logger.info(
+                        "Version %s cancelled; not marking failed after error",
+                        version_id,
+                    )
+                    return
                 version.status = QuestionPaperStatus.FAILED
                 version.error = str(exc)
                 metadata = dict(version.generation_metadata or {})

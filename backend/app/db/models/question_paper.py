@@ -30,6 +30,7 @@ class QuestionPaperStatus(str, enum.Enum):
     RUNNING = "running"
     READY = "ready"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class QuestionPaper(Base):

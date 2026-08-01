@@ -15,6 +15,7 @@ import type {
   GenerationResult,
   QuestionPaperSummary,
   QuestionPaperVersionDetail,
+  QuestionPaperVersionSummary,
   SampleBlueprintDetail,
   SampleBlueprintSummary,
 } from "@/lib/types/generation"
@@ -324,6 +325,18 @@ export async function createPaperVersion(
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as GenerationResult
+}
+
+export async function cancelPaperVersion(
+  paperId: string,
+  versionNumber: number
+): Promise<QuestionPaperVersionSummary> {
+  const response = await authFetch(
+    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}/cancel`,
+    { method: "POST" }
+  )
+  if (!response.ok) throw new Error(await parseApiError(response))
+  return (await response.json()) as QuestionPaperVersionSummary
 }
 
 export async function fetchPaperVersion(
