@@ -120,10 +120,8 @@ export type GenerationResult = {
   status: QuestionPaperStatus
   blueprint: QuestionPaperBlueprint
   final_paper: Record<string, unknown>
-  final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
   paper_markdown: string
-  answer_key_markdown: string
   selected_chat_messages?: SelectedChatMessageSnapshot[]
   error?: string | null
 }
@@ -156,7 +154,6 @@ export type QuestionPaperVersionDetail = QuestionPaperVersionSummary & {
   title: string
   blueprint: QuestionPaperBlueprint
   final_paper: Record<string, unknown>
-  final_answer_key: Record<string, unknown>
   generated_items: Record<string, unknown>[]
   selected_chapters: SelectedChapter[]
   selected_chat_messages: SelectedChatMessageSnapshot[]
@@ -164,7 +161,6 @@ export type QuestionPaperVersionDetail = QuestionPaperVersionSummary & {
   generation_context: Record<string, unknown>
   generation_metadata: Record<string, unknown>
   paper_markdown: string
-  answer_key_markdown: string
 }
 
 export function isActiveGenerationStatus(status: QuestionPaperStatus): boolean {

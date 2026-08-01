@@ -43,7 +43,7 @@ export function PaperVersionDialog({
   async function handleDownload() {
     setDownloading(true)
     try {
-      await downloadVersionExport(paperId, versionNumber, "paper")
+      await downloadVersionExport(paperId, versionNumber)
       toast.success("Question paper downloaded.")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed")

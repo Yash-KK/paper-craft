@@ -96,7 +96,7 @@ export function QuestionPapersSidebar({
   ) {
     setDownloadingId(version.id)
     try {
-      await downloadVersionExport(paper.id, version.version_number, "paper")
+      await downloadVersionExport(paper.id, version.version_number)
       toast.success("Question paper downloaded.")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Download failed")

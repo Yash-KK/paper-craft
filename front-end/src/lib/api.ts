@@ -337,8 +337,6 @@ export async function fetchPaperVersion(
   return (await response.json()) as QuestionPaperVersionDetail
 }
 
-export type ExportVariant = "paper" | "answer_key"
-
 function filenameFromContentDisposition(
   header: string | null,
   fallback: string
@@ -358,37 +356,26 @@ function filenameFromContentDisposition(
 
 export async function fetchVersionExport(
   paperId: string,
-  versionNumber: number,
-  variant: ExportVariant = "paper"
+  versionNumber: number
 ): Promise<{ blob: Blob; filename: string }> {
-  const params = new URLSearchParams({ variant })
   const response = await authFetch(
-    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}/export?${params}`
+    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}/export`
   )
   if (!response.ok) throw new Error(await parseApiError(response))
 
   const blob = await response.blob()
-  const fallback =
-    variant === "answer_key"
-      ? `question-paper-v${versionNumber}-answer-key.docx`
-      : `question-paper-v${versionNumber}.docx`
   const filename = filenameFromContentDisposition(
     response.headers.get("Content-Disposition"),
-    fallback
+    `question-paper-v${versionNumber}.docx`
   )
   return { blob, filename }
 }
 
 export async function downloadVersionExport(
   paperId: string,
-  versionNumber: number,
-  variant: ExportVariant = "paper"
+  versionNumber: number
 ): Promise<void> {
-  const { blob, filename } = await fetchVersionExport(
-    paperId,
-    versionNumber,
-    variant
-  )
+  const { blob, filename } = await fetchVersionExport(paperId, versionNumber)
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement("a")
   anchor.href = url

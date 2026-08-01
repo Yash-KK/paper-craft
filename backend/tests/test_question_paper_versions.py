@@ -66,7 +66,6 @@ def _make_version(
         ],
         blueprint=_blueprint_payload(),
         final_paper={"sections": {"A": [{"question_number": 1, "text": "Q1"}]}},
-        final_answer_key={"sections": {"A": [{"question_number": 1, "answer": "A1"}]}},
         generated_items=[
             {
                 "slot_id": "s1",
@@ -338,7 +337,6 @@ def test_run_paper_generation_success_and_failure() -> None:
             exam_title="Revision Sheet",
         ),
         final_paper={"sections": {"A": []}},
-        final_answer_key={"sections": {"A": []}},
         generated_items=[{"slot_id": "s1"}],
     )
 
@@ -367,7 +365,6 @@ def test_run_next_version_generation_uses_simple_pipeline() -> None:
     base = _make_version(version_number=1, status=QuestionPaperStatus.READY)
     base.generated_items = [{"question_number": 1, "question_text": "Old Q"}]
     base.final_paper = {"sections": {"A": [{"question_number": 1}]}}
-    base.final_answer_key = {"sections": {"A": [{"question_number": 1}]}}
     version = _make_version(
         version_number=2,
         status=QuestionPaperStatus.PENDING,
@@ -379,7 +376,6 @@ def test_run_next_version_generation_uses_simple_pipeline() -> None:
         "base_version_number": 1,
         "base_generated_items": base.generated_items,
         "base_final_paper": base.final_paper,
-        "base_final_answer_key": base.final_answer_key,
     }
     version.selected_chat_messages = [
         {"role": "user", "content": "Make Q1 harder"}
@@ -403,7 +399,6 @@ def test_run_next_version_generation_uses_simple_pipeline() -> None:
             exam_title="Revision Sheet",
         ),
         final_paper={"sections": {"A": []}},
-        final_answer_key={"sections": {"A": []}},
         generated_items=[{"slot_id": "s1", "question_text": "New Q"}],
     )
 
@@ -425,7 +420,6 @@ def test_run_next_version_generation_uses_simple_pipeline() -> None:
     kwargs = generate_next.call_args.kwargs
     assert kwargs["previous_generated_items"] == base.generated_items
     assert kwargs["previous_final_paper"] == base.final_paper
-    assert kwargs["previous_final_answer_key"] == base.final_answer_key
     assert kwargs["selected_chat_messages"][0]["content"] == "Make Q1 harder"
     assert kwargs["teacher_instructions"] == "Keep marks the same"
 
@@ -453,9 +447,6 @@ def test_next_version_prompt_includes_previous_paper_and_chat() -> None:
         previous_final_paper={
             "sections": {"A": [{"question_number": 1, "question_text": "Old Q"}]}
         },
-        previous_final_answer_key={
-            "sections": {"A": [{"question_number": 1, "answer": "Old A"}]}
-        },
         previous_generated_items=[
             {"question_number": 1, "question_text": "Old question text"}
         ],
@@ -471,6 +462,7 @@ def test_next_version_prompt_includes_previous_paper_and_chat() -> None:
     assert "Make question 1 application-based" in human_text
     assert "Prefer word problems" in human_text
     assert "PREVIOUS FINAL PAPER" in human_text
+    assert "ANSWER KEY" not in human_text.upper()
 
 
 

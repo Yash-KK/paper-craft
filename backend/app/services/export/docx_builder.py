@@ -1,4 +1,4 @@
-"""Build styled question-paper / answer-key DOCX files from generation JSON.
+"""Build styled question-paper DOCX files from generation JSON.
 
 The built-in sample DOCX (``samples/40_marks_sample.docx``) is used only for
 page layout / styles. All visible content comes from Paper Details and the
@@ -522,88 +522,6 @@ def _build_question_paper_document(
     return doc
 
 
-def _build_answer_key_document(
-    question_paper: Any,
-    final_answer_key: dict,
-    template_docx: str | Path,
-) -> Document:
-    doc = load_template(template_docx)
-    add_header_block(
-        doc,
-        header_from_question_paper(question_paper),
-        title_suffix="Answer Key",
-    )
-
-    sections = final_answer_key.get("sections") or {}
-    for section_name in ordered_section_names(question_paper, sections):
-        items = sections.get(section_name) or []
-        if not items:
-            continue
-        add_blank_line(doc)
-        add_rich_paragraph(
-            doc,
-            section_name.upper(),
-            bold=True,
-            size_pt=SIZE_BODY,
-            alignment=WD_ALIGN_PARAGRAPH.CENTER,
-        )
-        for item in items:
-            add_answer_item(doc, item)
-    return doc
-
-
-def add_answer_item(doc, item: dict):
-    label = f"Q{item['question_number']}"
-    meta_bits = [
-        bit for bit in [item.get("chapter_name"), item.get("blooms_level")] if bit
-    ]
-    if meta_bits:
-        label += "  (" + ", ".join(meta_bits) + ")"
-    add_rich_paragraph(doc, label, bold=True, size_pt=SIZE_BODY)
-
-    if item.get("status") and item["status"] != "ok":
-        add_rich_paragraph(
-            doc,
-            f"[FLAGGED FOR REVIEW: {item['status']}]",
-            bold=True,
-            size_pt=SIZE_BODY,
-        )
-
-    if item.get("correct_option"):
-        add_rich_paragraph(
-            doc,
-            f"Correct option: ({item['correct_option']})",
-            size_pt=SIZE_BODY,
-        )
-
-    add_rich_paragraph(doc, "Answer:", italic=True, size_pt=SIZE_BODY)
-    add_rich_block(doc, item.get("answer") or "", size_pt=SIZE_BODY, indent_cm=1)
-
-    if item.get("marking_rubric"):
-        add_rich_paragraph(doc, "Marking scheme:", italic=True, size_pt=SIZE_BODY)
-        for step in item["marking_rubric"]:
-            add_rich_paragraph(
-                doc,
-                f"- {step['description']} ({step['marks']:g} marks)",
-                size_pt=SIZE_BODY,
-                indent_cm=1,
-            )
-
-    if item.get("alternate_answer"):
-        add_rich_paragraph(
-            doc,
-            "OR (alternate):",
-            italic=True,
-            size_pt=SIZE_BODY,
-            alignment=WD_ALIGN_PARAGRAPH.CENTER,
-        )
-        add_rich_block(
-            doc, item["alternate_answer"], size_pt=SIZE_BODY, indent_cm=1
-        )
-
-    add_blank_line(doc)
-
-
 def _document_to_bytes(doc: Document) -> bytes:
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -624,22 +542,6 @@ def build_question_paper_docx(
     return path
 
 
-def build_answer_key_docx(
-    question_paper: Any,
-    final_answer_key: dict,
-    template_docx: str | Path,
-    out_path: str | Path | None = None,
-) -> Path | bytes:
-    doc = _build_answer_key_document(
-        question_paper, final_answer_key, template_docx
-    )
-    if out_path is None:
-        return _document_to_bytes(doc)
-    path = Path(out_path)
-    doc.save(str(path))
-    return path
-
-
 def render_question_paper_docx_bytes(
     question_paper: Any,
     final_paper: dict,
@@ -647,18 +549,6 @@ def render_question_paper_docx_bytes(
 ) -> bytes:
     return _document_to_bytes(
         _build_question_paper_document(question_paper, final_paper, template_docx)
-    )
-
-
-def render_answer_key_docx_bytes(
-    question_paper: Any,
-    final_answer_key: dict,
-    template_docx: str | Path,
-) -> bytes:
-    return _document_to_bytes(
-        _build_answer_key_document(
-            question_paper, final_answer_key, template_docx
-        )
     )
 
 
@@ -673,18 +563,3 @@ def export_question_paper_only(
     )
     assert isinstance(result, Path)
     return result
-
-
-def export_question_paper_and_answer_key(
-    question_paper: Any,
-    final_paper: dict,
-    final_answer_key: dict,
-    template_docx: str | Path,
-    paper_out: str | Path = "generated_question_paper.docx",
-    answer_key_out: str | Path = "generated_answer_key.docx",
-) -> tuple[str, str]:
-    build_question_paper_docx(question_paper, final_paper, template_docx, paper_out)
-    build_answer_key_docx(
-        question_paper, final_answer_key, template_docx, answer_key_out
-    )
-    return str(paper_out), str(answer_key_out)

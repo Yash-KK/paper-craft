@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 
 NEXT_VERSION_SYSTEM = """You revise an existing school question paper.
 
-You receive the previous ready version as JSON (student paper, answer key, and
-generated item records), plus selected teacher chat messages and optional
-teacher instructions.
+You receive the previous ready version as JSON (student paper and generated
+item records), plus selected teacher chat messages and optional teacher
+instructions.
 
 Rules:
 - Preserve the previous structure (sections, question numbers, types, marks,
@@ -39,10 +39,10 @@ Rules:
 - Apply only what the chat messages and teacher instructions ask for.
 - Leave unchanged questions as they were.
 - Keep questions academically correct, unambiguous, and fully solvable.
-- Return a complete revised paper: final_paper, final_answer_key, and
-  generated_items must stay aligned with each other and use the same field
-  shapes as the previous version.
+- Return a complete revised paper: final_paper and generated_items must stay
+  aligned with each other and use the same field shapes as the previous version.
 - Do not invent new top-level fields. Do not drop questions unless asked.
+- Do not include answers, marking rubrics, or answer keys.
 """
 
 
@@ -51,9 +51,6 @@ class NextVersionContent(BaseModel):
 
     final_paper: dict[str, Any] = Field(
         description="Revised student-facing paper; same shape as previous final_paper"
-    )
-    final_answer_key: dict[str, Any] = Field(
-        description="Revised answer key; same shape as previous final_answer_key"
     )
     generated_items: list[dict[str, Any]] = Field(
         description="Full revised item records; same shape as previous generated_items"
@@ -85,7 +82,6 @@ def _format_chat_messages(messages: list[dict[str, Any]]) -> str:
 def build_next_version_messages(
     *,
     previous_final_paper: dict[str, Any],
-    previous_final_answer_key: dict[str, Any],
     previous_generated_items: list[dict[str, Any]],
     selected_chat_messages: list[dict[str, Any]],
     teacher_instructions: str | None,
@@ -97,9 +93,6 @@ def build_next_version_messages(
     human = f"""PREVIOUS FINAL PAPER (JSON):
 {json.dumps(previous_final_paper, ensure_ascii=False, indent=2)}
 
-PREVIOUS FINAL ANSWER KEY (JSON):
-{json.dumps(previous_final_answer_key, ensure_ascii=False, indent=2)}
-
 PREVIOUS GENERATED ITEMS (JSON):
 {json.dumps(previous_generated_items, ensure_ascii=False, indent=2)}
 
@@ -109,7 +102,7 @@ SELECTED CHAT MESSAGES:
 TEACHER INSTRUCTIONS:
 {teacher_block}
 
-Return the complete revised final_paper, final_answer_key, and generated_items.
+Return the complete revised final_paper and generated_items.
 """
     return [
         ("system", NEXT_VERSION_SYSTEM),
@@ -121,7 +114,6 @@ def generate_next_version_paper(
     *,
     blueprint: QuestionPaperBlueprint,
     previous_final_paper: dict[str, Any],
-    previous_final_answer_key: dict[str, Any],
     previous_generated_items: list[dict[str, Any]],
     selected_chat_messages: list[dict[str, Any]],
     teacher_instructions: str | None,
@@ -129,7 +121,6 @@ def generate_next_version_paper(
     """Single LLM call → structured NextVersionContent → GeneratedPaperOutput."""
     messages = build_next_version_messages(
         previous_final_paper=previous_final_paper,
-        previous_final_answer_key=previous_final_answer_key,
         previous_generated_items=previous_generated_items,
         selected_chat_messages=selected_chat_messages,
         teacher_instructions=teacher_instructions,
@@ -148,7 +139,6 @@ def generate_next_version_paper(
     return GeneratedPaperOutput(
         blueprint=blueprint,
         final_paper=content.final_paper or {"sections": {}},
-        final_answer_key=content.final_answer_key or {"sections": {}},
         generated_items=list(content.generated_items or []),
     )
 
@@ -215,11 +205,6 @@ def run_next_version_generation(
             previous_final_paper = dict(
                 context.get("base_final_paper") or version.final_paper or {}
             )
-            previous_final_answer_key = dict(
-                context.get("base_final_answer_key")
-                or version.final_answer_key
-                or {}
-            )
             if not previous_items and not previous_final_paper:
                 raise ValueError(
                     "Previous version content is empty — cannot generate next version "
@@ -230,7 +215,6 @@ def run_next_version_generation(
             result = generate_next_version_paper(
                 blueprint=blueprint,
                 previous_final_paper=previous_final_paper,
-                previous_final_answer_key=previous_final_answer_key,
                 previous_generated_items=previous_items,
                 selected_chat_messages=list(version.selected_chat_messages or []),
                 teacher_instructions=version.teacher_instructions,
@@ -240,7 +224,6 @@ def run_next_version_generation(
             version.status = QuestionPaperStatus.READY
             version.blueprint = result.blueprint.model_dump(mode="json")
             version.final_paper = result.final_paper
-            version.final_answer_key = result.final_answer_key
             version.generated_items = result.generated_items
             version.error = None
             metadata = dict(version.generation_metadata or {})

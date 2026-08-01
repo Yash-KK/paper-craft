@@ -19,20 +19,18 @@ GENERATION_SYSTEM_INSTRUCTIONS = """You are an expert mathematics educator writi
 
 GROUNDING
 - The supplied textbook source text is the source of truth for concepts, definitions, terminology, methods, theorems, values, examples, and exercises.
-- It is OCR/chunked and may be incomplete. Use your own subject knowledge ONLY to: repair OCR/chunk gaps, complete standard notation/terminology, finish a partially shown method, write plausible distractors, and build rubrics.
+- It is OCR/chunked and may be incomplete. Use your own subject knowledge ONLY to: repair OCR/chunk gaps, complete standard notation/terminology, finish a partially shown method, and write plausible distractors.
 - Never introduce chapter-specific facts/formulas/values not supported by the source or by universally standard subject knowledge. If source and your knowledge conflict, trust the source.
 
-EACH QUESTION must be academically correct, unambiguous, fully solvable, concise, and must match the spec's question type — without revealing its answer. When marks are provided, match them; when marks are null/absent, treat the item as ungraded practice and keep marking_rubric empty or brief answer notes only.
+EACH QUESTION must be academically correct, unambiguous, fully solvable, concise, and must match the spec's question type — without revealing its answer. Do not include answers, solutions, marking rubrics, or correct-option keys.
 
 TYPE SPECIFICS
-- MCQ: exactly 4 plausible, not-trivially-eliminable options in the options array only; correct_option ∈ {a,b,c,d}. Never list A)/B)/C)/D) or (a)/(b)/(c)/(d) inside question_text — options are rendered separately. Prefer adapting a textbook exercise when one fits.
-- ASSERTION_REASON: question_text holds ONLY the Assertion (A) and Reason (R) (no options — standard AR choices are appended later), both grounded in the source; correct_option ∈ {a,b,c,d} where a=both true & R explains A, b=both true & R doesn't explain A, c=A true R false, d=A false R true.
+- MCQ: exactly 4 plausible, not-trivially-eliminable options in the options array only. Never list A)/B)/C)/D) or (a)/(b)/(c)/(d) inside question_text — options are rendered separately. Prefer adapting a textbook exercise when one fits.
+- ASSERTION_REASON: question_text holds ONLY the Assertion (A) and Reason (R) (no options — standard AR choices are appended later), both grounded in the source.
 - CASE_STUDY (sub_parts present): one shared scenario, then each sub-part in order, labeled (i),(ii),(iii)…; include marks only when the sub-part specifies them.
 - SA/LA/VSA: grounded in source examples/theory; change numbers/context so the question is not a verbatim copy when adapting examples.
 
-INTERNAL CHOICE (has_internal_choice=true): fill alternate_question_text and alternate_answer — a full alternate for a normal question, but only the specified sub-part's alternate for a case study. Otherwise leave both null.
-
-MARKING RUBRIC: when marks are set, steps must sum EXACTLY to the required marks. When marks are null/absent, leave marking_rubric empty.
+INTERNAL CHOICE (has_internal_choice=true): fill alternate_question_text — a full alternate for a normal question, but only the specified sub-part's alternate for a case study. Otherwise leave it null.
 
 source_chunk_ids: list only chunk_ids that actually contributed; never fabricate.
 
@@ -77,29 +75,10 @@ Source text:
 
 def validate_generated(slot: dict, gq: GeneratedQuestion) -> list[str]:
     errors = []
-    required_marks = slot.get("marks")
-    if required_marks is not None:
-        rubric_sum = sum(step.marks for step in gq.marking_rubric)
-        if abs(rubric_sum - required_marks) > 0.01:
-            errors.append(
-                f"marking_rubric sums to {rubric_sum}, expected {required_marks}"
-            )
 
     if slot["question_type"] == QuestionType.MCQ.value:
         if not gq.options or len(gq.options) != 4:
             errors.append("MCQ must have exactly 4 options")
-        if gq.correct_option not in ("a", "b", "c", "d"):
-            errors.append("correct_option must be one of a/b/c/d")
-
-    if slot["question_type"] == QuestionType.ASSERTION_REASON.value and gq.correct_option not in (
-        "a",
-        "b",
-        "c",
-        "d",
-    ):
-        errors.append(
-            "correct_option must be one of a/b/c/d for an Assertion-Reason question"
-        )
 
     if slot["has_internal_choice"] and not gq.alternate_question_text:
         errors.append("has_internal_choice is true but alternate_question_text is missing")
@@ -286,11 +265,7 @@ def generate_paper_node(state: dict) -> dict:
                 "sub_parts": slot["sub_parts"],
                 "question_text": gq.question_text if gq else None,
                 "options": options,
-                "correct_option": gq.correct_option if gq else None,
-                "answer": gq.answer if gq else None,
-                "marking_rubric": [s.model_dump() for s in gq.marking_rubric] if gq else [],
                 "alternate_question_text": gq.alternate_question_text if gq else None,
-                "alternate_answer": gq.alternate_answer if gq else None,
                 "source_chunk_ids": gq.source_chunk_ids if gq else [],
                 "status": status,
             }

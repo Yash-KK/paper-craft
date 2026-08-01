@@ -25,6 +25,5 @@ def generate_paper(
     return GeneratedPaperOutput(
         blueprint=blueprint,
         final_paper=result["final_paper"] or {"sections": {}},
-        final_answer_key=result["final_answer_key"] or {"sections": {}},
         generated_items=result.get("generated_items") or [],
     )

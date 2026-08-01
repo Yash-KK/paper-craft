@@ -124,12 +124,6 @@ class QuestionPaperVersion(Base):
         default=dict,
         server_default=text("'{}'::jsonb"),
     )
-    final_answer_key: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
-        nullable=False,
-        default=dict,
-        server_default=text("'{}'::jsonb"),
-    )
     generated_items: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB,
         nullable=False,

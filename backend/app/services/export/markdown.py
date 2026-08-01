@@ -124,61 +124,6 @@ def render_paper_markdown(
     return "\n\n".join(line for line in lines if line is not None).strip() + "\n"
 
 
-def render_answer_key_markdown(
-    question_paper: Any,
-    final_answer_key: dict[str, Any],
-) -> str:
-    """Teacher-facing answer key as Markdown."""
-    lines: list[str] = []
-
-    exam = _get(question_paper, "exam_title") or "Question Paper"
-    lines.append(f"# {exam} — Answer Key")
-
-    sections = final_answer_key.get("sections") or {}
-    for section_name in _ordered_section_names(question_paper, sections):
-        items = sections.get(section_name) or []
-        if not items:
-            continue
-        lines.append(f"## {format_section_heading(section_name)}")
-        for item in items:
-            label = f"Q{item.get('question_number', '')}"
-            meta_bits = [
-                b for b in [item.get("chapter_name"), item.get("blooms_level")] if b
-            ]
-            if meta_bits:
-                label += f" ({', '.join(meta_bits)})"
-            lines.append(f"### {label}")
-
-            status = item.get("status")
-            if status and status != "ok":
-                lines.append(f"**Flagged for review:** {status}")
-
-            if item.get("correct_option"):
-                lines.append(f"**Correct option:** ({item['correct_option']})")
-
-            lines.append("**Answer:**")
-            lines.append(normalize_newlines(item.get("answer") or "").strip())
-
-            rubric = item.get("marking_rubric") or []
-            if rubric:
-                lines.append("**Marking scheme:**")
-                for step in rubric:
-                    desc = step.get("description", "")
-                    marks = step.get("marks", "")
-                    try:
-                        marks_txt = f"{float(marks):g}"
-                    except (TypeError, ValueError):
-                        marks_txt = str(marks)
-                    lines.append(f"- {desc} ({marks_txt} marks)")
-
-            alt = item.get("alternate_answer")
-            if alt:
-                lines.append("**(OR) Alternate:**")
-                lines.append(normalize_newlines(alt).strip())
-
-    return "\n\n".join(line for line in lines if line is not None).strip() + "\n"
-
-
 def _section_question_type_map(question_paper: Any) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for section in _get(question_paper, "sections") or []:
