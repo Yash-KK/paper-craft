@@ -278,7 +278,7 @@ async def export_question_paper_version(
             version.final_paper,
             template,
         )
-        filename = f"{_safe_filename(paper.title)}-v{version.version_number}.docx"
+        filename = f"{_safe_filename(paper.title)}_v{version.version_number}.docx"
     except PandocNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -302,7 +302,7 @@ async def export_question_paper_version(
 
 def _safe_filename(title: str) -> str:
     cleaned = "".join(
-        ch if ch.isalnum() or ch in ("-", "_", " ") else "-" for ch in title
+        ch if ch.isalnum() or ch in ("-", "_", " ") else "" for ch in title.strip()
     )
-    cleaned = "-".join(cleaned.split()) or "question-paper"
+    cleaned = "_".join(cleaned.replace("-", " ").split()) or "question-paper"
     return cleaned[:80]
