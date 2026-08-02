@@ -94,6 +94,12 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --all-groups
 
+      - name: Run Ruff Linter
+        run: uv run ruff check --output-format=github .
+
+      - name: Run Ruff Formatter
+        run: uv run ruff format --check .
+
       - name: Run mypy
         run: uv run mypy .
 
