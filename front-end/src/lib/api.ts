@@ -88,7 +88,6 @@ export type ProfileUpdatePayload = {
   board?: Board | null
   school_name: string | null
   phone_number: string | null
-  avatar_url: string | null
 }
 
 export class UnauthorizedError extends Error {
@@ -379,7 +378,7 @@ export async function fetchVersionExport(
   const blob = await response.blob()
   const filename = filenameFromContentDisposition(
     response.headers.get("Content-Disposition"),
-    `question-paper-v${versionNumber}.docx`
+    `question_paper_v${versionNumber}.docx`
   )
   return { blob, filename }
 }

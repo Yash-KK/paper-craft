@@ -29,7 +29,6 @@ type FormState = {
   board: Board | ""
   school_name: string
   phone_number: string
-  avatar_url: string
 }
 
 type FormErrors = Partial<Record<keyof FormState, string>>
@@ -38,7 +37,6 @@ const EMPTY_FORM: FormState = {
   board: "",
   school_name: "",
   phone_number: "",
-  avatar_url: "",
 }
 
 function initials(name: string): string {
@@ -49,16 +47,6 @@ function initials(name: string): string {
     .slice(0, 2)
     .join("")
     .toUpperCase()
-}
-
-function isValidHttpUrl(value: string): boolean {
-  let url: URL
-  try {
-    url = new URL(value)
-  } catch {
-    return false
-  }
-  return url.protocol === "http:" || url.protocol === "https:"
 }
 
 function validate(values: FormState): FormErrors {
@@ -77,11 +65,6 @@ function validate(values: FormState): FormErrors {
     }
   }
 
-  const avatar = values.avatar_url.trim()
-  if (avatar && !isValidHttpUrl(avatar)) {
-    errors.avatar_url = "Enter a valid URL starting with http:// or https://."
-  }
-
   return errors
 }
 
@@ -94,7 +77,6 @@ function toPayload(values: FormState): ProfileUpdatePayload {
     board: values.board || null,
     school_name: trim(values.school_name),
     phone_number: trim(values.phone_number),
-    avatar_url: trim(values.avatar_url),
   }
 }
 
@@ -103,7 +85,6 @@ function toFormState(user: UserProfile): FormState {
     board: user.board ?? "",
     school_name: user.school_name ?? "",
     phone_number: user.phone_number ?? "",
-    avatar_url: user.avatar_url ?? "",
   }
 }
 
@@ -211,14 +192,11 @@ export function ProfileUpdatePage() {
           </CardHeader>
 
           <form onSubmit={handleSubmit} noValidate>
-            <CardContent className="flex flex-col gap-5">
+            <CardContent className="flex flex-col gap-5 p-2">
               <div className="flex items-center gap-4">
                 <Avatar className="size-16">
-                  {form.avatar_url.trim() && (
-                    <AvatarImage
-                      src={form.avatar_url.trim()}
-                      alt={user.full_name}
-                    />
+                  {user.avatar_url && (
+                    <AvatarImage src={user.avatar_url} alt={user.full_name} />
                   )}
                   <AvatarFallback className="text-base">
                     {initials(user.full_name)}
@@ -320,27 +298,6 @@ export function ProfileUpdatePage() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="avatar_url">Avatar URL</Label>
-                <Input
-                  id="avatar_url"
-                  type="url"
-                  inputMode="url"
-                  value={form.avatar_url}
-                  onChange={handleChange("avatar_url")}
-                  placeholder="https://example.com/avatar.jpg"
-                  aria-invalid={!!errors.avatar_url}
-                  aria-describedby={
-                    errors.avatar_url ? "avatar_url-error" : undefined
-                  }
-                />
-                {errors.avatar_url && (
-                  <p id="avatar_url-error" className="text-sm text-destructive">
-                    {errors.avatar_url}
-                  </p>
-                )}
-              </div>
-
               {submitError && (
                 <p
                   role="alert"
@@ -392,7 +349,7 @@ function ProfileFormSkeleton() {
             <Skeleton className="h-3 w-48" />
           </div>
         </div>
-        {Array.from({ length: 4 }).map((_, index) => (
+        {Array.from({ length: 3 }).map((_, index) => (
           <div key={index} className="flex flex-col gap-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-8 w-full" />
