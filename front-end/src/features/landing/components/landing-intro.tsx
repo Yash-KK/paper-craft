@@ -1,16 +1,18 @@
+import { memo } from "react"
 import {
   BookOpenText,
   FileText,
   LayoutTemplate,
   ListChecks,
-  Sparkles,
   NotebookText,
+  Sparkles,
+  type LucideIcon,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-const features = [
+const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
   {
     icon: BookOpenText,
     title: "Chapter-aware questions",
@@ -37,11 +39,33 @@ const features = [
   },
 ]
 
-type LandingIntroProps = {
-  className?: string
-}
+const FeatureItem = memo(function FeatureItem({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: LucideIcon
+  title: string
+  description: string
+}) {
+  return (
+    <li className="flex gap-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
+        <Icon className="size-4.5" />
+      </span>
+      <div className="space-y-1">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-sm text-pretty text-muted-foreground">{description}</p>
+      </div>
+    </li>
+  )
+})
 
-export function LandingIntro({ className }: LandingIntroProps) {
+export const LandingIntro = memo(function LandingIntro({
+  className,
+}: {
+  className?: string
+}) {
   return (
     <section className={cn("flex flex-col gap-8", className)}>
       <div className="flex flex-col gap-6">
@@ -76,18 +100,8 @@ export function LandingIntro({ className }: LandingIntroProps) {
       </div>
 
       <ul className="grid gap-5 sm:grid-cols-2">
-        {features.map((feature) => (
-          <li key={feature.title} className="flex gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
-              <feature.icon className="size-4.5" />
-            </span>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">{feature.title}</p>
-              <p className="text-sm text-pretty text-muted-foreground">
-                {feature.description}
-              </p>
-            </div>
-          </li>
+        {FEATURES.map((feature) => (
+          <FeatureItem key={feature.title} {...feature} />
         ))}
       </ul>
 
@@ -96,4 +110,4 @@ export function LandingIntro({ className }: LandingIntroProps) {
       </p>
     </section>
   )
-}
+})

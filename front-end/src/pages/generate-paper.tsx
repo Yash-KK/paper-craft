@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { AuthStatus, useAuth } from "@/providers/auth-provider"
-import { GeneratePaperForm } from "@/components/notebooks/generate-paper-form"
+import { GeneratePaperForm } from "@/features/notebooks/generate-paper-form"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useNotebooks } from "@/hooks/use-notebooks"

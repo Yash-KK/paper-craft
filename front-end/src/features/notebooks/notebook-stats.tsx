@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react"
 import { BookOpen, FileText } from "lucide-react"
 
 import {
@@ -10,38 +11,37 @@ import {
 import type { NotebookListItem } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
 
-type NotebookStatsProps = {
-  notebooks: NotebookListItem[]
-  className?: string
-  compact?: boolean
-}
-
-export function NotebookStats({
+export const NotebookStats = memo(function NotebookStats({
   notebooks,
   className,
   compact = false,
-}: NotebookStatsProps) {
-  const questionPaperCount = notebooks.reduce(
-    (sum, notebook) => sum + (notebook.question_paper_count ?? 0),
-    0
-  )
-
-  const stats = [
-    {
-      label: "Total Notebooks",
-      value: String(notebooks.length),
-      icon: BookOpen,
-      accent: "text-violet-600 dark:text-violet-400",
-      iconBg: "bg-violet-500/10",
-    },
-    {
-      label: "Question Papers",
-      value: String(questionPaperCount),
-      icon: FileText,
-      accent: "text-teal-600 dark:text-teal-400",
-      iconBg: "bg-teal-500/10",
-    },
-  ] as const
+}: {
+  notebooks: NotebookListItem[]
+  className?: string
+  compact?: boolean
+}) {
+  const stats = useMemo(() => {
+    const questionPaperCount = notebooks.reduce(
+      (sum, notebook) => sum + (notebook.question_paper_count ?? 0),
+      0
+    )
+    return [
+      {
+        label: "Total Notebooks",
+        value: String(notebooks.length),
+        icon: BookOpen,
+        accent: "text-violet-600 dark:text-violet-400",
+        iconBg: "bg-violet-500/10",
+      },
+      {
+        label: "Question Papers",
+        value: String(questionPaperCount),
+        icon: FileText,
+        accent: "text-teal-600 dark:text-teal-400",
+        iconBg: "bg-teal-500/10",
+      },
+    ] as const
+  }, [notebooks])
 
   return (
     <div
@@ -92,4 +92,4 @@ export function NotebookStats({
       ))}
     </div>
   )
-}
+})

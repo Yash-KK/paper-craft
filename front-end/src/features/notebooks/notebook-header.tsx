@@ -1,7 +1,10 @@
 import { ChevronDown, ListPlus, Loader2, Notebook, PanelLeft } from "lucide-react"
 import { toast } from "sonner"
 
-import { useSidebar } from "@/providers/sidebar-provider"
+import {
+  useSidebarActions,
+  useSidebarOpen,
+} from "@/components/layout/sidebar-store"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,7 +26,8 @@ const chapterBadgeClass =
   "h-7 rounded-full border-violet-300 bg-violet-50 px-2.5 text-violet-700 dark:border-violet-700 dark:bg-violet-950/40 dark:text-violet-300"
 
 export function NotebookHeader({ notebook }: { notebook: NotebookListItem }) {
-  const sidebar = useSidebar()
+  const sidebarOpen = useSidebarOpen()
+  const { openSidebar } = useSidebarActions()
   const updateNotebook = useUpdateNotebook()
   const canEdit = Boolean(
     notebook.board && notebook.class_grade && notebook.subject
@@ -63,14 +67,14 @@ export function NotebookHeader({ notebook }: { notebook: NotebookListItem }) {
 
   return (
     <header className="flex shrink-0 items-center gap-3 border-b bg-background px-4 py-3 sm:px-6">
-      {sidebar && !sidebar.sidebarOpen ? (
+      {!sidebarOpen ? (
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
           className="shrink-0 text-muted-foreground"
           aria-label="Open sidebar"
-          onClick={() => sidebar.setSidebarOpen(true)}
+          onClick={openSidebar}
         >
           <PanelLeft className="size-4" />
         </Button>

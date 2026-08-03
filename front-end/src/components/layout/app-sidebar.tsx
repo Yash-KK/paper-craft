@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { memo, useMemo, useState } from "react"
 import {
   ArrowLeft,
   LogOut,
@@ -8,19 +8,19 @@ import {
 } from "lucide-react"
 import { Link, matchPath, useLocation } from "react-router-dom"
 
-import { useAuth } from "@/providers/auth-provider"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { ModeToggle } from "@/components/mode-toggle"
-import { NotebookStats } from "@/components/notebooks/notebook-stats"
-import { QuestionPapersSidebar } from "@/components/notebooks/question-papers-sidebar"
-import { useSidebar } from "@/providers/sidebar-provider"
+import { NotebookStats } from "@/features/notebooks/notebook-stats"
+import { QuestionPapersSidebar } from "@/features/notebooks/question-papers-sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useNotebooks } from "@/hooks/use-notebooks"
 import type { UserProfile } from "@/lib/api"
+import { useAuth } from "@/providers/auth-provider"
+import { useSidebarActions } from "@/components/layout/sidebar-store"
 
-function initials(name: string): string {
+function initials(name: string) {
   return name
     .split(" ")
     .map((part) => part[0])
@@ -30,23 +30,31 @@ function initials(name: string): string {
     .toUpperCase()
 }
 
-type AppSidebarProps = {
+export const AppSidebar = memo(function AppSidebar({
+  user,
+}: {
   user: UserProfile
-}
-
-export function AppSidebar({ user }: AppSidebarProps) {
+}) {
   const { logout } = useAuth()
-  const sidebar = useSidebar()
+  const { closeSidebar } = useSidebarActions()
   const location = useLocation()
   const { notebooks } = useNotebooks(true)
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
-  const notebookMatch =
-    matchPath("/notebooks/:notebookId/generate", location.pathname) ??
-    matchPath("/notebooks/:notebookId", location.pathname)
-  const activeNotebook = notebookMatch
-    ? notebooks.find((n) => n.id === notebookMatch.params.notebookId)
-    : undefined
+  const notebookMatch = useMemo(
+    () =>
+      matchPath("/notebooks/:notebookId/generate", location.pathname) ??
+      matchPath("/notebooks/:notebookId", location.pathname),
+    [location.pathname]
+  )
+
+  const activeNotebook = useMemo(
+    () =>
+      notebookMatch
+        ? notebooks.find((n) => n.id === notebookMatch.params.notebookId)
+        : undefined,
+    [notebookMatch, notebooks]
+  )
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-muted/20">
@@ -66,7 +74,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           size="icon-sm"
           className="shrink-0 text-muted-foreground"
           aria-label="Close sidebar"
-          onClick={() => sidebar?.setSidebarOpen(false)}
+          onClick={closeSidebar}
         >
           <PanelLeftClose className="size-4" />
         </Button>
@@ -93,9 +101,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
             />
           </div>
         ) : notebookMatch ? (
-          <div className="space-y-4 p-4">
-            <p className="text-sm text-muted-foreground">Loading notebook…</p>
-          </div>
+          <p className="p-4 text-sm text-muted-foreground">Loading notebook…</p>
         ) : (
           <div className="space-y-4 p-4">
             <div>
@@ -114,9 +120,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
       <div className="shrink-0 border-t p-3">
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
           <Avatar className="size-9">
-            {user.avatar_url && (
+            {user.avatar_url ? (
               <AvatarImage src={user.avatar_url} alt={user.full_name} />
-            )}
+            ) : null}
             <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
@@ -139,7 +145,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
             variant="ghost"
             size="sm"
             className="justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => setLogoutConfirmOpen(true)}
+            onClick={() => setLogoutOpen(true)}
           >
             <LogOut className="size-4" />
             Log out
@@ -148,8 +154,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </div>
 
       <ConfirmDialog
-        open={logoutConfirmOpen}
-        onOpenChange={setLogoutConfirmOpen}
+        open={logoutOpen}
+        onOpenChange={setLogoutOpen}
         title="Log out?"
         description="You'll be signed out and need to log in again to continue."
         confirmLabel="Log out"
@@ -159,4 +165,4 @@ export function AppSidebar({ user }: AppSidebarProps) {
       />
     </div>
   )
-}
+})

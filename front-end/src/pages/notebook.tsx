@@ -3,7 +3,7 @@ import { toast } from "sonner"
 import * as React from "react"
 
 import { AuthStatus, useAuth } from "@/providers/auth-provider"
-import { NotebookHeader } from "@/components/notebooks/notebook-header"
+import { NotebookHeader } from "@/features/notebooks/notebook-header"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChatPanel } from "@/features/chat"
