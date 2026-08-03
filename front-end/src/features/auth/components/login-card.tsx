@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { memo, useCallback, useState } from "react"
 import { Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"
 import { loginWithGoogle } from "@/lib/api"
 
-function GoogleIcon() {
+const GoogleIcon = memo(function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4">
       <path
@@ -32,19 +32,18 @@ function GoogleIcon() {
       />
     </svg>
   )
-}
+})
 
-type LoginCardProps = {
+export const LoginCard = memo(function LoginCard({
+  authError = false,
+}: {
   authError?: boolean
-}
-
-export function LoginCard({ authError = false }: LoginCardProps) {
+}) {
   const [isLoading, setIsLoading] = useState(false)
-
-  function handleLogin() {
+  const handleLogin = useCallback(() => {
     setIsLoading(true)
     loginWithGoogle()
-  }
+  }, [])
 
   return (
     <Card className="w-full max-w-sm">
@@ -53,11 +52,11 @@ export function LoginCard({ authError = false }: LoginCardProps) {
         <CardDescription>Sign in to continue to your workspace</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {authError && (
+        {authError ? (
           <p className="rounded-md bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
             Sign in failed. Please try again.
           </p>
-        )}
+        ) : null}
         <Button
           variant="outline"
           size="lg"
@@ -80,4 +79,4 @@ export function LoginCard({ authError = false }: LoginCardProps) {
       </CardContent>
     </Card>
   )
-}
+})

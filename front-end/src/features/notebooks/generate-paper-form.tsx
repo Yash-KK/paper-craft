@@ -8,7 +8,7 @@ import {
   Sparkles,
 } from "lucide-react"
 
-import { MarkingSchemeSection } from "@/components/notebooks/marking-scheme-section"
+import { MarkingSchemeSection } from "@/features/notebooks/marking-scheme-section"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {

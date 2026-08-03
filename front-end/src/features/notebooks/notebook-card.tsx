@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react"
 import { FileText, Plus, Trash2, TrendingUp } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -27,15 +28,24 @@ type NotebookCardProps = {
   onDelete: () => void | Promise<void>
 }
 
-export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
+export const NotebookCard = memo(function NotebookCard({
+  notebook,
+  index,
+  onDelete,
+}: NotebookCardProps) {
   const navigate = useNavigate()
   const theme = NOTEBOOK_THEME_STYLES[notebookTheme(notebook.color_hex, index)]
-  const chapters = notebook.selected_chapters.map(
-    (ch) => `Ch ${ch.chapter_number}`
-  )
-  const preview = chapters.slice(0, 4).join(", ")
-  const extra = chapters.length > 4 ? ` +${chapters.length - 4} more` : ""
-  const href = `/notebooks/${notebook.id}`
+  const { preview, extra, chapterCount, href } = useMemo(() => {
+    const chapters = notebook.selected_chapters.map(
+      (ch) => `Ch ${ch.chapter_number}`
+    )
+    return {
+      preview: chapters.slice(0, 4).join(", "),
+      extra: chapters.length > 4 ? ` +${chapters.length - 4} more` : "",
+      chapterCount: chapters.length,
+      href: `/notebooks/${notebook.id}`,
+    }
+  }, [notebook.id, notebook.selected_chapters])
 
   return (
     <Card
@@ -54,9 +64,7 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
         theme.glow
       )}
     >
-      <div
-        className={cn("relative z-10 h-1.5 w-full shrink-0", theme.stripe)}
-      />
+      <div className={cn("relative z-10 h-1.5 w-full shrink-0", theme.stripe)} />
 
       <CardHeader className="relative z-10 gap-3 pt-5">
         <div className="flex items-start justify-between gap-3">
@@ -69,11 +77,11 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
             <FileText className={cn("size-5", theme.iconText)} />
           </div>
           <div className="flex items-center gap-2">
-            {notebook.class_grade && (
+            {notebook.class_grade ? (
               <Badge variant="secondary" className={theme.badge}>
                 {notebook.class_grade}
               </Badge>
-            )}
+            ) : null}
             <div
               className="relative z-20"
               onClick={(e) => e.stopPropagation()}
@@ -106,7 +114,7 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
         </CardDescription>
       </CardHeader>
 
-      {chapters.length > 0 && (
+      {chapterCount > 0 ? (
         <CardContent className="relative z-10 space-y-2 pb-4">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <TrendingUp className="size-3.5" />
@@ -117,19 +125,23 @@ export function NotebookCard({ notebook, index, onDelete }: NotebookCardProps) {
             {extra}
           </p>
         </CardContent>
-      )}
+      ) : null}
 
       <Separator className="relative z-10" />
 
       <CardFooter className="relative z-10 justify-between border-t-0 bg-transparent text-xs text-muted-foreground">
-        <span>{chapters.length} chapters</span>
+        <span>{chapterCount} chapters</span>
         <span>Updated {formatNotebookDate(notebook.updated_at)}</span>
       </CardFooter>
     </Card>
   )
-}
+})
 
-export function CreateNotebookCard({ onClick }: { onClick?: () => void }) {
+export const CreateNotebookCard = memo(function CreateNotebookCard({
+  onClick,
+}: {
+  onClick?: () => void
+}) {
   return (
     <Card className="group min-h-70 justify-center rounded-2xl border-2 border-dashed bg-muted/20 py-0 ring-border/80 transition-all hover:border-violet-500/40 hover:bg-violet-500/5">
       <CardContent
@@ -152,4 +164,5 @@ export function CreateNotebookCard({ onClick }: { onClick?: () => void }) {
       </CardContent>
     </Card>
   )
-}
+})
+

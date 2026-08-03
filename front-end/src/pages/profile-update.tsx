@@ -2,7 +2,7 @@ import * as React from "react"
 import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
-import { AuthStatus, useAuth } from "@/components/auth-provider"
+import { AuthStatus, useAuth } from "@/providers/auth-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {

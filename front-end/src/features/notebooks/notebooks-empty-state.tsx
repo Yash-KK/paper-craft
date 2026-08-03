@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { BookOpen, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,15 +12,13 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
-type NotebooksEmptyStateProps = {
-  onCreateClick?: () => void
-  className?: string
-}
-
-export function NotebooksEmptyState({
+export const NotebooksEmptyState = memo(function NotebooksEmptyState({
   onCreateClick,
   className,
-}: NotebooksEmptyStateProps) {
+}: {
+  onCreateClick?: () => void
+  className?: string
+}) {
   return (
     <Card
       className={cn(
@@ -31,9 +30,7 @@ export function NotebooksEmptyState({
         <div className="flex size-16 items-center justify-center rounded-2xl bg-violet-500/10">
           <BookOpen className="size-8 text-violet-600 dark:text-violet-400" />
         </div>
-        <CardTitle className="text-xl font-semibold">
-          No notebooks yet
-        </CardTitle>
+        <CardTitle className="text-xl font-semibold">No notebooks yet</CardTitle>
         <CardDescription className="max-w-sm text-center">
           Create your first notebook to organize question papers, chapters, and
           study materials in one place.
@@ -48,4 +45,4 @@ export function NotebooksEmptyState({
       </CardFooter>
     </Card>
   )
-}
+})

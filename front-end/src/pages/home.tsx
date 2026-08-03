@@ -1,9 +1,9 @@
 import { BookOpenText } from "lucide-react"
 import { Navigate } from "react-router-dom"
 
-import { AuthStatus, useAuth } from "@/components/auth-provider"
-import { LandingIntro } from "@/components/landing-intro"
-import { LoginCard } from "@/components/login-card"
+import { AuthStatus, useAuth } from "@/providers/auth-provider"
+import { LandingIntro } from "@/features/landing/components/landing-intro"
+import { LoginCard } from "@/features/auth/components/login-card"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function HomePage() {

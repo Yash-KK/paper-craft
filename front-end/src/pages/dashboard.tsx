@@ -3,13 +3,13 @@ import { Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
-import { AuthStatus, useAuth } from "@/components/auth-provider"
-import { CreateNotebookDialog } from "@/components/notebooks/create-notebook-dialog"
+import { AuthStatus, useAuth } from "@/providers/auth-provider"
+import { CreateNotebookDialog } from "@/features/notebooks/create-notebook-dialog"
 import {
   CreateNotebookCard,
   NotebookCard,
-} from "@/components/notebooks/notebook-card"
-import { NotebooksEmptyState } from "@/components/notebooks/notebooks-empty-state"
+} from "@/features/notebooks/notebook-card"
+import { NotebooksEmptyState } from "@/features/notebooks/notebooks-empty-state"
 import { Button } from "@/components/ui/button"
 import {
   Card,
