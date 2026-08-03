@@ -3,7 +3,7 @@ import { Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
-import { AuthStatus, useAuth } from "@/components/auth-provider"
+import { AuthStatus, useAuth } from "@/providers/auth-provider"
 import { CreateNotebookDialog } from "@/components/notebooks/create-notebook-dialog"
 import {
   CreateNotebookCard,

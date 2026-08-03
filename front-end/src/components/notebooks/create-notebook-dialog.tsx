@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
-import { useAuth } from "@/components/auth-provider"
+import { useAuth } from "@/providers/auth-provider"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,

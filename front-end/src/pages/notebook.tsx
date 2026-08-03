@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import * as React from "react"
 
-import { AuthStatus, useAuth } from "@/components/auth-provider"
+import { AuthStatus, useAuth } from "@/providers/auth-provider"
 import { NotebookHeader } from "@/components/notebooks/notebook-header"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"

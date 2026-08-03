@@ -1,7 +1,7 @@
 import { ChevronDown, ListPlus, Loader2, Notebook, PanelLeft } from "lucide-react"
 import { toast } from "sonner"
 
-import { useSidebar } from "@/components/sidebar-context"
+import { useSidebar } from "@/providers/sidebar-provider"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {

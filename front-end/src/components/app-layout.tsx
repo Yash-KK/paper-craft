@@ -2,9 +2,9 @@ import { useState, useEffect } from "react"
 import { PanelLeft } from "lucide-react"
 import { matchPath, Outlet, useLocation } from "react-router-dom"
 
-import { AuthStatus, useAuth } from "@/components/auth-provider"
+import { AuthStatus, useAuth } from "@/providers/auth-provider"
 import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarProvider, useSidebar } from "@/components/sidebar-context"
+import { SidebarProvider, useSidebar } from "@/providers/sidebar-provider"
 import { Button } from "@/components/ui/button"
 import {
   ResizableHandle,
@@ -14,7 +14,7 @@ import {
 import {
   ChatSelectionProvider,
   useChatSelectionOptional,
-} from "@/features/chat/chat-selection-context"
+} from "@/providers/chat-selection-provider"
 
 export function AppLayout() {
   const { status, user } = useAuth()

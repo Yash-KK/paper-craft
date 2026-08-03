@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Check, Loader2 } from "lucide-react"
 
-import { useChatSelectionOptional } from "@/features/chat/chat-selection-context"
+import { useChatSelectionOptional } from "@/providers/chat-selection-provider"
 import { useCreatePaperVersion } from "@/features/question-papers/hooks/use-create-paper-version"
 import {
   canCreateNewVersion,
