@@ -35,6 +35,10 @@ from app.schemas.notebook import SelectedChapter
 from app.services.export import render_paper_markdown
 from app.services.export.section_copy import resolve_final_paper
 from app.services.generation.service import generate_paper
+from app.services.usage_limits import (
+    UsageLimitExceededError,
+    consume_question_paper_quota,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -280,6 +284,8 @@ async def enqueue_paper_generation(
     if notebook is None:
         raise PermissionError("Notebook not found")
 
+    await consume_question_paper_quota(db, user)
+
     title = _paper_title(body.blueprint, explicit=body.title)
 
     paper = QuestionPaper(
@@ -355,6 +361,11 @@ async def enqueue_new_version(
     if any(version.status in ACTIVE_STATUSES for version in versions):
         raise ActiveGenerationError(
             "A generation is already pending or running for this paper"
+        )
+    if len(versions) >= user.version_limit:
+        raise UsageLimitExceededError(
+            "Version limit reached for this question paper "
+            f"({len(versions)}/{user.version_limit})"
         )
 
     ready_versions = [

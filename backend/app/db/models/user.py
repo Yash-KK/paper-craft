@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,6 +45,21 @@ class User(Base):
         Enum(UserRole, name="user_role", native_enum=False, length=50),
         default=UserRole.TEACHER,
         nullable=False,
+    )
+    question_paper_limit: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=2, server_default="2"
+    )
+    question_paper_usage: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    version_limit: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=2, server_default="2"
+    )
+    chat_message_limit: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=5, server_default="5"
+    )
+    chat_message_usage: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

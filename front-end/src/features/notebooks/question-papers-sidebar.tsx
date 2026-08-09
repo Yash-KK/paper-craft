@@ -26,7 +26,6 @@ import {
   nextVersionNumber,
 } from "@/features/question-papers/lib/question-paper-utils"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Collapsible,
@@ -40,6 +39,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  DEFAULT_QUESTION_PAPER_LIMIT,
+  DEFAULT_VERSION_LIMIT,
+  UsageLimitIndicator,
+} from "@/components/usage-limit-indicator"
 import { downloadVersionExport } from "@/lib/api"
 import type {
   QuestionPaperSummary,
@@ -47,6 +51,7 @@ import type {
 } from "@/lib/types/generation"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/providers/auth-provider"
 
 type QuestionPapersSidebarProps = {
   notebook: NotebookListItem
@@ -63,12 +68,23 @@ export function QuestionPapersSidebar({
   notebook,
   className,
 }: QuestionPapersSidebarProps) {
+  const { user } = useAuth()
   const papersQuery = useNotebookPapers(notebook.id)
   const deletePaper = useDeleteQuestionPaper(notebook.id)
   const cancelVersion = useCancelPaperVersion(notebook.id)
   const papers = papersQuery.data ?? []
-  const canGenerate = notebook.selected_chapters.length > 0
+  const paperUsage = user?.question_paper_usage ?? 0
+  const paperLimit = user?.question_paper_limit ?? DEFAULT_QUESTION_PAPER_LIMIT
+  const versionLimit = user?.version_limit ?? DEFAULT_VERSION_LIMIT
+  const atPaperLimit = paperUsage >= paperLimit
+  const canGenerate =
+    notebook.selected_chapters.length > 0 && !atPaperLimit
   const generateHref = `/notebooks/${notebook.id}/generate`
+  const generateDisabledReason = atPaperLimit
+    ? `Question paper limit reached (${paperUsage}/${paperLimit})`
+    : notebook.selected_chapters.length === 0
+      ? "Select chapters on this notebook first"
+      : "Open question paper generation"
 
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
     () => new Set()
@@ -129,11 +145,7 @@ export function QuestionPapersSidebar({
           type="button"
           className="w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
           disabled={!canGenerate}
-          title={
-            canGenerate
-              ? "Open question paper generation"
-              : "Select chapters on this notebook first"
-          }
+          title={generateDisabledReason}
           render={canGenerate ? <Link to={generateHref} /> : undefined}
         >
           <Sparkles className="size-4" aria-hidden />
@@ -141,11 +153,15 @@ export function QuestionPapersSidebar({
         </Button>
       </div>
 
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
         <p className="text-xs font-medium text-muted-foreground">
           Generated papers
         </p>
-        <Badge variant="secondary">{papers.length}</Badge>
+        <UsageLimitIndicator
+          usage={paperUsage}
+          limit={paperLimit}
+          resource="question_paper"
+        />
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
@@ -191,7 +207,7 @@ export function QuestionPapersSidebar({
                   <QuestionPaperActionsMenu
                     title={paper.title}
                     nextVersionNumber={
-                      canCreateNewVersion(paper)
+                      canCreateNewVersion(paper, versionLimit)
                         ? nextVersionNumber(paper)
                         : null
                     }

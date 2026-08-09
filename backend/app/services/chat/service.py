@@ -11,6 +11,7 @@ from app.db.models.user import User
 from app.repositories.chat import ChatRepository
 from app.schemas.chat import ChatSessionResponse
 from app.services.chat.agent import stream_notebook_chat
+from app.services.usage_limits import consume_chat_message_quota
 
 
 class ChatService:
@@ -52,6 +53,7 @@ class ChatService:
         """Validate ownership, persist the user message, then return the SSE generator."""
         notebook = await self._require_owned_notebook(notebook_id, user)
         session = await self._repo.get_or_create_session(notebook)
+        await consume_chat_message_quota(self._repo.db, user)
         history = await self._repo.list_recent_messages(session.id, limit=20)
         await self._repo.create_message(
             session_id=session.id, role=ChatMessageRole.USER, content=content

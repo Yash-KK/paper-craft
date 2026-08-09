@@ -17,6 +17,10 @@ class ChatRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
+    @property
+    def db(self) -> AsyncSession:
+        return self._db
+
     async def get_owned_notebook(
         self,
         notebook_id: UUID,

@@ -2,6 +2,7 @@ import * as React from "react"
 import { Check, Loader2 } from "lucide-react"
 
 import { useChatSelectionOptional } from "@/providers/chat-selection-provider"
+import { useAuth } from "@/providers/auth-provider"
 import { useCreatePaperVersion } from "@/features/question-papers/hooks/use-create-paper-version"
 import {
   canCreateNewVersion,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { DEFAULT_VERSION_LIMIT } from "@/components/usage-limit-indicator"
 import { useNotebookChatMessages } from "@/hooks/use-notebook-chat-messages"
 import type { QuestionPaperSummary } from "@/lib/types/generation"
 
@@ -43,6 +45,8 @@ export function GenerateVersionDialog({
   notebookId,
   paper,
 }: GenerateVersionDialogProps) {
+  const { user } = useAuth()
+  const versionLimit = user?.version_limit ?? DEFAULT_VERSION_LIMIT
   const [teacherInstructions, setTeacherInstructions] = React.useState("")
   const selection = useChatSelectionOptional()
   const messagesQuery = useNotebookChatMessages(notebookId, open)
@@ -54,6 +58,7 @@ export function GenerateVersionDialog({
   } = messagesQuery
   const createVersion = useCreatePaperVersion(paper.id, notebookId)
   const versionNumber = nextVersionNumber(paper)
+  const canGenerate = canCreateNewVersion(paper, versionLimit)
 
   const allPersistedIds = React.useMemo(() => {
     const pages = messagesData?.pages ?? []
@@ -96,7 +101,7 @@ export function GenerateVersionDialog({
   }
 
   async function handleGenerate() {
-    if (!canCreateNewVersion(paper)) return
+    if (!canGenerate) return
     const selected_message_ids = usingAllMessages
       ? allPersistedIds
       : explicitSelectedIds
@@ -156,7 +161,7 @@ export function GenerateVersionDialog({
           </Button>
           <Button
             type="button"
-            disabled={!canCreateNewVersion(paper) || pending}
+            disabled={!canGenerate || pending}
             onClick={() => void handleGenerate()}
           >
             {createVersion.isPending ? (

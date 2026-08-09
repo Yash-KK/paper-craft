@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from fastapi_pagination.cursor import CursorPage
 from fastapi_pagination.customization import CustomizedPage, UseParamsFields
 from fastapi_pagination.ext.sqlalchemy import apaginate
@@ -14,6 +14,7 @@ from app.schemas.chat import (
     ChatSessionResponse,
     ChatTurnRequest,
 )
+from app.services.usage_limits import UsageLimitExceededError
 
 router = APIRouter(prefix="/notebooks/{notebook_id}/chat", tags=["chat"])
 
@@ -54,11 +55,17 @@ async def create_chat_turn(
     current_user: CurrentUser,
     chat_service: ChatServiceDep,
 ) -> EventSourceResponse:
-    stream = await chat_service.start_turn(
-        notebook_id=notebook_id,
-        user=current_user,
-        content=body.content,
-        top_k=body.top_k,
-        enabled_tools=body.enabled_tools,
-    )
+    try:
+        stream = await chat_service.start_turn(
+            notebook_id=notebook_id,
+            user=current_user,
+            content=body.content,
+            top_k=body.top_k,
+            enabled_tools=body.enabled_tools,
+        )
+    except UsageLimitExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
     return EventSourceResponse(stream)

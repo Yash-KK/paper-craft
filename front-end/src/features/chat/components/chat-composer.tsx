@@ -12,7 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  DEFAULT_CHAT_MESSAGE_LIMIT,
+  UsageLimitIndicator,
+} from "@/components/usage-limit-indicator"
 import type { ChatToolId } from "@/features/chat/types/chat"
+import { useAuth } from "@/providers/auth-provider"
 
 const TOOL_OPTIONS: ReadonlyArray<{
   id: ChatToolId
@@ -38,6 +43,10 @@ export function ChatComposer({
   onSend,
   onStop,
 }: ChatComposerProps) {
+  const { user } = useAuth()
+  const chatUsage = user?.chat_message_usage ?? 0
+  const chatLimit = user?.chat_message_limit ?? DEFAULT_CHAT_MESSAGE_LIMIT
+  const atLimit = chatUsage >= chatLimit
   const [input, setInput] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -50,7 +59,7 @@ export function ChatComposer({
 
   const handleSend = () => {
     const question = input.trim()
-    if (!question || isStreaming) return
+    if (!question || isStreaming || atLimit) return
     setInput("")
     onSend(question)
   }
@@ -71,6 +80,8 @@ export function ChatComposer({
     onEnabledToolsChange(enabledTools.filter((t) => t !== id))
   }
 
+  const toolsDisabled = isStreaming || atLimit
+
   return (
     <div className="relative z-10 shrink-0 border-t bg-background px-4 py-3">
       <div className="mx-auto flex max-w-4xl flex-col gap-2 rounded-xl border bg-muted/40 p-3 focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-200">
@@ -80,15 +91,17 @@ export function ChatComposer({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={handleKey}
-          placeholder="Ask a question…"
-          disabled={isStreaming}
+          placeholder={
+            atLimit ? "Chat message limit reached" : "Ask a question…"
+          }
+          disabled={toolsDisabled}
           className="max-h-30 min-h-6 w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:border-0 focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent dark:disabled:bg-transparent"
         />
 
         <div className="flex items-center gap-1.5">
           <DropdownMenu>
             <DropdownMenuTrigger
-              disabled={isStreaming}
+              disabled={toolsDisabled}
               render={
                 <Button
                   variant="ghost"
@@ -132,7 +145,7 @@ export function ChatComposer({
                   key={tool.id}
                   variant="secondary"
                   className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
-                  onClick={() => !isStreaming && toggleTool(tool.id, false)}
+                  onClick={() => !toolsDisabled && toggleTool(tool.id, false)}
                   title={`Remove ${tool.label}`}
                 >
                   <Icon />
@@ -159,8 +172,12 @@ export function ChatComposer({
                 size="icon-xs"
                 className="bg-violet-600 text-white hover:bg-violet-500"
                 onClick={handleSend}
-                disabled={!input.trim()}
-                title="Send"
+                disabled={!input.trim() || atLimit}
+                title={
+                  atLimit
+                    ? `Chat message limit reached (${chatUsage}/${chatLimit})`
+                    : "Send"
+                }
               >
                 <Send />
               </Button>
@@ -168,16 +185,23 @@ export function ChatComposer({
           </div>
         </div>
       </div>
-      {isStreaming ? (
-        <p className="mt-1.5 flex items-center justify-center gap-1.5 text-center text-xs text-violet-500">
-          <Loader2 size={11} className="animate-spin" />
-          <span>Agent is thinking…</span>
-        </p>
-      ) : (
-        <p className="mt-1.5 text-center text-xs text-muted-foreground">
-          PaperCraft can make mistakes
-        </p>
-      )}
+      <div className="mt-1.5 flex items-center justify-center gap-2">
+        <UsageLimitIndicator
+          usage={chatUsage}
+          limit={chatLimit}
+          resource="chat_message"
+        />
+        {isStreaming ? (
+          <p className="flex items-center gap-1.5 text-xs text-violet-500">
+            <Loader2 size={11} className="animate-spin" />
+            <span>Agent is thinking…</span>
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            PaperCraft can make mistakes
+          </p>
+        )}
+      </div>
     </div>
   )
 }

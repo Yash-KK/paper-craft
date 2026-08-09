@@ -93,6 +93,7 @@ function ChatPanelReady({
     sendMessage,
     stopStream,
     prependOlderMessages,
+    atChatLimit,
   } = useChatStream(notebookId, initialMessages)
 
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -255,7 +256,11 @@ function ChatPanelReady({
               {messages.length === 0 && (
                 <ChatEmptyState
                   notebookName={notebookName}
-                  onSend={(prompt) => void sendMessage(prompt)}
+                  onSend={
+                    atChatLimit
+                      ? undefined
+                      : (prompt) => void sendMessage(prompt)
+                  }
                 />
               )}
 
