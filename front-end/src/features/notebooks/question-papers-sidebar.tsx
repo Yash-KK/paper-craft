@@ -39,7 +39,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { UsageLimitIndicator } from "@/components/usage-limit-indicator"
+import {
+  DEFAULT_QUESTION_PAPER_LIMIT,
+  DEFAULT_VERSION_LIMIT,
+  UsageLimitIndicator,
+} from "@/components/usage-limit-indicator"
 import { downloadVersionExport } from "@/lib/api"
 import type {
   QuestionPaperSummary,
@@ -70,8 +74,8 @@ export function QuestionPapersSidebar({
   const cancelVersion = useCancelPaperVersion(notebook.id)
   const papers = papersQuery.data ?? []
   const paperUsage = user?.question_paper_usage ?? 0
-  const paperLimit = user?.question_paper_limit ?? 2
-  const versionLimit = user?.version_limit ?? 2
+  const paperLimit = user?.question_paper_limit ?? DEFAULT_QUESTION_PAPER_LIMIT
+  const versionLimit = user?.version_limit ?? DEFAULT_VERSION_LIMIT
   const atPaperLimit = paperUsage >= paperLimit
   const canGenerate =
     notebook.selected_chapters.length > 0 && !atPaperLimit

@@ -12,8 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
-import { UsageLimitIndicator } from "@/components/usage-limit-indicator"
+import {
+  DEFAULT_CHAT_MESSAGE_LIMIT,
+  UsageLimitIndicator,
+} from "@/components/usage-limit-indicator"
 import type { ChatToolId } from "@/features/chat/types/chat"
+import { useAuth } from "@/providers/auth-provider"
 
 const TOOL_OPTIONS: ReadonlyArray<{
   id: ChatToolId
@@ -30,8 +34,6 @@ type ChatComposerProps = {
   onEnabledToolsChange: (tools: ChatToolId[]) => void
   onSend: (question: string) => void
   onStop: () => void
-  chatUsage?: number
-  chatLimit?: number
 }
 
 export function ChatComposer({
@@ -40,12 +42,13 @@ export function ChatComposer({
   onEnabledToolsChange,
   onSend,
   onStop,
-  chatUsage = 0,
-  chatLimit = 5,
 }: ChatComposerProps) {
+  const { user } = useAuth()
+  const chatUsage = user?.chat_message_usage ?? 0
+  const chatLimit = user?.chat_message_limit ?? DEFAULT_CHAT_MESSAGE_LIMIT
+  const atLimit = chatUsage >= chatLimit
   const [input, setInput] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const atLimit = chatUsage >= chatLimit
 
   useEffect(() => {
     const el = textareaRef.current
@@ -77,6 +80,8 @@ export function ChatComposer({
     onEnabledToolsChange(enabledTools.filter((t) => t !== id))
   }
 
+  const toolsDisabled = isStreaming || atLimit
+
   return (
     <div className="relative z-10 shrink-0 border-t bg-background px-4 py-3">
       <div className="mx-auto flex max-w-4xl flex-col gap-2 rounded-xl border bg-muted/40 p-3 focus-within:border-violet-300 focus-within:ring-1 focus-within:ring-violet-200">
@@ -89,14 +94,14 @@ export function ChatComposer({
           placeholder={
             atLimit ? "Chat message limit reached" : "Ask a question…"
           }
-          disabled={isStreaming || atLimit}
+          disabled={toolsDisabled}
           className="max-h-30 min-h-6 w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:border-0 focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent dark:disabled:bg-transparent"
         />
 
         <div className="flex items-center gap-1.5">
           <DropdownMenu>
             <DropdownMenuTrigger
-              disabled={isStreaming || atLimit}
+              disabled={toolsDisabled}
               render={
                 <Button
                   variant="ghost"
@@ -140,9 +145,7 @@ export function ChatComposer({
                   key={tool.id}
                   variant="secondary"
                   className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
-                  onClick={() =>
-                    !isStreaming && !atLimit && toggleTool(tool.id, false)
-                  }
+                  onClick={() => !toolsDisabled && toggleTool(tool.id, false)}
                   title={`Remove ${tool.label}`}
                 >
                   <Icon />

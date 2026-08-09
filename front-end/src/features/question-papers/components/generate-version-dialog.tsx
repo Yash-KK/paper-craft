@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { DEFAULT_VERSION_LIMIT } from "@/components/usage-limit-indicator"
 import { useNotebookChatMessages } from "@/hooks/use-notebook-chat-messages"
 import type { QuestionPaperSummary } from "@/lib/types/generation"
 
@@ -45,7 +46,7 @@ export function GenerateVersionDialog({
   paper,
 }: GenerateVersionDialogProps) {
   const { user } = useAuth()
-  const versionLimit = user?.version_limit ?? 2
+  const versionLimit = user?.version_limit ?? DEFAULT_VERSION_LIMIT
   const [teacherInstructions, setTeacherInstructions] = React.useState("")
   const selection = useChatSelectionOptional()
   const messagesQuery = useNotebookChatMessages(notebookId, open)

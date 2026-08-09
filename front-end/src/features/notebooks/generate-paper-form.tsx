@@ -22,7 +22,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MenuSelect } from "@/components/ui/menu-select"
 import { Textarea } from "@/components/ui/textarea"
-import { UsageLimitIndicator } from "@/components/usage-limit-indicator"
+import {
+  DEFAULT_QUESTION_PAPER_LIMIT,
+  UsageLimitIndicator,
+} from "@/components/usage-limit-indicator"
 import { useGeneratePaperForm } from "@/hooks/use-generate-paper-form"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import type { GenerationResult } from "@/lib/types/generation"
@@ -109,7 +112,7 @@ export function GeneratePaperForm({
     : "Sections, question types, and chapter distribution for practice."
   const generateLabel = markBased ? "Generate Paper" : "Generate Revision Sheet"
   const paperUsage = user?.question_paper_usage ?? 0
-  const paperLimit = user?.question_paper_limit ?? 2
+  const paperLimit = user?.question_paper_limit ?? DEFAULT_QUESTION_PAPER_LIMIT
   const atPaperLimit = paperUsage >= paperLimit
 
   return (

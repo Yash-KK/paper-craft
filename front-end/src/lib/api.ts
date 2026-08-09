@@ -102,7 +102,7 @@ export class UnauthorizedError extends Error {
   }
 }
 
-async function parseApiError(response: Response): Promise<string> {
+export async function parseApiError(response: Response): Promise<string> {
   try {
     const data = (await response.json()) as {
       detail?: string | { msg: string }[]

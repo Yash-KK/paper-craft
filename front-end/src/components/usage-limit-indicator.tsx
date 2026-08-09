@@ -6,13 +6,13 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-export type UsageLimitResource = "question_paper" | "chat_message"
+export const DEFAULT_QUESTION_PAPER_LIMIT = 2
+export const DEFAULT_VERSION_LIMIT = 2
+export const DEFAULT_CHAT_MESSAGE_LIMIT = 5
 
-export function isUsageLimitReached(usage: number, limit: number): boolean {
-  return usage >= limit
-}
+type UsageLimitResource = "question_paper" | "chat_message"
 
-export function usageLimitTooltip(
+function usageLimitTooltip(
   resource: UsageLimitResource,
   usage: number,
   limit: number
@@ -21,10 +21,10 @@ export function usageLimitTooltip(
   if (remaining === 0) return "Limit Reached"
 
   if (resource === "question_paper") {
-    if (usage === 0) {
-      return `Can generate ${remaining} question paper${remaining === 1 ? "" : "s"}`
-    }
-    return `Can generate ${remaining} more question paper${remaining === 1 ? "" : "s"}`
+    const noun = remaining === 1 ? "question paper" : "question papers"
+    return usage === 0
+      ? `Can generate ${remaining} ${noun}`
+      : `Can generate ${remaining} more ${noun}`
   }
 
   return `Can ask ${remaining} more question${remaining === 1 ? "" : "s"}`
@@ -43,7 +43,7 @@ export function UsageLimitIndicator({
   resource,
   className,
 }: UsageLimitIndicatorProps) {
-  const atLimit = isUsageLimitReached(usage, limit)
+  const atLimit = usage >= limit
   const tooltip = usageLimitTooltip(resource, usage, limit)
 
   return (

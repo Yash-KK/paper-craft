@@ -93,8 +93,6 @@ function ChatPanelReady({
     sendMessage,
     stopStream,
     prependOlderMessages,
-    chatUsage,
-    chatLimit,
     atChatLimit,
   } = useChatStream(notebookId, initialMessages)
 
@@ -302,8 +300,6 @@ function ChatPanelReady({
           onEnabledToolsChange={setEnabledTools}
           onSend={(question) => void sendMessage(question)}
           onStop={stopStream}
-          chatUsage={chatUsage}
-          chatLimit={chatLimit}
         />
       </div>
     </MathJaxContext>

@@ -16,53 +16,26 @@ down_revision: str | Sequence[str] | None = "c1d2e3f4a5b6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+_LIMIT_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("question_paper_limit", "2"),
+    ("question_paper_usage", "0"),
+    ("version_limit", "2"),
+    ("chat_message_limit", "5"),
+    ("chat_message_usage", "0"),
+)
+
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column(
-            "question_paper_limit",
-            sa.Integer(),
-            server_default="2",
-            nullable=False,
-        ),
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "question_paper_usage",
-            sa.Integer(),
-            server_default="0",
-            nullable=False,
-        ),
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "version_limit",
-            sa.Integer(),
-            server_default="2",
-            nullable=False,
-        ),
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "chat_message_limit",
-            sa.Integer(),
-            server_default="5",
-            nullable=False,
-        ),
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "chat_message_usage",
-            sa.Integer(),
-            server_default="0",
-            nullable=False,
-        ),
-    )
+    for name, default in _LIMIT_COLUMNS:
+        op.add_column(
+            "users",
+            sa.Column(
+                name,
+                sa.Integer(),
+                server_default=default,
+                nullable=False,
+            ),
+        )
 
     # Backfill lifetime usage from historical rows (including soft-deleted papers).
     op.execute(
@@ -91,8 +64,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("users", "chat_message_usage")
-    op.drop_column("users", "chat_message_limit")
-    op.drop_column("users", "version_limit")
-    op.drop_column("users", "question_paper_usage")
-    op.drop_column("users", "question_paper_limit")
+    for name, _default in reversed(_LIMIT_COLUMNS):
+        op.drop_column("users", name)

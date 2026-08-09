@@ -16,19 +16,10 @@ import type {
   ChatToolId,
   PersistedMessage,
 } from "@/features/chat/types/chat"
-import { API_URL, getToken } from "@/lib/api"
+import { DEFAULT_CHAT_MESSAGE_LIMIT } from "@/components/usage-limit-indicator"
+import { API_URL, getToken, parseApiError } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
 import { useAuth } from "@/providers/auth-provider"
-
-async function readErrorDetail(response: Response): Promise<string> {
-  try {
-    const payload = (await response.json()) as { detail?: unknown }
-    if (typeof payload.detail === "string") return payload.detail
-  } catch {
-    // Fall through to status text.
-  }
-  return response.statusText || "Request failed"
-}
 
 export function useChatStream(
   notebookId: string,
@@ -42,9 +33,9 @@ export function useChatStream(
   const [isStreaming, setIsStreaming] = useState(false)
   const [enabledTools, setEnabledTools] = useState<ChatToolId[]>([])
   const abortRef = useRef<AbortController | null>(null)
-  const chatUsage = user?.chat_message_usage ?? 0
-  const chatLimit = user?.chat_message_limit ?? 5
-  const atChatLimit = chatUsage >= chatLimit
+  const atChatLimit =
+    (user?.chat_message_usage ?? 0) >=
+    (user?.chat_message_limit ?? DEFAULT_CHAT_MESSAGE_LIMIT)
 
   const patchLast = useCallback((updater: (m: ChatMessage) => ChatMessage) => {
     setMessages((prev) => {
@@ -117,8 +108,7 @@ export function useChatStream(
                 void refreshUser()
                 return
               }
-              const detail = await readErrorDetail(response)
-              throw new Error(detail)
+              throw new Error(await parseApiError(response))
             },
             onmessage(ev) {
               const event = fromWireEvent(ev.event, ev.data)
@@ -143,7 +133,9 @@ export function useChatStream(
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           const message =
-            err instanceof Error ? err.message : "Connection error — please try again."
+            err instanceof Error
+              ? err.message
+              : "Connection error — please try again."
           if (!accepted) {
             toast.error(message)
             setMessages((prev) => prev.slice(0, -2))
@@ -202,8 +194,6 @@ export function useChatStream(
     sendMessage,
     stopStream,
     prependOlderMessages,
-    chatUsage,
-    chatLimit,
     atChatLimit,
   }
 }

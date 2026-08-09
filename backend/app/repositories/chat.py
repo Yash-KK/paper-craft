@@ -17,6 +17,10 @@ class ChatRepository:
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
 
+    @property
+    def db(self) -> AsyncSession:
+        return self._db
+
     async def get_owned_notebook(
         self,
         notebook_id: UUID,
@@ -30,11 +34,6 @@ class ChatRepository:
         ):
             return None
         return notebook
-
-    async def lock_user(self, user: User) -> User:
-        """Lock the user row so chat quota increments are race-safe."""
-        await self._db.refresh(user, with_for_update=True)
-        return user
 
     async def get_or_create_session(self, notebook: Notebook) -> ChatSession:
         session = await self._db.scalar(
