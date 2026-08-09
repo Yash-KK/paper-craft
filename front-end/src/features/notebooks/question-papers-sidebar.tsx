@@ -26,7 +26,6 @@ import {
   nextVersionNumber,
 } from "@/features/question-papers/lib/question-paper-utils"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Collapsible,
@@ -40,6 +39,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { UsageLimitIndicator } from "@/components/usage-limit-indicator"
 import { downloadVersionExport } from "@/lib/api"
 import type {
   QuestionPaperSummary,
@@ -149,13 +149,15 @@ export function QuestionPapersSidebar({
         </Button>
       </div>
 
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
         <p className="text-xs font-medium text-muted-foreground">
           Generated papers
         </p>
-        <Badge variant="secondary">
-          {paperUsage}/{paperLimit}
-        </Badge>
+        <UsageLimitIndicator
+          usage={paperUsage}
+          limit={paperLimit}
+          resource="question_paper"
+        />
       </div>
 
       <ScrollArea className="min-h-0 flex-1">

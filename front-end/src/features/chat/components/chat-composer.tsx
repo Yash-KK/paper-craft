@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import { UsageLimitIndicator } from "@/components/usage-limit-indicator"
 import type { ChatToolId } from "@/features/chat/types/chat"
 
 const TOOL_OPTIONS: ReadonlyArray<{
@@ -86,9 +87,7 @@ export function ChatComposer({
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={handleKey}
           placeholder={
-            atLimit
-              ? "Chat message limit reached"
-              : "Ask a question…"
+            atLimit ? "Chat message limit reached" : "Ask a question…"
           }
           disabled={isStreaming || atLimit}
           className="max-h-30 min-h-6 w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:border-0 focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent dark:disabled:bg-transparent"
@@ -183,16 +182,23 @@ export function ChatComposer({
           </div>
         </div>
       </div>
-      {isStreaming ? (
-        <p className="mt-1.5 flex items-center justify-center gap-1.5 text-center text-xs text-violet-500">
-          <Loader2 size={11} className="animate-spin" />
-          <span>Agent is thinking…</span>
-        </p>
-      ) : (
-        <p className="mt-1.5 text-center text-xs text-muted-foreground">
-          {chatUsage}/{chatLimit} messages used
-        </p>
-      )}
+      <div className="mt-1.5 flex items-center justify-center gap-2">
+        <UsageLimitIndicator
+          usage={chatUsage}
+          limit={chatLimit}
+          resource="chat_message"
+        />
+        {isStreaming ? (
+          <p className="flex items-center gap-1.5 text-xs text-violet-500">
+            <Loader2 size={11} className="animate-spin" />
+            <span>Agent is thinking…</span>
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            PaperCraft can make mistakes
+          </p>
+        )}
+      </div>
     </div>
   )
 }

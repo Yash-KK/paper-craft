@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MenuSelect } from "@/components/ui/menu-select"
 import { Textarea } from "@/components/ui/textarea"
+import { UsageLimitIndicator } from "@/components/usage-limit-indicator"
 import { useGeneratePaperForm } from "@/hooks/use-generate-paper-form"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import type { GenerationResult } from "@/lib/types/generation"
@@ -441,9 +442,13 @@ export function GeneratePaperForm({
           )}
           {generateLabel}
         </Button>
-        <p className="text-center text-xs text-muted-foreground">
-          {paperUsage}/{paperLimit} question papers used
-        </p>
+        <div className="flex justify-center">
+          <UsageLimitIndicator
+            usage={paperUsage}
+            limit={paperLimit}
+            resource="question_paper"
+          />
+        </div>
         {onCancel ? (
           <Button
             type="button"
