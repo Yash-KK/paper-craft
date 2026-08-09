@@ -1,0 +1,5 @@
+|  Sl No. | Pair of lines | $$\frac{a_1}{a_2}$$ | $$\frac{b_1}{b_2}$$ | $$\frac{c_1}{c_2}$$ | Compare the ratios | Graphical representation | Algebraic interpretation  |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+|  1. | $$x - 2y = 0$$ $$3x + 4y - 20 = 0$$ | $$\frac{1}{3}$$ | $$\frac{-2}{4}$$ | $$\frac{0}{-20}$$ | $$\frac{a_1}{a_2} \neq \frac{b_1}{b_2}$$ | Intersecting lines | Exactly one solution (unique)  |
+|  2. | $$2x + 3y - 9 = 0$$ $$4x + 6y - 18 = 0$$ | $$\frac{2}{4}$$ | $$\frac{3}{6}$$ | $$\frac{-9}{-18}$$ | $$\frac{a_1}{a_2} = \frac{b_1}{b_2} = \frac{c_1}{c_2}$$ | Coincident lines | Infinitely many solutions  |
+|  3. | $$x + 2y - 4 = 0$$ $$2x + 4y - 12 = 0$$ | $$\frac{1}{2}$$ | $$\frac{2}{4}$$ | $$\frac{-4}{-12}$$ | $$\frac{a_1}{a_2} = \frac{b_1}{b_2} \neq \frac{c_1}{c_2}$$ | Parallel lines | No solution  |
