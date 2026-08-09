@@ -31,6 +31,11 @@ class ChatRepository:
             return None
         return notebook
 
+    async def lock_user(self, user: User) -> User:
+        """Lock the user row so chat quota increments are race-safe."""
+        await self._db.refresh(user, with_for_update=True)
+        return user
+
     async def get_or_create_session(self, notebook: Notebook) -> ChatSession:
         session = await self._db.scalar(
             select(ChatSession).where(ChatSession.notebook_id == notebook.id)

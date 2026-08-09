@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react"
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query"
 import { fetchEventSource } from "@microsoft/fetch-event-source"
+import { toast } from "sonner"
 
 import {
   applyStreamEvent,
@@ -17,18 +18,33 @@ import type {
 } from "@/features/chat/types/chat"
 import { API_URL, getToken } from "@/lib/api"
 import { queryKeys } from "@/lib/query-keys"
+import { useAuth } from "@/providers/auth-provider"
+
+async function readErrorDetail(response: Response): Promise<string> {
+  try {
+    const payload = (await response.json()) as { detail?: unknown }
+    if (typeof payload.detail === "string") return payload.detail
+  } catch {
+    // Fall through to status text.
+  }
+  return response.statusText || "Request failed"
+}
 
 export function useChatStream(
   notebookId: string,
   initialMessages: PersistedMessage[] = []
 ) {
   const queryClient = useQueryClient()
+  const { user, refreshUser } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>(() =>
     toUiMessages(initialMessages)
   )
   const [isStreaming, setIsStreaming] = useState(false)
   const [enabledTools, setEnabledTools] = useState<ChatToolId[]>([])
   const abortRef = useRef<AbortController | null>(null)
+  const chatUsage = user?.chat_message_usage ?? 0
+  const chatLimit = user?.chat_message_limit ?? 5
+  const atChatLimit = chatUsage >= chatLimit
 
   const patchLast = useCallback((updater: (m: ChatMessage) => ChatMessage) => {
     setMessages((prev) => {
@@ -54,7 +70,7 @@ export function useChatStream(
   const sendMessage = useCallback(
     async (question: string) => {
       const content = question.trim()
-      if (isStreaming || !content) return
+      if (isStreaming || !content || atChatLimit) return
 
       setMessages((prev) => [
         ...prev,
@@ -78,6 +94,7 @@ export function useChatStream(
       const controller = new AbortController()
       abortRef.current = controller
       let finished = false
+      let accepted = false
 
       try {
         await fetchEventSource(
@@ -94,6 +111,15 @@ export function useChatStream(
             }),
             signal: controller.signal,
             openWhenHidden: true,
+            async onopen(response) {
+              if (response.ok) {
+                accepted = true
+                void refreshUser()
+                return
+              }
+              const detail = await readErrorDetail(response)
+              throw new Error(detail)
+            },
             onmessage(ev) {
               const event = fromWireEvent(ev.event, ev.data)
               if (!event) return
@@ -116,11 +142,18 @@ export function useChatStream(
         )
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
-          patchLast((m) => ({
-            ...m,
-            content: m.content || "Connection error — please try again.",
-            isStreaming: false,
-          }))
+          const message =
+            err instanceof Error ? err.message : "Connection error — please try again."
+          if (!accepted) {
+            toast.error(message)
+            setMessages((prev) => prev.slice(0, -2))
+          } else {
+            patchLast((m) => ({
+              ...m,
+              content: m.content || message,
+              isStreaming: false,
+            }))
+          }
         }
       } finally {
         setIsStreaming(false)
@@ -133,7 +166,15 @@ export function useChatStream(
         }
       }
     },
-    [enabledTools, isStreaming, notebookId, patchLast, syncFromLatestPage]
+    [
+      atChatLimit,
+      enabledTools,
+      isStreaming,
+      notebookId,
+      patchLast,
+      refreshUser,
+      syncFromLatestPage,
+    ]
   )
 
   const stopStream = useCallback(() => {
@@ -161,5 +202,8 @@ export function useChatStream(
     sendMessage,
     stopStream,
     prependOlderMessages,
+    chatUsage,
+    chatLimit,
+    atChatLimit,
   }
 }

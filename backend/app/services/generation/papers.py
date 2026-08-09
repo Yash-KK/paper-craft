@@ -53,6 +53,36 @@ class CancellationNotAllowedError(RuntimeError):
     """Raised when a version cannot be cancelled (not V1 or not active)."""
 
 
+class UsageLimitExceededError(RuntimeError):
+    """Raised when an account has exhausted a generation or chat quota."""
+
+
+async def _lock_user(db: AsyncSession, user: User) -> User:
+    """Re-load the user row with FOR UPDATE so quota checks are race-safe."""
+    await db.refresh(user, with_for_update=True)
+    return user
+
+
+async def _consume_question_paper_quota(db: AsyncSession, user: User) -> None:
+    await _lock_user(db, user)
+    if user.question_paper_usage >= user.question_paper_limit:
+        raise UsageLimitExceededError(
+            "Question paper limit reached "
+            f"({user.question_paper_usage}/{user.question_paper_limit})"
+        )
+    user.question_paper_usage += 1
+
+
+async def _assert_version_quota(
+    db: AsyncSession, user: User, *, version_count: int
+) -> None:
+    await _lock_user(db, user)
+    if version_count >= user.version_limit:
+        raise UsageLimitExceededError(
+            "Version limit reached for this question paper "
+            f"({version_count}/{user.version_limit})"
+        )
+
 def _paper_title(
     blueprint: QuestionPaperBlueprint,
     *,
@@ -280,6 +310,8 @@ async def enqueue_paper_generation(
     if notebook is None:
         raise PermissionError("Notebook not found")
 
+    await _consume_question_paper_quota(db, user)
+
     title = _paper_title(body.blueprint, explicit=body.title)
 
     paper = QuestionPaper(
@@ -356,6 +388,8 @@ async def enqueue_new_version(
         raise ActiveGenerationError(
             "A generation is already pending or running for this paper"
         )
+
+    await _assert_version_quota(db, user, version_count=len(versions))
 
     ready_versions = [
         version for version in versions if version.status == QuestionPaperStatus.READY

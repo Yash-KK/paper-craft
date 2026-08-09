@@ -28,6 +28,7 @@ from app.services.generation.papers import (
     ActiveGenerationError,
     CancellationNotAllowedError,
     NoReadyVersionError,
+    UsageLimitExceededError,
     cancel_version_generation,
     enqueue_new_version,
     enqueue_paper_generation,
@@ -104,6 +105,11 @@ async def create_question_paper(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    except UsageLimitExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
 
 
 @generation_router.post(
@@ -132,6 +138,11 @@ async def create_question_paper_version(
     except (ActiveGenerationError, NoReadyVersionError) as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except UsageLimitExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         ) from exc
 

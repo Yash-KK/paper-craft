@@ -32,6 +32,7 @@ import {
   isMarkBasedBlueprint,
 } from "@/lib/types/generation"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/providers/auth-provider"
 
 type GeneratePaperFormProps = {
   notebook: NotebookListItem
@@ -88,6 +89,7 @@ export function GeneratePaperForm({
   onGenerated,
   onCancel,
 }: GeneratePaperFormProps) {
+  const { user } = useAuth()
   const form = useGeneratePaperForm(notebook, schoolName)
   const sampleSelected = Boolean(form.sample)
   const markBased = isMarkBasedBlueprint(form.blueprint)
@@ -105,6 +107,9 @@ export function GeneratePaperForm({
     ? "Sections, question types, and chapter distribution."
     : "Sections, question types, and chapter distribution for practice."
   const generateLabel = markBased ? "Generate Paper" : "Generate Revision Sheet"
+  const paperUsage = user?.question_paper_usage ?? 0
+  const paperLimit = user?.question_paper_limit ?? 2
+  const atPaperLimit = paperUsage >= paperLimit
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
@@ -413,7 +418,15 @@ export function GeneratePaperForm({
           type="button"
           className="h-11 w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
           disabled={
-            !sampleSelected || form.generating || form.chapters.length === 0
+            !sampleSelected ||
+            form.generating ||
+            form.chapters.length === 0 ||
+            atPaperLimit
+          }
+          title={
+            atPaperLimit
+              ? `Question paper limit reached (${paperUsage}/${paperLimit})`
+              : undefined
           }
           onClick={() =>
             void form.generate().then((result) => {
@@ -428,6 +441,9 @@ export function GeneratePaperForm({
           )}
           {generateLabel}
         </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          {paperUsage}/{paperLimit} question papers used
+        </p>
         {onCancel ? (
           <Button
             type="button"

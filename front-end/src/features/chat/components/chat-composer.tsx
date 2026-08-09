@@ -29,6 +29,8 @@ type ChatComposerProps = {
   onEnabledToolsChange: (tools: ChatToolId[]) => void
   onSend: (question: string) => void
   onStop: () => void
+  chatUsage?: number
+  chatLimit?: number
 }
 
 export function ChatComposer({
@@ -37,9 +39,12 @@ export function ChatComposer({
   onEnabledToolsChange,
   onSend,
   onStop,
+  chatUsage = 0,
+  chatLimit = 5,
 }: ChatComposerProps) {
   const [input, setInput] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const atLimit = chatUsage >= chatLimit
 
   useEffect(() => {
     const el = textareaRef.current
@@ -50,7 +55,7 @@ export function ChatComposer({
 
   const handleSend = () => {
     const question = input.trim()
-    if (!question || isStreaming) return
+    if (!question || isStreaming || atLimit) return
     setInput("")
     onSend(question)
   }
@@ -80,15 +85,19 @@ export function ChatComposer({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={handleKey}
-          placeholder="Ask a question…"
-          disabled={isStreaming}
+          placeholder={
+            atLimit
+              ? "Chat message limit reached"
+              : "Ask a question…"
+          }
+          disabled={isStreaming || atLimit}
           className="max-h-30 min-h-6 w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:border-0 focus-visible:ring-0 disabled:bg-transparent dark:bg-transparent dark:disabled:bg-transparent"
         />
 
         <div className="flex items-center gap-1.5">
           <DropdownMenu>
             <DropdownMenuTrigger
-              disabled={isStreaming}
+              disabled={isStreaming || atLimit}
               render={
                 <Button
                   variant="ghost"
@@ -132,7 +141,9 @@ export function ChatComposer({
                   key={tool.id}
                   variant="secondary"
                   className="h-7 cursor-pointer gap-1.5 overflow-visible rounded-full px-2.5 text-xs font-medium"
-                  onClick={() => !isStreaming && toggleTool(tool.id, false)}
+                  onClick={() =>
+                    !isStreaming && !atLimit && toggleTool(tool.id, false)
+                  }
                   title={`Remove ${tool.label}`}
                 >
                   <Icon />
@@ -159,8 +170,12 @@ export function ChatComposer({
                 size="icon-xs"
                 className="bg-violet-600 text-white hover:bg-violet-500"
                 onClick={handleSend}
-                disabled={!input.trim()}
-                title="Send"
+                disabled={!input.trim() || atLimit}
+                title={
+                  atLimit
+                    ? `Chat message limit reached (${chatUsage}/${chatLimit})`
+                    : "Send"
+                }
               >
                 <Send />
               </Button>
@@ -175,7 +190,7 @@ export function ChatComposer({
         </p>
       ) : (
         <p className="mt-1.5 text-center text-xs text-muted-foreground">
-          PaperCraft can make mistakes
+          {chatUsage}/{chatLimit} messages used
         </p>
       )}
     </div>

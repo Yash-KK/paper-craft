@@ -40,6 +40,18 @@ class ChatService:
     def messages_cursor_query(self, session_id: UUID):
         return self._repo.messages_cursor_query(session_id)
 
+    async def _consume_chat_quota(self, user: User) -> None:
+        await self._repo.lock_user(user)
+        if user.chat_message_usage >= user.chat_message_limit:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Chat message limit reached "
+                    f"({user.chat_message_usage}/{user.chat_message_limit})"
+                ),
+            )
+        user.chat_message_usage += 1
+
     async def start_turn(
         self,
         *,
@@ -52,6 +64,7 @@ class ChatService:
         """Validate ownership, persist the user message, then return the SSE generator."""
         notebook = await self._require_owned_notebook(notebook_id, user)
         session = await self._repo.get_or_create_session(notebook)
+        await self._consume_chat_quota(user)
         history = await self._repo.list_recent_messages(session.id, limit=20)
         await self._repo.create_message(
             session_id=session.id, role=ChatMessageRole.USER, content=content

@@ -28,6 +28,7 @@ from app.services.generation.papers import (
     ActiveGenerationError,
     CancellationNotAllowedError,
     NoReadyVersionError,
+    UsageLimitExceededError,
     _to_paper_summary,
     _to_version_detail,
     cancel_version_generation,
@@ -125,7 +126,7 @@ def test_enqueue_creates_parent_and_version_one(
             if isinstance(obj, QuestionPaper) and getattr(obj, "id", None) is None:
                 obj.id = uuid4()
 
-    async def refresh_side_effect(obj) -> None:
+    async def refresh_side_effect(obj, **_kwargs) -> None:
         if getattr(obj, "id", None) is None:
             obj.id = uuid4()
         if getattr(obj, "created_at", None) is None:
@@ -171,6 +172,40 @@ def test_enqueue_creates_parent_and_version_one(
     assert result.title == "My Paper"
     delay.assert_called_once_with(str(version.id))
     assert mock_db.commit.await_count >= 2
+    assert mock_user.question_paper_usage == 1
+
+
+def test_enqueue_rejects_when_paper_limit_reached(
+    mock_db: AsyncMock,
+    mock_user: User,
+) -> None:
+    mock_user.question_paper_limit = 2
+    mock_user.question_paper_usage = 2
+    notebook_id = uuid4()
+    notebook = _make_notebook(notebook_id=notebook_id, user_id=mock_user.id)
+    mock_db.get = AsyncMock(return_value=notebook)
+    mock_db.refresh = AsyncMock()
+
+    body = GeneratePaperRequest.model_validate(
+        {
+            "notebook_id": str(notebook_id),
+            "blueprint": _blueprint_payload(),
+            "selected_chapters": [
+                {
+                    "book_code": "jemh1",
+                    "chapter_number": 1,
+                    "chapter_name": "Real Numbers",
+                }
+            ],
+            "subject": "Mathematics",
+            "grade": 10,
+        }
+    )
+
+    with pytest.raises(UsageLimitExceededError):
+        asyncio.run(enqueue_paper_generation(mock_db, user=mock_user, body=body))
+
+    assert mock_db.add.call_count == 0
 
 
 def test_grouped_paper_summary_includes_versions() -> None:
@@ -208,7 +243,7 @@ def test_enqueue_new_version_inherits_latest_ready_and_snapshots(
     mock_db.execute = AsyncMock(side_effect=[paper_result, messages_result])
     mock_db.get = AsyncMock(return_value=notebook)
 
-    async def refresh_side_effect(obj) -> None:
+    async def refresh_side_effect(obj, **_kwargs) -> None:
         if getattr(obj, "id", None) is None:
             obj.id = uuid4()
         if getattr(obj, "created_at", None) is None:
@@ -245,6 +280,33 @@ def test_enqueue_new_version_inherits_latest_ready_and_snapshots(
     assert version.generation_context["base_version_id"] == str(ready.id)
     assert result.version_number == 2
     delay.assert_called_once_with(str(version.id))
+
+
+def test_enqueue_new_version_rejects_when_version_limit_reached(
+    mock_db: AsyncMock,
+    mock_user: User,
+) -> None:
+    mock_user.version_limit = 2
+    ready = _make_version(version_number=1, status=QuestionPaperStatus.READY)
+    second = _make_version(version_number=2, status=QuestionPaperStatus.READY)
+    paper = _make_paper(versions=[ready, second])
+    notebook = _make_notebook(notebook_id=paper.notebook_id, user_id=mock_user.id)
+
+    paper_result = MagicMock()
+    paper_result.scalar_one_or_none.return_value = paper
+    mock_db.execute = AsyncMock(return_value=paper_result)
+    mock_db.get = AsyncMock(return_value=notebook)
+    mock_db.refresh = AsyncMock()
+
+    with pytest.raises(UsageLimitExceededError):
+        asyncio.run(
+            enqueue_new_version(
+                mock_db,
+                user=mock_user,
+                paper_id=paper.id,
+                body=GenerateNewVersionRequest(selected_message_ids=[]),
+            )
+        )
 
 
 def test_enqueue_new_version_rejects_foreign_messages(

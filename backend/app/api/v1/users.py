@@ -20,6 +20,11 @@ def _to_response(user: User) -> UserProfileResponse:
         phone_number=profile.phone_number if profile else None,
         avatar_url=profile.avatar_url if profile else None,
         settings=profile.settings if profile else {},
+        question_paper_limit=user.question_paper_limit,
+        question_paper_usage=user.question_paper_usage,
+        version_limit=user.version_limit,
+        chat_message_limit=user.chat_message_limit,
+        chat_message_usage=user.chat_message_usage,
     )
 
 

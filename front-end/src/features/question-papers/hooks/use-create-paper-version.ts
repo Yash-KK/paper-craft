@@ -8,9 +8,11 @@ import type {
   GeneratePaperPayload,
   GenerationResult,
 } from "@/lib/types/generation"
+import { useAuth } from "@/providers/auth-provider"
 
 export function useGenerateQuestionPaper() {
   const queryClient = useQueryClient()
+  const { refreshUser } = useAuth()
 
   return useMutation({
     mutationFn: (payload: GeneratePaperPayload) =>
@@ -21,6 +23,7 @@ export function useGenerateQuestionPaper() {
         queryKey: queryKeys.notebookPapers(result.notebook_id),
       })
       void queryClient.invalidateQueries({ queryKey: queryKeys.notebooks })
+      void refreshUser()
     },
     onError: (err) => {
       toast.error(

@@ -60,6 +60,11 @@ export type UserProfile = {
   phone_number: string | null
   avatar_url: string | null
   settings: Record<string, unknown>
+  question_paper_limit: number
+  question_paper_usage: number
+  version_limit: number
+  chat_message_limit: number
+  chat_message_usage: number
 }
 
 export async function fetchCurrentUser(): Promise<UserProfile | null> {

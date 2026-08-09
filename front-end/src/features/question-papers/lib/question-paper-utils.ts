@@ -6,7 +6,11 @@ import {
 
 export { isPersistedChatMessageId as isPersistedMessageId } from "@/features/chat/lib/chat-stream-utils"
 
-export function canCreateNewVersion(paper: QuestionPaperSummary): boolean {
+export function canCreateNewVersion(
+  paper: QuestionPaperSummary,
+  versionLimit = Number.POSITIVE_INFINITY
+): boolean {
+  if (paper.versions.length >= versionLimit) return false
   if (paperHasActiveGeneration(paper)) return false
   return paper.versions.some((version) => version.status === "ready")
 }

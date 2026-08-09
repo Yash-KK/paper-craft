@@ -22,6 +22,7 @@ type AuthContextValue = {
   user: UserProfile | null
   authError: boolean
   setUser: (user: UserProfile) => void
+  refreshUser: () => Promise<UserProfile | null>
   logout: () => void
 }
 
@@ -75,6 +76,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus(AuthStatus.Authenticated)
   }, [])
 
+  const refreshUser = React.useCallback(async () => {
+    const profile = await fetchCurrentUser()
+    if (profile) {
+      setUserState(profile)
+      setStatus(AuthStatus.Authenticated)
+    }
+    return profile
+  }, [])
+
   const logout = React.useCallback(() => {
     clearToken()
     setUserState(null)
@@ -82,8 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const value = React.useMemo<AuthContextValue>(
-    () => ({ status, user, authError, setUser, logout }),
-    [status, user, authError, setUser, logout]
+    () => ({ status, user, authError, setUser, refreshUser, logout }),
+    [status, user, authError, setUser, refreshUser, logout]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

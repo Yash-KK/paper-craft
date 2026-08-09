@@ -47,6 +47,7 @@ import type {
 } from "@/lib/types/generation"
 import type { NotebookListItem } from "@/lib/types/notebook"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/providers/auth-provider"
 
 type QuestionPapersSidebarProps = {
   notebook: NotebookListItem
@@ -63,12 +64,23 @@ export function QuestionPapersSidebar({
   notebook,
   className,
 }: QuestionPapersSidebarProps) {
+  const { user } = useAuth()
   const papersQuery = useNotebookPapers(notebook.id)
   const deletePaper = useDeleteQuestionPaper(notebook.id)
   const cancelVersion = useCancelPaperVersion(notebook.id)
   const papers = papersQuery.data ?? []
-  const canGenerate = notebook.selected_chapters.length > 0
+  const paperUsage = user?.question_paper_usage ?? 0
+  const paperLimit = user?.question_paper_limit ?? 2
+  const versionLimit = user?.version_limit ?? 2
+  const atPaperLimit = paperUsage >= paperLimit
+  const canGenerate =
+    notebook.selected_chapters.length > 0 && !atPaperLimit
   const generateHref = `/notebooks/${notebook.id}/generate`
+  const generateDisabledReason = atPaperLimit
+    ? `Question paper limit reached (${paperUsage}/${paperLimit})`
+    : notebook.selected_chapters.length === 0
+      ? "Select chapters on this notebook first"
+      : "Open question paper generation"
 
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(
     () => new Set()
@@ -129,11 +141,7 @@ export function QuestionPapersSidebar({
           type="button"
           className="w-full gap-2 bg-emerald-600 text-white hover:bg-emerald-600/90"
           disabled={!canGenerate}
-          title={
-            canGenerate
-              ? "Open question paper generation"
-              : "Select chapters on this notebook first"
-          }
+          title={generateDisabledReason}
           render={canGenerate ? <Link to={generateHref} /> : undefined}
         >
           <Sparkles className="size-4" aria-hidden />
@@ -145,7 +153,9 @@ export function QuestionPapersSidebar({
         <p className="text-xs font-medium text-muted-foreground">
           Generated papers
         </p>
-        <Badge variant="secondary">{papers.length}</Badge>
+        <Badge variant="secondary">
+          {paperUsage}/{paperLimit}
+        </Badge>
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
@@ -191,7 +201,7 @@ export function QuestionPapersSidebar({
                   <QuestionPaperActionsMenu
                     title={paper.title}
                     nextVersionNumber={
-                      canCreateNewVersion(paper)
+                      canCreateNewVersion(paper, versionLimit)
                         ? nextVersionNumber(paper)
                         : null
                     }

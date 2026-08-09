@@ -7,7 +7,7 @@ const SUGGESTIONS = [
 
 type ChatEmptyStateProps = {
   notebookName: string
-  onSend: (prompt: string) => void
+  onSend?: (prompt: string) => void
 }
 
 export function ChatEmptyState({ notebookName, onSend }: ChatEmptyStateProps) {
@@ -20,20 +20,26 @@ export function ChatEmptyState({ notebookName, onSend }: ChatEmptyStateProps) {
         Ask for explanations or worked examples grounded in this
         notebook&apos;s chapters.
       </p>
-      <div className="flex flex-wrap justify-center gap-2">
-        {SUGGESTIONS.map((suggestion) => (
-          <Button
-            key={suggestion}
-            type="button"
-            variant="outline"
-            size="xs"
-            onClick={() => onSend(suggestion)}
-            className="rounded-full text-muted-foreground"
-          >
-            {suggestion}
-          </Button>
-        ))}
-      </div>
+      {onSend ? (
+        <div className="flex flex-wrap justify-center gap-2">
+          {SUGGESTIONS.map((suggestion) => (
+            <Button
+              key={suggestion}
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => onSend(suggestion)}
+              className="rounded-full text-muted-foreground"
+            >
+              {suggestion}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Chat message limit reached
+        </p>
+      )}
     </div>
   )
 }

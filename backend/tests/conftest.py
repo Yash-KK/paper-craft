@@ -30,6 +30,11 @@ def mock_user(user_id: UUID) -> User:
         email_verified=True,
         full_name="Test Teacher",
         role=UserRole.TEACHER,
+        question_paper_limit=2,
+        question_paper_usage=0,
+        version_limit=2,
+        chat_message_limit=5,
+        chat_message_usage=0,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
