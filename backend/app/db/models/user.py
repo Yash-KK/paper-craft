@@ -47,7 +47,7 @@ class User(Base):
         nullable=False,
     )
     question_paper_limit: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=2, server_default="2"
+        Integer, nullable=False, default=1, server_default="1"
     )
     question_paper_usage: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"

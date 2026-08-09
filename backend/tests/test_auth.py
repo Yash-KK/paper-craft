@@ -85,6 +85,9 @@ def test_callback_redirects_with_token_on_success(
     assert "token" in query
     assert query["token"][0]
     mock_db.add.assert_called_once()
+    created = mock_db.add.call_args.args[0]
+    assert created.profile is not None
+    assert created.profile.board.value == "CBSE"
     mock_db.commit.assert_awaited_once()
 
 
