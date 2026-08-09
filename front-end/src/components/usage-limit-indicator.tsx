@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-export const DEFAULT_QUESTION_PAPER_LIMIT = 2
+export const DEFAULT_QUESTION_PAPER_LIMIT = 1
 export const DEFAULT_VERSION_LIMIT = 2
 export const DEFAULT_CHAT_MESSAGE_LIMIT = 5
 

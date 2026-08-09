@@ -179,8 +179,8 @@ def test_enqueue_rejects_when_paper_limit_reached(
     mock_db: AsyncMock,
     mock_user: User,
 ) -> None:
-    mock_user.question_paper_limit = 2
-    mock_user.question_paper_usage = 2
+    mock_user.question_paper_limit = 1
+    mock_user.question_paper_usage = 1
     notebook_id = uuid4()
     notebook = _make_notebook(notebook_id=notebook_id, user_id=mock_user.id)
     mock_db.get = AsyncMock(return_value=notebook)

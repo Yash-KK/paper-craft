@@ -26,7 +26,7 @@ class UserProfileResponse(BaseModel):
     phone_number: str | None = None
     avatar_url: str | None = None
     settings: dict = Field(default_factory=dict)
-    question_paper_limit: int = 2
+    question_paper_limit: int = 1
     question_paper_usage: int = 0
     version_limit: int = 2
     chat_message_limit: int = 5
