@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.api.deps import GoogleSSODep, SessionDep
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.db.models.notebook import Board
 from app.db.models.user import AuthProvider, User, UserProfile
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -48,12 +49,18 @@ async def callback(
             auth_provider_id=google_user.id,
             full_name=google_user.display_name or google_user.email,
             email_verified=True,
-            profile=UserProfile(avatar_url=google_user.picture),
+            profile=UserProfile(
+                avatar_url=google_user.picture,
+                board=Board.CBSE,
+            ),
         )
         db.add(user)
     else:
         if user.profile is None:
-            user.profile = UserProfile(avatar_url=google_user.picture)
+            user.profile = UserProfile(
+                avatar_url=google_user.picture,
+                board=Board.CBSE,
+            )
         elif google_user.picture:
             user.profile.avatar_url = google_user.picture
 
