@@ -15,7 +15,7 @@ _TEST_ENV = {
     "NCERT_BOOK_CONFIG": "{}",
     "GOOGLE_CLIENT_ID": "test-client-id",
     "GOOGLE_CLIENT_SECRET": "test-client-secret",
-    "GOOGLE_REDIRECT_URI": "http://localhost:8000/auth/callback",
+    "GOOGLE_REDIRECT_URI": "http://localhost:8000/api/v1/auth/callback",
     "ASYNC_DATABASE_URL": "postgresql+asyncpg://postgres:password@localhost:5432/test",
     "SYNC_DATABASE_URL": "postgresql+psycopg2://postgres:password@localhost:5432/test",
     "SECRET_KEY": "test-secret-key",

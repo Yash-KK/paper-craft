@@ -198,7 +198,7 @@ NCERT_BOOK_CONFIG={}
 
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:8000/auth/callback
+GOOGLE_REDIRECT_URI=http://localhost:8000/api/v1/auth/callback
 ALLOW_INSECURE_HTTP=true
 
 ASYNC_DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/paper_craft

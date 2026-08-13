@@ -73,7 +73,7 @@ export async function fetchCurrentUser(): Promise<UserProfile | null> {
     return null
   }
 
-  const response = await fetch(`${API_URL}/api/v1/users/me`, {
+  const response = await fetch(`${API_URL}/users/me`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -150,7 +150,7 @@ export async function updateCurrentUser(
     throw new UnauthorizedError()
   }
 
-  const response = await fetch(`${API_URL}/api/v1/users/me`, {
+  const response = await fetch(`${API_URL}/users/me`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -172,7 +172,7 @@ export async function updateCurrentUser(
 }
 
 export async function fetchNotebooks(): Promise<NotebookListItem[]> {
-  const response = await authFetch("/api/v1/notebooks")
+  const response = await authFetch("/notebooks")
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as NotebookListItem[]
 }
@@ -180,7 +180,7 @@ export async function fetchNotebooks(): Promise<NotebookListItem[]> {
 export async function createNotebook(
   payload: NotebookCreatePayload
 ): Promise<NotebookListItem> {
-  const response = await authFetch("/api/v1/notebooks", {
+  const response = await authFetch("/notebooks", {
     method: "POST",
     body: JSON.stringify(payload),
   })
@@ -192,7 +192,7 @@ export async function updateNotebook(
   notebookId: string,
   payload: NotebookUpdatePayload
 ): Promise<NotebookListItem> {
-  const response = await authFetch(`/api/v1/notebooks/${notebookId}`, {
+  const response = await authFetch(`/notebooks/${notebookId}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   })
@@ -201,7 +201,7 @@ export async function updateNotebook(
 }
 
 export async function deleteNotebook(notebookId: string): Promise<void> {
-  const response = await authFetch(`/api/v1/notebooks/${notebookId}`, {
+  const response = await authFetch(`/notebooks/${notebookId}`, {
     method: "DELETE",
   })
   if (!response.ok) throw new Error(await parseApiError(response))
@@ -210,7 +210,7 @@ export async function deleteNotebook(notebookId: string): Promise<void> {
 export async function fetchNotebookChat(
   notebookId: string
 ): Promise<ChatSession> {
-  const response = await authFetch(`/api/v1/notebooks/${notebookId}/chat`)
+  const response = await authFetch(`/notebooks/${notebookId}/chat`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChatSession
 }
@@ -224,21 +224,21 @@ export async function fetchNotebookChatMessages(
   if (options?.size != null) params.set("size", String(options.size))
   const query = params.toString()
   const response = await authFetch(
-    `/api/v1/notebooks/${notebookId}/chat/messages${query ? `?${query}` : ""}`
+    `/notebooks/${notebookId}/chat/messages${query ? `?${query}` : ""}`
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChatMessagesPage
 }
 
 export async function fetchBoards(): Promise<Board[]> {
-  const response = await authFetch("/api/v1/chapters/boards")
+  const response = await authFetch("/chapters/boards")
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as Board[]
 }
 
 export async function fetchGrades(board: Board): Promise<ClassGrade[]> {
   const response = await authFetch(
-    `/api/v1/chapters/grades?board=${encodeURIComponent(board)}`
+    `/chapters/grades?board=${encodeURIComponent(board)}`
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ClassGrade[]
@@ -249,7 +249,7 @@ export async function fetchSubjects(
   grade: ClassGrade
 ): Promise<Subject[]> {
   const params = new URLSearchParams({ board, grade })
-  const response = await authFetch(`/api/v1/chapters/subjects?${params}`)
+  const response = await authFetch(`/chapters/subjects?${params}`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as Subject[]
 }
@@ -260,7 +260,7 @@ export async function fetchChapters(
   subject: Subject
 ): Promise<ChapterCatalogItem[]> {
   const params = new URLSearchParams({ board, grade, subject })
-  const response = await authFetch(`/api/v1/chapters?${params}`)
+  const response = await authFetch(`/chapters?${params}`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as ChapterCatalogItem[]
 }
@@ -274,7 +274,7 @@ export async function fetchSampleBlueprints(filters?: {
   if (filters?.subject) params.set("subject", filters.subject)
   const query = params.toString()
   const response = await authFetch(
-    `/api/v1/sample-blueprints${query ? `?${query}` : ""}`
+    `/sample-blueprints${query ? `?${query}` : ""}`
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as SampleBlueprintSummary[]
@@ -283,7 +283,7 @@ export async function fetchSampleBlueprints(filters?: {
 export async function fetchSampleBlueprint(
   id: string
 ): Promise<SampleBlueprintDetail> {
-  const response = await authFetch(`/api/v1/sample-blueprints/${id}`)
+  const response = await authFetch(`/sample-blueprints/${id}`)
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as SampleBlueprintDetail
 }
@@ -291,7 +291,7 @@ export async function fetchSampleBlueprint(
 export async function generateQuestionPaper(
   payload: GeneratePaperPayload
 ): Promise<GenerationResult> {
-  const response = await authFetch("/api/v1/generation/papers", {
+  const response = await authFetch("/generation/papers", {
     method: "POST",
     body: JSON.stringify(payload),
   })
@@ -303,14 +303,14 @@ export async function fetchNotebookPapers(
   notebookId: string
 ): Promise<QuestionPaperSummary[]> {
   const response = await authFetch(
-    `/api/v1/generation/notebooks/${notebookId}/papers`
+    `/generation/notebooks/${notebookId}/papers`
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as QuestionPaperSummary[]
 }
 
 export async function deleteQuestionPaper(paperId: string): Promise<void> {
-  const response = await authFetch(`/api/v1/generation/papers/${paperId}`, {
+  const response = await authFetch(`/generation/papers/${paperId}`, {
     method: "DELETE",
   })
   if (!response.ok) throw new Error(await parseApiError(response))
@@ -321,7 +321,7 @@ export async function createPaperVersion(
   payload: GenerateNewVersionPayload
 ): Promise<GenerationResult> {
   const response = await authFetch(
-    `/api/v1/generation/papers/${paperId}/versions`,
+    `/generation/papers/${paperId}/versions`,
     {
       method: "POST",
       body: JSON.stringify(payload),
@@ -336,7 +336,7 @@ export async function cancelPaperVersion(
   versionNumber: number
 ): Promise<QuestionPaperVersionSummary> {
   const response = await authFetch(
-    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}/cancel`,
+    `/generation/papers/${paperId}/versions/${versionNumber}/cancel`,
     { method: "POST" }
   )
   if (!response.ok) throw new Error(await parseApiError(response))
@@ -348,7 +348,7 @@ export async function fetchPaperVersion(
   versionNumber: number
 ): Promise<QuestionPaperVersionDetail> {
   const response = await authFetch(
-    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}`
+    `/generation/papers/${paperId}/versions/${versionNumber}`
   )
   if (!response.ok) throw new Error(await parseApiError(response))
   return (await response.json()) as QuestionPaperVersionDetail
@@ -376,7 +376,7 @@ export async function fetchVersionExport(
   versionNumber: number
 ): Promise<{ blob: Blob; filename: string }> {
   const response = await authFetch(
-    `/api/v1/generation/papers/${paperId}/versions/${versionNumber}/export`
+    `/generation/papers/${paperId}/versions/${versionNumber}/export`
   )
   if (!response.ok) throw new Error(await parseApiError(response))
 
