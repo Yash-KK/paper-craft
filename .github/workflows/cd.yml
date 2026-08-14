@@ -1,0 +1,61 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+
+          script: |
+            set -e
+
+            echo "Starting deployment..."
+            cd /home/kharche/practice/paper-craft
+
+            echo "Fetching latest code..."
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "Installing backend dependencies..."
+            cd backend
+            uv sync --locked
+
+            echo "Running migrations..."
+            uv run alembic upgrade head
+
+            echo "Building frontend..."
+            cd ../front-end
+            npm ci
+            npm run build
+            chmod -R o+rX dist
+            rm -rf node_modules
+
+            echo "Restarting backend..."
+            sudo systemctl restart papercraft.target
+
+            echo "Waiting for backend..."
+            sleep 5
+
+            echo "Running health check..."
+            curl --fail http://127.0.0.1:8511/health
+
+            echo "Deployment successful!"
