@@ -89,7 +89,7 @@ export function useChatStream(
 
       try {
         await fetchEventSource(
-          `${API_URL}/api/v1/notebooks/${notebookId}/chat/messages`,
+          `${API_URL}/notebooks/${notebookId}/chat/messages`,
           {
             method: "POST",
             headers: {

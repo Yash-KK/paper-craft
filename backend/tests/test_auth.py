@@ -47,7 +47,7 @@ def auth_client(
 def test_login_redirects_to_google(
     auth_client: TestClient, mock_google_sso: MagicMock
 ) -> None:
-    response = auth_client.get("/auth/login", follow_redirects=False)
+    response = auth_client.get("/api/v1/auth/login", follow_redirects=False)
 
     assert response.status_code == 307
     assert response.headers["location"] == "https://accounts.google.com/o/oauth2/auth"
@@ -75,7 +75,9 @@ def test_callback_redirects_with_token_on_success(
 
     mock_db.refresh.side_effect = assign_user_on_refresh
 
-    response = auth_client.get("/auth/callback?code=test-code", follow_redirects=False)
+    response = auth_client.get(
+        "/api/v1/auth/callback?code=test-code", follow_redirects=False
+    )
 
     assert response.status_code == 307
     location = urlparse(response.headers["location"])
@@ -99,7 +101,9 @@ def test_callback_redirects_on_sso_failure(
         side_effect=SSOLoginError(400, "invalid code")
     )
 
-    response = auth_client.get("/auth/callback?code=bad-code", follow_redirects=False)
+    response = auth_client.get(
+        "/api/v1/auth/callback?code=bad-code", follow_redirects=False
+    )
 
     assert response.status_code == 307
     assert response.headers["location"] == f"{settings.frontend_url}?auth_error=true"
