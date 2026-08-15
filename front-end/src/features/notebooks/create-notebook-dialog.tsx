@@ -16,7 +16,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MenuSelect } from "@/components/ui/menu-select"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   useChapters,
   useGrades,
@@ -158,9 +157,12 @@ export function CreateNotebookDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[min(92vh,52rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <DialogHeader className="gap-1 border-b px-6 py-5">
+      <DialogContent className="flex max-h-[min(92dvh,52rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl lg:max-w-3xl">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogHeader className="shrink-0 gap-1 border-b px-6 py-5">
             <DialogTitle className="text-xl">Create a New Notebook</DialogTitle>
             <DialogDescription>
               Chapters are filtered by your profile board
@@ -168,7 +170,7 @@ export function CreateNotebookDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="grid gap-6 px-6 py-6">
               {!board ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
@@ -239,67 +241,65 @@ export function CreateNotebookDialog({
                   )}
                 </div>
 
-                <div className="rounded-xl border bg-muted/30 ring-1 ring-border/60">
-                  <ScrollArea className="h-56 sm:h-64 lg:h-72">
-                    <div className="grid gap-2 p-4 sm:grid-cols-2">
-                      {!board ? (
-                        <p className="text-sm text-muted-foreground sm:col-span-2">
-                          Set your board in profile first
-                        </p>
-                      ) : !chaptersReady ? (
-                        <p className="text-sm text-muted-foreground sm:col-span-2">
-                          Select class and subject first
-                        </p>
-                      ) : chaptersQuery.isFetching ? (
-                        <p className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
-                          <Loader2 className="size-4 animate-spin" />
-                          Loading chapters…
-                        </p>
-                      ) : catalog.length === 0 ? (
-                        <p className="text-sm text-muted-foreground sm:col-span-2">
-                          No chapters available
-                        </p>
-                      ) : (
-                        catalog.map((chapter) => {
-                          const selected = form.chapters.includes(
-                            chapter.chapter_number
-                          )
-                          return (
-                            <Button
-                              key={chapter.chapter_number}
-                              type="button"
-                              variant="outline"
-                              disabled={!chapter.is_available}
-                              onClick={() =>
-                                toggleChapter(chapter.chapter_number)
-                              }
-                              className={cn(
-                                "h-auto flex-col items-start justify-start whitespace-normal px-3 py-2.5 text-left",
-                                !chapter.is_available
-                                  ? "opacity-50"
-                                  : selected
-                                    ? "border-primary bg-primary/10 text-primary dark:bg-primary/15"
-                                    : "dark:bg-card"
-                              )}
-                            >
-                              <span className="font-medium">
-                                Chapter {chapter.chapter_number}
-                              </span>
-                              <span className="mt-0.5 block text-xs text-muted-foreground">
-                                {chapter.chapter_name}
-                              </span>
-                            </Button>
-                          )
-                        })
-                      )}
-                    </div>
-                  </ScrollArea>
+                <div className="max-h-[min(16rem,40dvh)] overflow-y-auto overscroll-contain rounded-xl border bg-muted/30 ring-1 ring-border/60 sm:max-h-64 lg:max-h-72">
+                  <div className="grid gap-2 p-4 sm:grid-cols-2">
+                    {!board ? (
+                      <p className="text-sm text-muted-foreground sm:col-span-2">
+                        Set your board in profile first
+                      </p>
+                    ) : !chaptersReady ? (
+                      <p className="text-sm text-muted-foreground sm:col-span-2">
+                        Select class and subject first
+                      </p>
+                    ) : chaptersQuery.isFetching ? (
+                      <p className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
+                        <Loader2 className="size-4 animate-spin" />
+                        Loading chapters…
+                      </p>
+                    ) : catalog.length === 0 ? (
+                      <p className="text-sm text-muted-foreground sm:col-span-2">
+                        No chapters available
+                      </p>
+                    ) : (
+                      catalog.map((chapter) => {
+                        const selected = form.chapters.includes(
+                          chapter.chapter_number
+                        )
+                        return (
+                          <Button
+                            key={chapter.chapter_number}
+                            type="button"
+                            variant="outline"
+                            disabled={!chapter.is_available}
+                            onClick={() =>
+                              toggleChapter(chapter.chapter_number)
+                            }
+                            className={cn(
+                              "h-auto flex-col items-start justify-start whitespace-normal px-3 py-2.5 text-left",
+                              !chapter.is_available
+                                ? "opacity-50"
+                                : selected
+                                  ? "border-primary bg-primary/10 text-primary dark:bg-primary/15"
+                                  : "dark:bg-card"
+                            )}
+                          >
+                            <span className="font-medium">
+                              Chapter {chapter.chapter_number}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {chapter.chapter_name}
+                            </span>
+                          </Button>
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
-          <DialogFooter className="mb-0 border-t bg-muted/30 px-6 py-4">
+          <DialogFooter className="relative z-10 mx-0 mb-0 shrink-0 border-t bg-muted/30 px-6 py-4">
             <Button
               type="button"
               variant="outline"
